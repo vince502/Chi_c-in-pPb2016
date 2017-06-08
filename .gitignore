@@ -1,5 +1,4 @@
-CVS
-.admin
 *.pyc
 *.o
 *__init__.py
+*.root

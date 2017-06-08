@@ -1,12 +1,3 @@
-/**
-   \file
-   Declaration of OniaPhotonProducer
-   \author 
-   Alberto Sanchez-Hernandez
-   September 2014
-
-*/
-
 #ifndef __OniaPhotonProducer_h_
 #define __OniaPhotonProducer_h_
 
@@ -22,9 +13,6 @@
 #include <TLorentzVector.h>
 #include <vector>
 
-/**
-   Create a Chi(b,c) candidate by mathing dimuon and conversion
- */
 
 class OniaPhotonProducer : public edm::EDProducer {
 

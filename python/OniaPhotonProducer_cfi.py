@@ -4,9 +4,9 @@ import FWCore.ParameterSet.Config as cms
 tag_dimuon = 'onia2MuMuPAT'  # Tag name of the dimuon collection as saved from process.dimuonProducer
 cut_dimuon_Mass_low = 2.9
 cut_dimuon_Mass_high = 3.3
-cut_dimuon_Pt_min = 10.0
-cut_dimuon_rapidity = 2.1
-cut_dimuon_vprob = 0.01     # Minimum vertex probability for dimuon candidate
+cut_dimuon_Pt_min = 10.0 # O: Not used here
+cut_dimuon_rapidity = 2.1 # O: Not used here
+cut_dimuon_vprob = 1.00     # Minimum vertex probability for dimuon candidate # O: Not used here
 #
 tag_chi_conv_prod = 'PhotonCandidates'
 tag_chi_conv_lab = 'conversions'
