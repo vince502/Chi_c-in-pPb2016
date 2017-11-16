@@ -13,7 +13,7 @@ tag_chi_conv_lab = 'conversions'
 pi0_online_switch = False
 chi_deltaM_min = 0.0        # This two values define the minimum and the maximum values 
 chi_deltaM_max = 2.0        # required for the QValue of the Chi candidate
-chi_dzMax = 0.5
+chi_dzMax = 100 #0.5
 jpsi_mass = 3.0969          # in GeV
 triggermatch_switch = False
 ############################# CONFIGURATION END ####################################

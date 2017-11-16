@@ -94,6 +94,8 @@ private:
 	TLorentzVector muonP_p4;
 	TLorentzVector muonN_p4;
 	TLorentzVector photon_p4;
+	TLorentzVector electronP_p4;
+	TLorentzVector electronM_p4;
 
 	TLorentzVector rf1S_chi_p4;
 	TLorentzVector rf1S_dimuon_p4;
@@ -205,6 +207,8 @@ OniaPhotonRootupler::OniaPhotonRootupler(const edm::ParameterSet & iConfig) :
 	chib_tree->Branch("muonP_p4", "TLorentzVector", &muonP_p4);
 	chib_tree->Branch("muonN_p4", "TLorentzVector", &muonN_p4);
 	chib_tree->Branch("photon_p4", "TLorentzVector", &photon_p4);
+	chib_tree->Branch("electronP_p4", "TLorentzVector", &electronP_p4);
+	chib_tree->Branch("electronM_p4", "TLorentzVector", &electronM_p4);
 
 	chib_tree->Branch("rf1S_chi_p4", "TLorentzVector", &rf1S_chi_p4);
 	chib_tree->Branch("rf1S_dimuon_p4", "TLorentzVector", &rf1S_dimuon_p4);
@@ -484,11 +488,22 @@ void OniaPhotonRootupler::analyze(const edm::Event & iEvent, const edm::EventSet
 
 
 			//
+			if(dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->charge() < 0)
+			{
+				electronM_p4.SetPtEtaPhiM(dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->pt(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->eta(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->phi(),0);
+				electronP_p4.SetPtEtaPhiM(dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->pt(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->eta(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->phi(), 0);
+			}
+			else
+			{
+				electronP_p4.SetPtEtaPhiM(dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->pt(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->eta(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0")->phi(), 0);
+				electronM_p4.SetPtEtaPhiM(dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->pt(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->eta(), dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1")->phi(), 0);
+			}
 
-			Double_t ele1_pt = (dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->
-				userData<reco::Track>("track0"))->pt();
-			Double_t ele2_pt = (dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->
-				userData<reco::Track>("track1"))->pt();
+
+			Double_t ele1_pt = (dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track0"))->pt();
+			Double_t ele2_pt = (dynamic_cast<const pat::CompositeCandidate *>(chi_cand.daughter("photon"))->userData<reco::Track>("track1"))->pt();
+
+
 
 			if (ele1_pt > ele2_pt) {
 				ele_higherPt_pt = ele1_pt;

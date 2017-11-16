@@ -3,7 +3,7 @@ from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_pPb_1Tr_Andre'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_pPb_Loosest'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False
