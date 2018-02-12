@@ -3,14 +3,14 @@ from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_Pbp_Loosest'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_Pbp_LooseG'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False
 
 config.section_("JobType")
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = 'runChiConAOD.py'
+config.JobType.psetName = 'runChiConAOD2.py'
 config.JobType.maxMemoryMB = 2500
 config.JobType.outputFiles = ['Chi_c_pPb8TeV_AOD.root']
 
