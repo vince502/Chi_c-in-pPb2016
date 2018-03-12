@@ -1,44 +1,41 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_AOD.root'
-#inFileNames = 'file:aod-input.root'
-
+outFileName = 'Chi_c_pPb8TeV_test1.root'
 inFileNames = 'file:/eos/cms/store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
 
-process = cms.Process("Rootuple")
+process = cms.Process("ChiAnalysis")
 
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
 process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
-process.load('Configuration.StandardSequences.Reconstruction_cff')
-
+process.load('Configuration.StandardSequences.ReconstructionHeavyIons_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
+
 from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:run2_data', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_Prompt_v15', '')
 
-process.GlobalTag.toGet = cms.VPSet(
-  cms.PSet(
-    record = cms.string("HeavyIonRcd"),
-    tag = cms.string("CentralityTable_HFtowersPlusTrunc200_EPOS8TeV_v80x01_mc"),
-    connect = cms.string("frontier://FrontierProd/CMS_CONDITIONS"),
-    label = cms.untracked.string("HFtowersPlusTruncEpos")
-    )
-  )
+#process.GlobalTag.toGet = cms.VPSet(
+#  cms.PSet(
+#    record = cms.string("HeavyIonRcd"),
+#    tag = cms.string("CentralityTable_HFtowersPlusTrunc200_EPOS8TeV_v80x01_mc"),
+#    connect = cms.string("frontier://FrontierProd/CMS_CONDITIONS"),
+#    label = cms.untracked.string("HFtowersPlusTruncEpos")
+#    )
+#  )
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 1000
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
+process.MessageLogger.cerr.FwkReport.reportEvery = 10000
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
-#process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring('file:/eos/cms/store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root',
-#'file:/eos/cms/store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/02D119C2-A2B1-E611-ABC6-FA163E5F661C.root',
-#'file:/eos/cms/store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/FAF2F3C3-A2B1-E611-A396-02163E0144AE.root'))
-
-
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))
-process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(False))
+process.options   = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
+
+
+
+
 
 # muons without trigger info, alternatively in recent version of 80x you can use muon with trigger as well.
 # we will select muons and create Onia2MuMu pairs.

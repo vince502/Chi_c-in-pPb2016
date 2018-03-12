@@ -3,10 +3,10 @@ Chi_c_pPb2016
 
 ```
 export SCRAM_ARCH=slc6_amd64_gcc530
-cmsrel CMSSW_8_0_26_patch2
-cd CMSSW_8_0_26_patch2/src/
+cmsrel CMSSW_8_0_30
+cd CMSSW_8_0_30/src/
 cmsenv
-git clone git@github.com:okukral/Chi_c-in-pPb2016.git Ponia/Chi_c
+git clone git@github.com:okukral/Chi_c-in-pPb2016.git HeavyIonsAnalysis/ChiAnalysis
 scram b
 ```
 
