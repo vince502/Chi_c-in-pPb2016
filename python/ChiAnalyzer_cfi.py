@@ -33,13 +33,13 @@ PhotonCounter = cms.EDFilter('CandViewCountFilter',
     )
 
 #Producer creates the chi_c candidates 
-Chi_Producer = cms.EDProducer('ChiProducer',
-    conversions     = cms.InputTag(tag_chi_conv_prod, tag_chi_conv_lab),
-    dimuons         = cms.InputTag(tag_dimuon),
-    pi0OnlineSwitch = cms.bool(pi0_online_switch),
-    deltaMass       = cms.vdouble(chi_deltaM_min, chi_deltaM_max),
-    dzmax           = cms.double(chi_dzMax),
-    triggerMatch    = cms.bool(triggermatch_switch),
+ChiProd = cms.EDProducer('ChiProducer',
+    #conversions     = cms.InputTag(tag_chi_conv_prod, tag_chi_conv_lab),
+    #dimuons         = cms.InputTag(tag_dimuon),
+    #pi0OnlineSwitch = cms.bool(pi0_online_switch),
+    #deltaMass       = cms.vdouble(chi_deltaM_min, chi_deltaM_max),
+    #dzmax           = cms.double(chi_dzMax),
+    #triggerMatch    = cms.bool(triggermatch_switch),
     )
 
 ChiCounter = cms.EDFilter('CandViewCountFilter',
@@ -48,20 +48,20 @@ ChiCounter = cms.EDFilter('CandViewCountFilter',
     filter    = cms.bool(False)
     )
 
-Chi_Rootuple = cms.EDAnalyzer('ChiRootupler',
-    chi_cand = cms.InputTag("ChiProducer","ChiCandidates"),
-    ups_cand = cms.InputTag("onia2MuMuPAT"),
-    refit1S  = cms.InputTag("ChiKinFitter","ChiCandidatesFit"),
-    refit2S  = cms.InputTag("ChiKinFitter2S","ChiCandidatesFit2S"),
-    primaryVertices = cms.InputTag("offlinePrimaryVertices"),
-    TriggerResults  = cms.InputTag("TriggerResults", "", "HLT"),
-    isMC = cms.bool(False)
-    )
+#Chi_Rootuple = cms.EDAnalyzer('ChiRootupler',
+#    chi_cand = cms.InputTag("ChiProducer","ChiCandidates"),
+#    ups_cand = cms.InputTag("onia2MuMuPAT"),
+#    refit1S  = cms.InputTag("ChiKinFitter","ChiCandidatesFit"),
+#    refit2S  = cms.InputTag("ChiKinFitter2S","ChiCandidatesFit2S"),
+#    primaryVertices = cms.InputTag("offlinePrimaryVertices"),
+#    TriggerResults  = cms.InputTag("TriggerResults", "", "HLT"),
+#    isMC = cms.bool(False)
+#    )
 
 ChiSequence = cms.Sequence(
-    DimuonCounter
-    * PhotonCounter
-    * Chi_Producer
-    * ChiCounter 
-    * Chi_Rootuple
+    #DimuonCounter
+    #* PhotonCounter
+    ChiProd
+    #* ChiCounter 
+   # * Chi_Rootuple
     )

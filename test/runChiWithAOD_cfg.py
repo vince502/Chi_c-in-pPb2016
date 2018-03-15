@@ -53,6 +53,7 @@ process.PATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuo
     addGenMatch = False,          # no mc
 )
 
+# cuts on muons
 process.oniaSelectedMuons = cms.EDFilter('PATMuonSelector',
    src = cms.InputTag('PATMuons'),
    cut = cms.string('muonID(\"TMOneStationTight\")'
@@ -66,10 +67,24 @@ process.oniaSelectedMuons = cms.EDFilter('PATMuonSelector',
    filter = cms.bool(True)
 )
 
+#create dimuons 
+
+process.load("HiSkim.HiOnia2MuMu.onia2MuMuPAT_cfi")
+#process.onia2MuMuPAT.muons=cms.InputTag('oniaSelectedMuons')
+#process.onia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
+#process.onia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
+#process.onia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
+#process.onia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
+#process.onia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+#process.onia2MuMuPAT.addMCTruth = cms.bool(False)
+
+
+process.load('HeavyIonsAnalysis.ChiAnalysis.ChiAnalyzer_cfi')
+
 process.analysisPath = cms.Path(
             process.PATMuons *
             process.oniaSelectedMuons * 
-            process.chiSequence
+            process.ChiSequence
 )
 
 

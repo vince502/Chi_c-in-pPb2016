@@ -1,70 +1,74 @@
-#include <Ponia/OniaPhoton/interface/ChiProducer.h>
+#include <HeavyIonsAnalysis/ChiAnalysis/interface/ChiProducer.h>
 
-OniaPhotonProducer::OniaPhotonProducer(const edm::ParameterSet& ps):
+ChiProducer::ChiProducer(const edm::ParameterSet& ps)/*: //initialization list follows
   dimuon_Label(consumes<pat::CompositeCandidateCollection>(ps.getParameter< edm::InputTag>("dimuons"))),
   photon_Label(consumes<pat::CompositeCandidateCollection>(ps.getParameter< edm::InputTag>("conversions"))),
   pi0OnlineSwitch_(ps.getParameter<bool>("pi0OnlineSwitch")),
   deltaMass_(ps.getParameter<std::vector<double> >("deltaMass")),
   dzMax_(ps.getParameter<double>("dzmax")),
-  triggerMatch_(ps.getParameter<bool>("triggerMatch"))
+  triggerMatch_(ps.getParameter<bool>("triggerMatch"))*/
 {
   produces<pat::CompositeCandidateCollection>("ChiCandidates");
-  candidates = 0;
-  delta_mass_fail = 0;
-  dz_cut_fail = 0;
-  pizero_fail = 0;
+  //candidates = 0;
+  //delta_mass_fail = 0;
+  //dz_cut_fail = 0;
+  //pizero_fail = 0;
 }
  
+ChiProducer::~ChiProducer() {}
 
-void OniaPhotonProducer::produce(edm::Event& event, const edm::EventSetup& esetup){
-  std::auto_ptr<pat::CompositeCandidateCollection> chiCandColl(new pat::CompositeCandidateCollection);
+void ChiProducer::beginJob(const edm::EventSetup& iSetup) {}
+void ChiProducer::endJob() {}
 
-  edm::Handle<pat::CompositeCandidateCollection> dimuons;
-  event.getByToken(dimuon_Label,dimuons);
+void ChiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
+ // std::auto_ptr<pat::CompositeCandidateCollection> chiCandColl(new pat::CompositeCandidateCollection);
 
-  edm::Handle<pat::CompositeCandidateCollection> conversions;
-  event.getByToken(photon_Label,conversions);
+ // edm::Handle<pat::CompositeCandidateCollection> dimuons;
+ // iEvent.getByToken(dimuon_Label,dimuons);
 
-  // Note: since Dimuon cand are sorted by decreasing vertex probability then the first chi cand is the one associated with the "best" dimuon 
-  for (pat::CompositeCandidateCollection::const_iterator  dimuonCand = dimuons->begin(); dimuonCand!= dimuons->end(); ++dimuonCand){
+ // edm::Handle<pat::CompositeCandidateCollection> conversions;
+ // iEvent.getByToken(photon_Label,conversions);
 
-     // use only trigger-matched Jpsi or Upsilon if so requested 
-     if (triggerMatch_){
-         if (!dimuonCand->userInt("isTriggerMatched")) continue; 
-     }
+ // // Note: since Dimuon cand are sorted by decreasing vertex probability then the first chi cand is the one associated with the "best" dimuon 
+ // for (pat::CompositeCandidateCollection::const_iterator  dimuonCand = dimuons->begin(); dimuonCand!= dimuons->end(); ++dimuonCand){
 
-     // loop on conversion candidates, make chi cand
-     for (pat::CompositeCandidateCollection::const_iterator conv = conversions->begin(); conv!= conversions->end(); ++conv){
+ //    // use only trigger-matched Jpsi or Upsilon if so requested 
+ //    if (triggerMatch_){
+ //        if (!dimuonCand->userInt("isTriggerMatched")) continue; 
+ //    }
 
-	pat::CompositeCandidate chiCand = makeChiCandidate(*dimuonCand, *conv);
-    
-	if (!cutDeltaMass(chiCand,*dimuonCand)){
-	   delta_mass_fail++;
-	   continue;
-	}
-    	float dz = fabs(Getdz(*conv,dimuonCand->vertex())); // fabs( conv->dz(dimuonCand->vertex()) );
-	chiCand.addUserFloat("dz",dz);
+ //    // loop on conversion candidates, make chi cand
+ //    for (pat::CompositeCandidateCollection::const_iterator conv = conversions->begin(); conv!= conversions->end(); ++conv){
 
-	if (!cutdz(dz)){
-	   dz_cut_fail++;	
-	   continue;
-	}
+	//pat::CompositeCandidate chiCand = makeChiCandidate(*dimuonCand, *conv);
+ //   
+	//if (!cutDeltaMass(chiCand,*dimuonCand)){
+	//   delta_mass_fail++;
+	//   continue;
+	//}
+ //   	float dz = fabs(Getdz(*conv,dimuonCand->vertex())); // fabs( conv->dz(dimuonCand->vertex()) );
+	//chiCand.addUserFloat("dz",dz);
 
-        int flags = (conv->userInt("flags")%32);
-        bool pi0_fail = flags&8;
-        if (pi0OnlineSwitch_ && pi0_fail) {
-           pizero_fail++;
-           continue;
-        }
+	//if (!cutdz(dz)){
+	//   dz_cut_fail++;	
+	//   continue;
+	//}
 
-	chiCandColl->push_back(chiCand);
-	candidates++;    
-     }
-  }
-  event.put(chiCandColl,"ChiCandidates");
+ //       int flags = (conv->userInt("flags")%32);
+ //       bool pi0_fail = flags&8;
+ //       if (pi0OnlineSwitch_ && pi0_fail) {
+ //          pizero_fail++;
+ //          continue;
+ //       }
+
+	//chiCandColl->push_back(chiCand);
+	//candidates++;    
+ //    }
+ // }
+ // iEvent.put(chiCandColl,"ChiCandidates");
 }
-
-float OniaPhotonProducer::Getdz(const pat::CompositeCandidate& c, const reco::Candidate::Point &p) {
+/*
+float ChiProducer::Getdz(const pat::CompositeCandidate& c, const reco::Candidate::Point &p) {
 
   reco::Candidate::LorentzVector mom = c.p4();
   reco::Candidate::Point vtx = c.vertex();
@@ -74,7 +78,7 @@ float OniaPhotonProducer::Getdz(const pat::CompositeCandidate& c, const reco::Ca
   
 }
 
-void OniaPhotonProducer::endJob(){
+void ChiProducer::endJob(){
   std::cout << "###########################" << std::endl;
   std::cout << "Chi Candidate producer report:" << std::endl;
   std::cout << "###########################" << std::endl;
@@ -86,7 +90,7 @@ void OniaPhotonProducer::endJob(){
   std::cout << "###########################" << std::endl;
 }
   
-const pat::CompositeCandidate OniaPhotonProducer::makeChiCandidate(const pat::CompositeCandidate& dimuon, 
+const pat::CompositeCandidate ChiProducer::makeChiCandidate(const pat::CompositeCandidate& dimuon,
 				  const pat::CompositeCandidate& photon){
   pat::CompositeCandidate chiCand;
   chiCand.addDaughter(dimuon,"dimuon");
@@ -98,13 +102,13 @@ const pat::CompositeCandidate OniaPhotonProducer::makeChiCandidate(const pat::Co
 }
 
 // check if the mass difference is in desired range
-bool OniaPhotonProducer::cutDeltaMass(const pat::CompositeCandidate& chiCand,
+bool ChiProducer::cutDeltaMass(const pat::CompositeCandidate& chiCand,
 				   const pat::CompositeCandidate& dimuonCand){
   float deltam = chiCand.p4().M() - dimuonCand.p4().M();
   float m1     = deltaMass_[0];
   float m2     = deltaMass_[1];
   return (deltam > m1 && deltam < m2);
 }
-
+//*/
 //define this as a plug-in
-DEFINE_FWK_MODULE(OniaPhotonProducer);
+DEFINE_FWK_MODULE(ChiProducer);

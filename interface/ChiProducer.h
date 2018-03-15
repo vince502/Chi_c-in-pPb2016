@@ -30,15 +30,16 @@
 class ChiProducer : public edm::EDProducer {
 
 public:
-	ChiProducer(const edm::ParameterSet& ps);
+	explicit ChiProducer(const edm::ParameterSet& ps);
 	~ChiProducer();
 
 private:
 
-	virtual void produce(edm::Event& event, const edm::EventSetup& esetup);
+	virtual void beginJob(const edm::EventSetup& esetup);
+	virtual void produce(edm::Event& iEvent, const edm::EventSetup& iSetup);
 	virtual void endJob();
 
-	edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_Label;
+	/*edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_Label;
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_Label;
 
 	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate&,
@@ -62,7 +63,8 @@ private:
 	int candidates;
 	int delta_mass_fail;
 	int dz_cut_fail;
-	int pizero_fail;
+	int pizero_fail;*/
+
 
 	//virtual void produce(edm::Event& event, const edm::EventSetup& esetup);
 	//virtual void endJob();
