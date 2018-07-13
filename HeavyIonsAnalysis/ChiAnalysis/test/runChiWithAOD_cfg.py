@@ -1,6 +1,6 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_test1.root'
+outFileName = 'Chi_c_pPb8TeV_test5.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 
 import FWCore.ParameterSet.Config as cms
@@ -26,8 +26,8 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_Prompt_v15', '')
 #    )
 #  )
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 10
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(100))
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))
@@ -36,7 +36,7 @@ process.options   = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 
 # we will select muons 
 import PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi
-process.PATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuons.clone(
+process.ChiPATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuons.clone(
     muonSource = 'muons',
     #useParticleFlow = cms.bool (True),
     embedTrack          = True,
@@ -55,7 +55,7 @@ process.PATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuo
 
 # cuts on muons
 process.oniaSelectedMuons = cms.EDFilter('PATMuonSelector',
-   src = cms.InputTag('PATMuons'),
+   src = cms.InputTag('ChiPATMuons'),
    cut = cms.string('muonID(\"TMOneStationTight\")'
                     ' && abs(innerTrack.dxy) < 0.3'
                     ' && abs(innerTrack.dz)  < 20.'
@@ -68,22 +68,54 @@ process.oniaSelectedMuons = cms.EDFilter('PATMuonSelector',
 )
 
 #create dimuons 
+process.load("HeavyIonsAnalysis.HiOnia2MuMu.onia2MuMuPAT_cfi")
+process.onia2MuMuPAT.muons=cms.InputTag('oniaSelectedMuons')
+process.onia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
+process.onia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
+process.onia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
+process.onia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
+process.onia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+process.onia2MuMuPAT.addMCTruth = cms.bool(False)
 
-process.load("HiSkim.HiOnia2MuMu.onia2MuMuPAT_cfi")
-#process.onia2MuMuPAT.muons=cms.InputTag('oniaSelectedMuons')
-#process.onia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
-#process.onia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
-#process.onia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
-#process.onia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-#process.onia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
-#process.onia2MuMuPAT.addMCTruth = cms.bool(False)
+
+# make photon candidate conversions for P-wave studies.
+# The low energy photons are reconstructed here.
+import HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi
+process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi.PhotonCandidates.clone(
+    conversions = 'allConversions',
+    convAlgo    = 'undefined',
+    convQuality = [''], #O: Changed ['highPurity','generalTracksOnly']
+    primaryVertexTag = 'offlinePrimaryVertices',
+    convSelection = 'conversionVertex.position.rho>0.0', #O: Changed 1.5
+    wantTkVtxCompatibility = False,
+    sigmaTkVtxComp = 50, #O: Changed 5
+    wantCompatibleInnerHits = True,
+    pfcandidates = 'particleFlow',
+    pi0OnlineSwitch = False,
+    TkMinNumOfDOF = 0, #O: Changed 3
+    wantHighpurity = False,
+    #test
+    vertexChi2ProbCut = 0.0000,
+    trackchi2Cut = 1000,
+    minDistanceOfApproachMinCut = -100.25,
+    minDistanceOfApproachMaxCut = 100.00,
+    #O: Original
+    #vertexChi2ProbCut = 0.0005,
+    #trackchi2Cut = 10,
+    #minDistanceOfApproachMinCut = -0.25,
+    #minDistanceOfApproachMaxCut = 1.00,
+)
 
 
+
+# Chi parts
 process.load('HeavyIonsAnalysis.ChiAnalysis.ChiAnalyzer_cfi')
 
 process.analysisPath = cms.Path(
-            process.PATMuons *
+            process.ChiPATMuons *
             process.oniaSelectedMuons * 
+            process.onia2MuMuPAT *
+            process.PhotonCandidates *
             process.ChiSequence
 )
 

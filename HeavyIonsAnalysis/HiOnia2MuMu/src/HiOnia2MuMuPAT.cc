@@ -1,4 +1,4 @@
-#include "HiSkim/HiOnia2MuMu/interface/HiOnia2MuMuPAT.h"
+#include "HeavyIonsAnalysis/HiOnia2MuMu/interface/HiOnia2MuMuPAT.h"
 
 //Headers for the data items
 #include <DataFormats/TrackReco/interface/TrackFwd.h>

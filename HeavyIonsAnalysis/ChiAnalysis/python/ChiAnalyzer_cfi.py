@@ -48,20 +48,22 @@ ChiCounter = cms.EDFilter('CandViewCountFilter',
     filter    = cms.bool(False)
     )
 
-#Chi_Rootuple = cms.EDAnalyzer('ChiRootupler',
-#    chi_cand = cms.InputTag("ChiProducer","ChiCandidates"),
-#    ups_cand = cms.InputTag("onia2MuMuPAT"),
-#    refit1S  = cms.InputTag("ChiKinFitter","ChiCandidatesFit"),
-#    refit2S  = cms.InputTag("ChiKinFitter2S","ChiCandidatesFit2S"),
-#    primaryVertices = cms.InputTag("offlinePrimaryVertices"),
-#    TriggerResults  = cms.InputTag("TriggerResults", "", "HLT"),
-#    isMC = cms.bool(False)
-#    )
+ChiRootuple = cms.EDAnalyzer('ChiRootupler',
+    muon_cand =  cms.InputTag("ChiPATMuons"), 
+    dimuon_cand = cms.InputTag("onia2MuMuPAT"),
+    photon_cand = cms.InputTag("PhotonCandidates","conversions"),
+    conversions_ch = cms.InputTag("allConversions"),
+    chi_cand = cms.InputTag("ChiProducer","ChiCandidates"),
+    primaryVertices = cms.InputTag("offlinePrimaryVertices"),
+    TriggerResults  = cms.InputTag("TriggerResults", "", "HLT"),
+    genParticlesTag = cms.InputTag("genParticles"),
+    isMC = cms.bool(False)
+    )
 
 ChiSequence = cms.Sequence(
     #DimuonCounter
     #* PhotonCounter
     ChiProd
     #* ChiCounter 
-   # * Chi_Rootuple
+    * ChiRootuple
     )

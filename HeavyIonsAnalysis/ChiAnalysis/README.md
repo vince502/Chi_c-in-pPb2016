@@ -6,7 +6,9 @@ export SCRAM_ARCH=slc6_amd64_gcc530
 cmsrel CMSSW_8_0_30
 cd CMSSW_8_0_30/src/
 cmsenv
-git clone git@github.com:okukral/Chi_c-in-pPb2016.git HeavyIonsAnalysis/ChiAnalysis
+git clone git@github.com:okukral/Chi_c-in-pPb2016.git ./HeavyIonsAnalysis   //directory is to be new or empty
+
+//compile
 scram b
 ```
 
