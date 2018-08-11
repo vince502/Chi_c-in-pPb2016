@@ -33,7 +33,7 @@
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include <DataFormats/PatCandidates/interface/UserData.h> 
+#include "DataFormats/PatCandidates/interface/UserData.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
@@ -74,8 +74,12 @@ private:
 	static bool lt_comparator(std::pair<double, short> a, std::pair<double, short> b); // comparator for checking conversions
 	bool Conv_checkTkVtxCompatibility(const reco::Conversion& conv, const reco::VertexCollection&  priVtxs, double sigmaTkVtxComp_, bool& Flag_Best_Out, bool& Flag_SecondBestA_Out, bool& Flag_SecondBestB_Out, double& sigmaMinValue1Out, double& sigmaMinValue2Out);
 	bool Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB);
+	//photon MC
+	bool Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel);
 
-
+	// chi functions
+	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate&, const pat::CompositeCandidate&);
+	double Getdz(const pat::CompositeCandidate&, const reco::Candidate::Point &);
 
 	// ----------member data ---------------------------
 	std::string file_name;
@@ -85,7 +89,7 @@ private:
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_label;
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_label;
 	edm::EDGetTokenT<reco::ConversionCollection> conversion_label;
-	edm::EDGetTokenT<pat::CompositeCandidateCollection> chi_label;
+	//edm::EDGetTokenT<pat::CompositeCandidateCollection> chi_label;
 	edm::EDGetTokenT<reco::VertexCollection> primaryVertices_label;
 	edm::EDGetTokenT<edm::TriggerResults> triggerResults_label;
 	edm::EDGetTokenT<reco::GenParticleCollection> genParticles_label;
@@ -93,10 +97,21 @@ private:
 	bool flag_doMC;
 	bool flag_saveExtraThings = false;  //saves all muons, and other not so necessary data
 	
+	const int PythCode_chic0 = 10441; //Pythia codes
+	const int PythCode_chic1 = 20443;
+	const int PythCode_chic2 = 445;
+
+	// constants for conversion cuts
+	const double conv_TkVtxCompSigmaCut = 50.0;
+	const double conv_maxDeltaR = 0.2;
+	const double conv_maxDPtRel = 1;
+
+
 	TTree* generalInfo_tree;
 	TTree* muon_tree;
 	TTree* dimuon_tree;
 	TTree* conv_tree;
+	TTree* gen_tree;
 	TTree* chi_tree;
 
 	//general
@@ -105,6 +120,7 @@ private:
 	long nPrimVertices;
 	int muonPerEvent;
 	int convPerTriggeredEvent;
+
 
 	//muon info
 	bool muonIsGlobal;
@@ -135,11 +151,16 @@ private:
 
 	//dimuon info
 
+	TLorentzVector dimuon_p4;
+	double dimuon_pt;
+	pat::CompositeCandidate dimuonStored;
+
 	//conversion info
 
+	std::vector <int> convPerTriggeredEvent2;
 	bool convQuality_isHighPurity; 
 	bool convQuality_isGeneralTracksOnly;
-	double conv_vertexPositionRho; //tbd
+	double conv_vertexPositionRho;
 	double conv_sigmaTkVtx1;
 	double conv_sigmaTkVtx2;
 	bool conv_tkVtxCompatibilityOK50;
@@ -154,8 +175,10 @@ private:
 	int conv_compatibleInnerHitsOK; //-1: less than 2 tracks, 0: not compatible, 1: yes
 	reco::HitPattern conv_hitPat1;
 	reco::HitPattern conv_hitPat2;
-	bool conv_isCustomHighPurity;//tbd
+	bool conv_isCustomHighPurity;//tbd - is just a sum of some other cuts, not creating at the time
+	double conv_zOfPriVtx;
 	double conv_zOfPriVtxFromTracks;
+	double conv_dzToClosestPriVtx;
 	double conv_dxyPriVtx_Tr1;
 	double conv_dxyPriVtx_Tr2;
 	double conv_dxyPriVtxTimesCharge_Tr1;
@@ -173,27 +196,32 @@ private:
 	TLorentzVector conv_p4;
 	double conv_eta;
 	double conv_pt;
+	std::vector <double> conv_pt2;
+
+	//conv MC
+	bool conv_isMatchedMC;
+	double convGen_eta;
+	double convGen_pt;
+	TLorentzVector convGen_p4;
+	double convGen_rDelta;
+	double convGen_ptDelta;
+	double convGen_ptDeltaRel;
+	int convGen_motherCode;
 	
-		//convQuality = [''], #O: Changed['highPurity', 'generalTracksOnly']
-		//primaryVertexTag = 'offlinePrimaryVertices',
-		//convSelection = 'conversionVertex.position.rho>0.0', #O : Changed 1.5
-		//wantTkVtxCompatibility = False,
-		//sigmaTkVtxComp = 50, #O : Changed 5
-		//wantCompatibleInnerHits = True,
-		//pfcandidates = 'particleFlow',
-		//pi0OnlineSwitch = False,
-		//TkMinNumOfDOF = 0, #O : Changed 3
-		//wantHighpurity = False,
-		//#test
-		//vertexChi2ProbCut = 0.0000,
-		//trackchi2Cut = 1000,
-		//minDistanceOfApproachMinCut = -100.25,
-		//minDistanceOfApproachMaxCut = 100.00,
-		//#O: Original
-		//#vertexChi2ProbCut = 0.0005,
-		//#trackchi2Cut = 10,
-		//#minDistanceOfApproachMinCut = -0.25,
-		//#minDistanceOfApproachMaxCut = 1.00,
+
+	// MC general
+
+	int gen_pdgId;
+	double gen_chic_pt;
+	double gen_chic_eta;
+	TLorentzVector gen_chic_p4;
+	double gen_Jpsi_pt;
+	double gen_Jpsi_eta;
+	TLorentzVector gen_Jpsi_p4;
+	double gen_phot_pt;
+	double gen_phot_eta;
+	TLorentzVector gen_phot_p4;
+
 
 	// run and vertex info
 
@@ -202,9 +230,14 @@ private:
 	TVector3 dimuon_v;
 	TVector3 conversion_v;
 
+	// chi info
+
+	pat::CompositeCandidate chi_cand;
+	double chi_dzPhotToDimuonVtx;
+
 	// Lorentz vectors
 	TLorentzVector chi_p4;
-	TLorentzVector dimuon_p4;
+	TLorentzVector chi_dimuon_p4;
 	TLorentzVector muonP_p4;
 	TLorentzVector muonN_p4;
 	TLorentzVector photon_p4;
@@ -223,7 +256,7 @@ private:
 
 
 	//MC
-	TLorentzVector gen_chic_p4;
+	TLorentzVector MC_chic_p4;
 	Int_t chic_pdgId;
 	TLorentzVector gen_jpsi_p4;
 	TLorentzVector gen_photon_p4;
@@ -250,8 +283,6 @@ private:
 	const double Y_sig_par_B = 56.3;
 	const double Y_sig_par_C = -20.77;
 
-	// constants for conversion cuts
-	const double conv_TkVtxCompSigmaCut = 50.0;
 
 };
 

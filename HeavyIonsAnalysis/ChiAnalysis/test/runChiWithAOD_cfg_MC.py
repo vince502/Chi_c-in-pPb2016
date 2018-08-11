@@ -1,6 +1,6 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_testMC2.root'
+outFileName = 'Chi_c_pPb8TeV_testMC4.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_90.root'
 
 import FWCore.ParameterSet.Config as cms
@@ -86,19 +86,23 @@ process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
 )
 
 
-#create dimuons 
+#DIMUONS 
 
-process.load("HeavyIonsAnalysis.HiOnia2MuMu.onia2MuMuPAT_cfi")
-process.onia2MuMuPAT.muons=cms.InputTag('ChiSelectedMuons')
-process.onia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
-process.onia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
-process.onia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
-process.onia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.onia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
-process.onia2MuMuPAT.addMCTruth = cms.bool(False)
+process.load("HeavyIonsAnalysis.HiOnia2MuMu.HiOnia2MuMuPAT_cfi")
+process.HiOnia2MuMuPAT.muons=cms.InputTag('ChiSelectedMuons')
+process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
+process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
+process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
+process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+process.HiOnia2MuMuPAT.addMCTruth = cms.bool(True)
+process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
+process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(True)
 
+# PHOTONS
 
-# make photon candidate conversions for P-wave studies.
+#mc matching done by hand in rootupler - because it doesn't work well with OniaPhotonConversionProducer
+
 # The low energy photons are reconstructed here.
 import HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi
 process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi.PhotonCandidates.clone(
@@ -136,7 +140,7 @@ process.analysisPath = cms.Path(
             process.muonGenMatch *
             process.ChiPATMuons *
             process.ChiSelectedMuons * 
-            process.onia2MuMuPAT *
+            process.HiOnia2MuMuPAT *
             process.PhotonCandidates *
             process.ChiSequence
 )
