@@ -97,7 +97,7 @@ process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
 process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(True)
 process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
-process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(True)
+process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
 
 # PHOTONS
 

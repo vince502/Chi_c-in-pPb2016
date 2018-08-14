@@ -399,12 +399,13 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			dimuon_p4.SetPtEtaPhiM(dimuon.pt(), dimuon.eta(), dimuon.phi(), dimuon.mass());
 			dimuon_pt = dimuon.pt();
 			//dimuon.userData<reco::Vertex>("PVwithmuons");
-			//const reco::Vertex* opv = dimuon.userData<reco::Vertex>("PVwithmuons");
-			const reco::Vertex* opv = dimuon.userData<reco::Vertex>("commonVertex");
+			const reco::Vertex* opv = dimuon.userData<reco::Vertex>("PVwithmuons");
+			//const reco::Vertex* opv = dimuon.userData<reco::Vertex>("commonVertex");
 			//const reco::Vertex* opv = (dynamic_cast < pat::CompositeCandidate*> (&dimuon))->userData<reco::Vertex>("PVwithmuons");
 			//cout << opv << endl;
-			//primary_v.SetXYZ(opv->x(), opv->y(), opv->z());
-			cout << eventNumber << "   " << i << " " << dimuon.userFloat("DCA")<< endl;
+			primary_v.SetXYZ(opv->x(), opv->y(), opv->z());
+			cout << "Ntracks in vertex  " << opv->tracksSize() << endl;
+			//cout << eventNumber << "   " << i << " " << dimuon.userFloat("DCA")<< endl;
 			//cout << opv->x() << endl;
 			dimuonStored = dimuon;
 			dimuon_tree->Fill();
@@ -778,9 +779,9 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			reco::Candidate::Point dimuon_vtx = chi_cand.daughter("dimuon")->vertex();
 			dimuon_v.SetXYZ(dimuon_vtx.X(), dimuon_vtx.Y(), dimuon_vtx.Z());
 
-			//const reco::Vertex *opv = (dynamic_cast <pat::CompositeCandidate *>(chi_cand.daughter("dimuon")))->userData<reco::Vertex>("PVwithmuons");
+			const reco::Vertex *opv = (dynamic_cast <pat::CompositeCandidate *>(chi_cand.daughter("dimuon")))->userData<reco::Vertex>("PVwithmuons");
 			//const reco::Vertex *opv = chi_cand.daughter("dimuon")->userData<reco::Vertex>("PVwithmuons");
-			//primary_v.SetXYZ(opv->x(), opv->y(), opv->z());
+			primary_v.SetXYZ(opv->x(), opv->y(), opv->z());
 
 			// 2012 parameterization
 			double sigma = Y_sig_par_A + Y_sig_par_B * pow(fabs(dimuon_p4.Rapidity()), 2) +
