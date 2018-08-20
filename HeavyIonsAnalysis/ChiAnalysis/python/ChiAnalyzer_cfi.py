@@ -58,9 +58,9 @@ ChiRootuple = cms.EDAnalyzer('ChiRootupler',
     )
 
 ChiSequence = cms.Sequence(
-    #DimuonCounter
-    #PhotonCounter
+    DimuonCounter
+    *PhotonCounter
     # ChiProd
-    #* ChiCounter 
+    * ChiCounter *
     ChiRootuple
     )

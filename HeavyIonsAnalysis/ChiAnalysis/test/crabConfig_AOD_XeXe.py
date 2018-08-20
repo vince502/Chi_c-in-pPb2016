@@ -10,16 +10,16 @@ config.General.transferLogs = False
 
 config.section_("JobType")
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = 'runChiConAOD2.py'
+config.JobType.psetName = 'runChiWithAOD_cfg_XeXe.py'
 config.JobType.maxMemoryMB = 2500
 config.JobType.outputFiles = ['Chi_c_XeXe.root']
 
 config.section_("Data")
-config.Data.inputDataset = '/PADoubleMuon/PARun2016C-PromptReco-v1/AOD'
+config.Data.inputDataset = ['/HIMinimumBias/XeXeRun2017-13Dec2017-v1/AOD','/HIMinimumBias1/XeXeRun2017-13Dec2017-v1/AOD','/HIMinimumBias2/XeXeRun2017-13Dec2017-v1/AOD','/HIMinimumBias3/XeXeRun2017-13Dec2017-v1/AOD','/HIMinimumBias4/XeXeRun2017-13Dec2017-v1/AOD']
 config.Data.inputDBS = 'global'
 config.Data.splitting = 'LumiBased'
 config.Data.unitsPerJob = 5
-config.Data.lumiMask = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/HI/Cert_285952-286496_HI8TeV_PromptReco_Pbp_Collisions16_JSON_NoL1T.txt'
+config.Data.lumiMask = '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/HI/Cert_304899-304907_5TeV_PromptReco_XeXe_Collisions17_JSON.txt'
 config.Data.runRange = '285952-286496'
 config.Data.outLFNDirBase = '/store/group/phys_heavyions/%s/Chi_c/%s' % (getUsernameFromSiteDB(), config.General.requestName)
 config.Data.publication = False
