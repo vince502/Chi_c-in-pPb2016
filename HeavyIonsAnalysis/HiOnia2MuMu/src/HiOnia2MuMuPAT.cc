@@ -204,7 +204,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					Vertex theOriginalPV = thePrimaryV;
 					muonLess.clear();
 					muonLess.reserve(thePrimaryV.tracksSize());
-					cout << "primary n tracks " << thePrimaryV.tracksSize() << endl;
+					//cout << "primary n tracks " << thePrimaryV.tracksSize() << endl;
 					if (addMuonlessPrimaryVertex_ && thePrimaryV.tracksSize() > 2) {
 						// Primary vertex matched to the dimuon, now refit it removing the two muons
 						//edm::LogWarning("HiOnia2MuMuPAT_addMuonlessPrimaryVertex") << "If muonLessPV is turned on, ctau is calculated with muonLessPV only.\n" ;
@@ -233,7 +233,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 								muonLess.push_back(**itPVtrack);
 							}
 						}// take all tracks associated with the vtx
-						cout << "muonless n tracks " << muonLess.size() << endl;
+						//cout << "muonless n tracks " << muonLess.size() << endl;
 						if (muonLess.size() > 1 && muonLess.size() < thePrimaryV.tracksSize()) {
 							// find the new vertex, from which the 2 munos were removed
 							// need the transient tracks corresponding to the new track collection

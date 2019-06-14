@@ -1,7 +1,7 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_testMC4.root'
-inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_90.root'
+outFileName = 'Chi_c_pPb8TeV_testMC7.root'
+inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_test.root'
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -26,8 +26,8 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '80X_mcRun2_pA_v4', '')
 #    )
 #  )
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))

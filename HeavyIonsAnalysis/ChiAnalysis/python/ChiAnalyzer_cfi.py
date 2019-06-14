@@ -46,7 +46,7 @@ ChiCounter = cms.EDFilter('CandViewCountFilter',
     )
 
 ChiRootuple = cms.EDAnalyzer('ChiRootupler',
-    muon_cand =  cms.InputTag("ChiPATMuons"), 
+    muon_cand =  cms.InputTag("ChiSelectedMuons"), 
     dimuon_cand = cms.InputTag("HiOnia2MuMuPAT"),
     photon_cand = cms.InputTag("PhotonCandidates","conversions"),
     conversions_ch = cms.InputTag("allConversions"),
