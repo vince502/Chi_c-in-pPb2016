@@ -133,7 +133,7 @@ process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionPro
 
 # Chi parts
 process.load('HeavyIonsAnalysis.ChiAnalysis.ChiAnalyzer_cfi')
-process.ChiRootuple.muon_cand=cms.InputTag('ChiPATMuons')
+process.ChiRootuple.muon_cand=cms.InputTag('ChiSelectedMuons')
 process.ChiRootuple.isMC=cms.bool(True)
 
 process.analysisPath = cms.Path(

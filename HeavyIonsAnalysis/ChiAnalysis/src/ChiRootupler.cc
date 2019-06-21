@@ -95,9 +95,18 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("nPrimVertices", &nPrimVertices, "nPrimVertices/L");
 	event_tree->Branch("muonPerEvent_noCuts", &muonPerEvent, "muonPerEvent/I");
 	event_tree->Branch("convPerEvent_noCuts", &convPerTriggeredEvent, "convPerEvent/I");
+	event_tree->Branch("dimuonPerEvent", &dimuonPerEvent, "convPerEvent/I");
+
+	//	PV
+	event_tree->Branch("pvtx_z", &pvtx_z);
+	event_tree->Branch("pvtx_x", &pvtx_x);
+	event_tree->Branch("pvtx_y", &pvtx_y);
+	event_tree->Branch("pvtx_nTracks", &pvtx_nTracks);
+	event_tree->Branch("pvtx_isFake", &pvtx_isFake);
+
+
 
 	// muon
-	event_tree->Branch("muonPerEvent_noCuts", &muonPerEvent);
 	event_tree->Branch("muonIsGlobal", &muonIsGlobal);
 	event_tree->Branch("muonIsTracker", &muonIsTracker);
 	event_tree->Branch("muonIsPF", &muonIsPF);
@@ -112,7 +121,6 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("muon_eta", &muon_eta);
 	event_tree->Branch("muon_pt", &muon_pt);
 	event_tree->Branch("muon_p4", "TClonesArray", &muon_p4, 32000, 0);
-	//event_tree->Branch("muon_p4","std::vector <TLorentzVector>", &muon_p4);
 	if (flag_doMC) {
 		event_tree->Branch("muon_isMatchedMC", &muon_isMatchedMC);
 		event_tree->Branch("muonGen_eta", &muonGen_eta);
@@ -133,13 +141,15 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("dimuon_pt", &dimuon_pt);
 	event_tree->Branch("dimuon_charge", &dimuon_charge);
 	event_tree->Branch("dimuon_vtx", "TClonesArray", &dimuon_vtx, 32000, 0);
-	if (flag_saveExtraThings) {
-		event_tree->Branch("dimuonStored", "std::vector <pat::Muon>", &dimuonStored);
-	}
-	//pat::CompositeCandidate dimuon_cand;
-	event_tree->Branch("dimuon_pmuon_position", &dimuon_pmuon_position);
-	event_tree->Branch("dimuon_nmuon_position", &dimuon_nmuon_position);
+	event_tree->Branch("dimuon_dz_dimuonvtx_pvtx", &dimuon_dz_dimuonvtx_pvtx);
 
+	if (flag_saveExtraThings) {
+		event_tree->Branch("dimuonStored", "std::vector <pat::CompositeCandidate>", &dimuonStored);
+	}
+	event_tree->Branch("dimuon_muon1_position", &dimuon_muon1_position);
+	event_tree->Branch("dimuon_muon2_position", &dimuon_muon2_position);
+	event_tree->Branch("dimuon_ctpv", &dimuon_ctpv);
+	event_tree->Branch("dimuon_ctpvError", &dimuon_ctpvError);
 
 
 
@@ -243,6 +253,8 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("chi_daughterJpsi_position", &chi_daughterJpsi_position);
 	event_tree->Branch("chi_daughterConv_position", &chi_daughterConv_position);
 	event_tree->Branch("chi_dzPhotToDimuonVtx", &chi_dzPhotToDimuonVtx);
+	event_tree->Branch("chi_dxyPhotToDimuonVtx", &chi_dxyPhotToDimuonVtx);
+	event_tree->Branch("chiStored", "std::vector <pat::CompositeCandidate>", &chiStored);
 	//event_tree->Branch("chi_pt", &chi_pt);
 
 
@@ -266,11 +278,6 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 	chi_tree->Branch("ele_lowerPt_pt", &ele_lowerPt_pt, "ele_lowerPt_pt/D");
 	chi_tree->Branch("ele_higherPt_pt", &ele_higherPt_pt, "ele_higherPt_pt/D");
-	chi_tree->Branch("ctpv", &ctpv, "ctpv/D");
-	chi_tree->Branch("ctpv_error", &ctpv_error, "ctpv_error/D");
-	chi_tree->Branch("pi0_abs_mass", &pi0_abs_mass, "pi0_abs_mass/D");
-	chi_tree->Branch("psi1S_nsigma", &psi1S_nsigma, "psi1S_nsigma/D");
-	chi_tree->Branch("psi2S_nsigma", &psi2S_nsigma, "psi2S_nsigma/D");
 
 	chi_tree->Branch("trigger", &trigger, "trigger/I");
 
@@ -367,16 +374,40 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	{
 		convPerTriggeredEvent = conversion_handle->size(); //all conversions without any cuts
 	}
+	dimuonPerEvent = 0;
+	if (dimuon_handle.isValid())
+	{
+		dimuonPerEvent = dimuon_handle->size(); //all conversions without any cuts
+	}
 
-	
+	//PV
+	if (primaryVertices_handle.isValid()) {
+		for (uint i = 0; i < primaryVertices_handle->size(); i++) {
+			const reco::Vertex& pvtx = primaryVertices_handle->at(i);
+			pvtx_z.push_back(pvtx.z());
+			pvtx_x.push_back(pvtx.x());
+			pvtx_y.push_back(pvtx.y());
+			pvtx_nTracks.push_back(pvtx.nTracks());
+			pvtx_isFake.push_back(pvtx.isFake());
+		}
+
+	//BOOST_FOREACH(const reco::Vertex& vtx, *primaryVertices_handle.product()) {
+	//	(*primaryVertices_handle.product())[closest_pv_index].z()
+	//	i++;
+	}
+	else cout << "Problem with PV handle" << endl;
+
+	int pvtx_index = 0; //top primary vertex used for now
+
 	//muons
 	if (muon_handle.isValid()) {
 		for (uint i = 0; i < muon_handle->size(); i++) {
 			const pat::Muon& patMuon = muon_handle->at(i);
-
+			const reco::Vertex& pvtx = primaryVertices_handle->at(pvtx_index); //use our selected PV
 			muonIsGlobal.push_back(patMuon.isGlobalMuon());
 			muonIsTracker.push_back(patMuon.isTrackerMuon());
 			muonIsPF.push_back(patMuon.isPFMuon());
+			cout << patMuon.isSoftMuon(pvtx)<<endl<< patMuon.isTightMuon(pvtx)<<endl;
 			if (!patMuon.isGlobalMuon() && !patMuon.isTrackerMuon()) { muonIsNotGlobalNorTracker.push_back(true); }
 			else muonIsNotGlobalNorTracker.push_back(false); // just for convenience
 
@@ -470,8 +501,22 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			TVector3 dimuon_vtx_aux;
 			dimuon_vtx_aux.SetXYZ(dimuon_recovtx->x(), dimuon_recovtx->y(), dimuon_recovtx->z());
 			new ((*dimuon_vtx)[i]) TVector3(dimuon_vtx_aux);
+			dimuon_dz_dimuonvtx_pvtx.push_back(dimuon_recovtx->z() - (*primaryVertices_handle.product())[pvtx_index].z());
+			int muonPos1 = dimuon.userInt("muonPosition1");
+			int muonPos2 = dimuon.userInt("muonPosition2");
+			if (fabs(muon_handle->at(muonPos2).pt() - dimuon.daughter("muon2")->pt()) > 0.01) { cout << "SOMETHING WRONG WITH THE MATCHING FROM DIMUON TO MUON - possibly different muon collections used"<<endl; }//muon matching assumes that muon collection going to dimuon producer and here is the same
+			dimuon_muon1_position.push_back(muonPos1);
+			dimuon_muon2_position.push_back(muonPos2);
+			dimuon_ctpv.push_back(dimuon.userFloat("ppdlPV"));
+			dimuon_ctpvError.push_back(dimuon.userFloat("ppdlErrPV"));
+			//cout << "Muon positions  " << muonPos1 << "   " << muonPos2 << endl;
 
-
+			//double pokus2 = (dynamic_cast <pat::CompositeCandidate *>(dimuon.daughter("dimuon")))->userFloat("ppdlErrPV");
+			//double ptTest = dimuon.daughter("muon1")->pt();
+			//double etaTest = dimuon.daughter("muon1")->eta();
+			//double ptTestMu = muon_handle->at(muonPos1).pt();
+			//double etaTestMu = muon_handle->at(muonPos1).eta();
+			//cout << "pt from daughter and muon collection  " << ptTest << "  " << ptTestMu << " and eta " <<etaTest<<"   " << etaTestMu<<endl << endl;
 			////dimuon.userData<reco::Vertex>("PVwithmuons");
 			//const reco::Vertex* opv = dimuon.userData<reco::Vertex>("PVwithmuons");
 			////const reco::Vertex* opv = dimuon.userData<reco::Vertex>("commonVertex");
@@ -669,7 +714,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			chi_pt.push_back(chi_p4_aux.Pt());
 			chi_daughterJpsi_position.push_back(std::distance(dimuon_handle->begin(), dimuonCand));
 			chi_daughterConv_position.push_back(std::distance(photon_handle->begin(), photCand));
-			chi_dzPhotToDimuonVtx.push_back(Getdz(*photCand, dimuonCand->vertex())); // double dz = fabs( photCand->dz(dimuonCand->vertex()) );
+			chi_dzPhotToDimuonVtx.push_back(Getdz(*photCand, dimuonCand->vertex())); 
+			chi_dxyPhotToDimuonVtx.push_back(Getdxy(*photCand, dimuonCand->vertex()));
 
 			chiCandColl->push_back(chi_cand);
 		}
@@ -708,8 +754,6 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				ele_lowerPt_pt = ele1_pt;
 			}
 
-			//float ctpv = (dynamic_cast <pat::CompositeCandidate *>(chi_cand.daughter("dimuon")))->userFloat("ppdlPV");
-			//float ctpv_error = (dynamic_cast <pat::CompositeCandidate *>(chi_cand.daughter("dimuon")))->userFloat("ppdlErrPV");
 			pi0_abs_mass = 1.;//pi0_abs_values[0];
 
 
@@ -742,7 +786,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	if (flag_doMC) {
 		if (genParticles_handle.isValid()) {
-			bool foundChicInEvent=false;
+			//bool foundChicInEvent=false;
 			for (uint i = 0; i < genParticles_handle->size(); i++) {
 				const reco::GenParticle& genParticle = genParticles_handle->at(i);
 				int gen_pdgId_aux = genParticle.pdgId();
@@ -975,6 +1019,15 @@ void ChiRootupler::endLuminosityBlock(edm::LuminosityBlock const &, edm::EventSe
 // ------------ clear the vectors after each event
 void ChiRootupler::Clear()
 {
+	//PV
+
+	pvtx_z.clear();
+	pvtx_x.clear();
+	pvtx_y.clear();
+	pvtx_nTracks.clear();
+	pvtx_isFake.clear();
+
+
 	//muon
 	muonIsGlobal.clear();
 	muonIsTracker.clear();
@@ -1007,10 +1060,12 @@ void ChiRootupler::Clear()
 	dimuon_pt.clear();
 	dimuon_charge.clear(); 
 	dimuon_vtx->Clear();
+	dimuon_dz_dimuonvtx_pvtx.clear();
 	dimuonStored.clear();
-	dimuon_pmuon_position.clear();
-	dimuon_nmuon_position.clear();
-
+	dimuon_muon1_position.clear();
+	dimuon_muon2_position.clear();
+	dimuon_ctpv.clear();
+	dimuon_ctpvError.clear();
 
 	//conv
 	convQuality_isHighPurity.clear();
@@ -1098,7 +1153,8 @@ void ChiRootupler::Clear()
 	chi_daughterJpsi_position.clear();
 	chi_daughterConv_position.clear();
 	chi_dzPhotToDimuonVtx.clear();
-
+	chi_dxyPhotToDimuonVtx.clear();
+	chiStored.clear();
 
 }
 
@@ -1227,6 +1283,15 @@ double ChiRootupler::Getdz(const pat::CompositeCandidate& c, const reco::Candida
 	reco::Candidate::Point vtx = c.vertex();
 	double dz = (vtx.Z() - p.Z()) - ((vtx.X() - p.X())*mom.X() + (vtx.Y() - p.Y())*mom.Y()) / mom.Rho() * mom.Z() / mom.Rho();
 	return dz;
+}
+
+double ChiRootupler::Getdxy(const pat::CompositeCandidate& c, const reco::Candidate::Point &p) {
+	reco::Candidate::LorentzVector mom = c.p4();
+	reco::Candidate::Point vtx = c.vertex();
+	double dx = (vtx.X() - p.X()) - ((vtx.Z() - p.Z()) * mom.X() / mom.Z());
+	double dy = (vtx.Y() - p.Y()) - ((vtx.Z() - p.Z()) * mom.Y() / mom.Z());
+	double dxy = sqrt(dx*dx+dy*dy);
+	return dxy;
 }
 
 

@@ -125,19 +125,23 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 			// one must pass tight quality
 			if (!(higherPuritySelection_(*it) || higherPuritySelection_(*it2))) continue;
 
+			std::map< std::string, int > userInt;
+			std::map< std::string, float > userFloat;
+			std::map< std::string, reco::Vertex > userVertex;
+
 			pat::CompositeCandidate myCand;
 			// ---- no explicit order defined ----
 			myCand.addDaughter(*it, "muon1");
 			myCand.addDaughter(*it2, "muon2");
 
+			//O: Added matching information
+			userInt["muonPosition1"] = std::distance(muons->begin(), it);
+			userInt["muonPosition2"] = std::distance(muons->begin(), it2);
+
 			// ---- define and set candidate's 4momentum  ----  
 			LorentzVector jpsi = it->p4() + it2->p4();
 			myCand.setP4(jpsi);
 			myCand.setCharge(it->charge() + it2->charge());
-
-			std::map< std::string, int > userInt;
-			std::map< std::string, float > userFloat;
-			std::map< std::string, reco::Vertex > userVertex;
 
 			// ---- apply the dimuon cut ----
 			if (!dimuonSelection_(myCand)) continue;

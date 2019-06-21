@@ -83,7 +83,8 @@ private:
 
 	// chi functions
 	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate&, const pat::CompositeCandidate&);
-	double Getdz(const pat::CompositeCandidate&, const reco::Candidate::Point &);
+	double Getdz(const pat::CompositeCandidate&, const reco::Candidate::Point &); //gets dz when dxy to the point is the smallest
+	double Getdxy(const pat::CompositeCandidate&, const reco::Candidate::Point &); //gets dxy when dz to the point =0
 
 	// gen functions
 	template <typename particle_in, typename particle_type>
@@ -144,7 +145,15 @@ private:
 	long nPrimVertices;
 	int muonPerEvent;
 	int convPerTriggeredEvent;
-	
+	int dimuonPerEvent;
+
+	//
+	std::vector <double> pvtx_z;
+	std::vector <double> pvtx_x;
+	std::vector <double> pvtx_y;
+	std::vector <double> pvtx_nTracks;
+	std::vector <bool> pvtx_isFake;
+
 
 	//muon info
 	std::vector <bool> muonIsGlobal;
@@ -180,10 +189,12 @@ private:
 	std::vector <double> dimuon_pt;
 	std::vector <double> dimuon_charge; //crosscheck
 	TClonesArray* dimuon_vtx; //TVector3
+	std::vector <double> dimuon_dz_dimuonvtx_pvtx;
 	std::vector <pat::CompositeCandidate> dimuonStored;
-	std::vector <double> dimuon_pmuon_position; //stores position of positive muon in muon collection
-	std::vector <double> dimuon_nmuon_position; //stores position of negative muon in muon collection
-
+	std::vector <double> dimuon_muon1_position; //stores position of positive muon in muon collection
+	std::vector <double> dimuon_muon2_position; //stores position of negative muon in muon collection
+	std::vector <double> dimuon_ctpv; //stores position of positive muon in muon collection
+	std::vector <double> dimuon_ctpvError; //stores position of negative muon in muon collection
 
 
 
@@ -281,8 +292,9 @@ private:
 	pat::CompositeCandidate chi_cand;
 	std::vector <double> chi_daughterJpsi_position; //stores position of daughter Jpsi in dimuon collection
 	std::vector <double> chi_daughterConv_position; //stores position of daughter photon (conversion)
-	std::vector <double> chi_dzPhotToDimuonVtx;
-
+	std::vector <double> chi_dzPhotToDimuonVtx; //z distance of photon to dimuon vertex when dxy is minimal
+	std::vector <double> chi_dxyPhotToDimuonVtx; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
+	std::vector <pat::CompositeCandidate> chiStored;
 
 	// run and vertex info
 	//TBU
@@ -305,8 +317,6 @@ private:
 	//Various
 	Double_t ele_lowerPt_pt;
 	Double_t ele_higherPt_pt;
-	Double_t ctpv;
-	Double_t ctpv_error;
 	Double_t pi0_abs_mass;
 	Double_t psi1S_nsigma;
 	Double_t psi2S_nsigma;

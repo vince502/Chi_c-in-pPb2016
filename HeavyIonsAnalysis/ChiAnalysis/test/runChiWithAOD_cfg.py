@@ -1,6 +1,6 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_testNew1.root'
+outFileName = 'Chi_c_pPb8TeV_testNew3.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -114,7 +114,7 @@ process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionPro
 
 # Chi parts
 process.load('HeavyIonsAnalysis.ChiAnalysis.ChiAnalyzer_cfi')
-process.ChiRootuple.muon_cand=cms.InputTag('ChiPATMuons')
+process.ChiRootuple.muon_cand=cms.InputTag('ChiSelectedMuons')
 
 process.analysisPath = cms.Path(
             process.ChiPATMuons *
