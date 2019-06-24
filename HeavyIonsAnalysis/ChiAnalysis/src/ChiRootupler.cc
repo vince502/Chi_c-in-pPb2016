@@ -110,6 +110,8 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("muonIsGlobal", &muonIsGlobal);
 	event_tree->Branch("muonIsTracker", &muonIsTracker);
 	event_tree->Branch("muonIsPF", &muonIsPF);
+	event_tree->Branch("muonIsSoft", &muonIsSoft);
+	event_tree->Branch("muonIsTight", &muonIsTight);
 	event_tree->Branch("muonIsNotGlobalNorTracker", &muonIsNotGlobalNorTracker);
 	event_tree->Branch("muonIDHas_TMOneStationTight", &muonIDHas_TMOneStationTight);
 	event_tree->Branch("muonInnerTrack_dxy", &muonInnerTrack_dxy);
@@ -407,7 +409,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			muonIsGlobal.push_back(patMuon.isGlobalMuon());
 			muonIsTracker.push_back(patMuon.isTrackerMuon());
 			muonIsPF.push_back(patMuon.isPFMuon());
-			cout << patMuon.isSoftMuon(pvtx)<<endl<< patMuon.isTightMuon(pvtx)<<endl;
+			muonIsSoft.push_back(patMuon.isSoftMuon(pvtx));
+			muonIsTight.push_back(patMuon.isTightMuon(pvtx));
 			if (!patMuon.isGlobalMuon() && !patMuon.isTrackerMuon()) { muonIsNotGlobalNorTracker.push_back(true); }
 			else muonIsNotGlobalNorTracker.push_back(false); // just for convenience
 
@@ -579,13 +582,13 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				conv_hitPat2.push_back(hitPatB);
 				conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
 
-				//find vertex that points closest
+				//find vertex that points closest - // right now turned off, the 0 vertex used
 				int closest_pv_index = 0;
-				int i = 0;
-				BOOST_FOREACH(const reco::Vertex& vtx, *primaryVertices_handle.product()) {
-					if (fabs(candPhoton.zOfPrimaryVertexFromTracks(vtx.position()) - vtx.z()) < fabs(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()) - (*primaryVertices_handle.product())[closest_pv_index].z())) { closest_pv_index = i; }
-					i++;
-				}
+				//int i = 0;
+				//BOOST_FOREACH(const reco::Vertex& vtx, *primaryVertices_handle.product()) {
+					//if (fabs(candPhoton.zOfPrimaryVertexFromTracks(vtx.position()) - vtx.z()) < fabs(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()) - (*primaryVertices_handle.product())[closest_pv_index].z())) { closest_pv_index = i; }
+					//i++;
+				//}
 				conv_zOfPriVtx.push_back((*primaryVertices_handle.product())[closest_pv_index].z());
 				conv_zOfPriVtxFromTracks.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()));
 				conv_dzToClosestPriVtx.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()) - (*primaryVertices_handle.product())[closest_pv_index].z());
@@ -1032,6 +1035,8 @@ void ChiRootupler::Clear()
 	muonIsGlobal.clear();
 	muonIsTracker.clear();
 	muonIsPF.clear();
+	muonIsSoft.clear();
+	muonIsTight.clear();
 	muonIsNotGlobalNorTracker.clear();
 	muonIDHas_TMOneStationTight.clear();
 	muonInnerTrack_dxy.clear();

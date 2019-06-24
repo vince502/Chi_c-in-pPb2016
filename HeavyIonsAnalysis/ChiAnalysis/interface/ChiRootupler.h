@@ -159,6 +159,8 @@ private:
 	std::vector <bool> muonIsGlobal;
 	std::vector <bool> muonIsTracker;
 	std::vector <bool> muonIsPF;
+	std::vector <bool> muonIsSoft;
+	std::vector <bool> muonIsTight;
 	std::vector <bool> muonIsNotGlobalNorTracker;
 	std::vector <bool> muonIDHas_TMOneStationTight;
 	std::vector <double> muonInnerTrack_dxy;
