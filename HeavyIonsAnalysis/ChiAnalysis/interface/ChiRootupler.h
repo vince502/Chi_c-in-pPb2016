@@ -133,10 +133,6 @@ private:
 	const double conv_maxDPtRel = 1;
 
 
-
-	TTree* dimuon_tree;
-	TTree* chi_tree;
-
 	TTree* event_tree;
 
 	//general
@@ -146,6 +142,7 @@ private:
 	int muonPerEvent;
 	int convPerTriggeredEvent;
 	int dimuonPerEvent;
+	int chiCandPerEvent;
 
 	//
 	std::vector <double> pvtx_z;
@@ -189,14 +186,15 @@ private:
 	TClonesArray*  dimuon_p4; //TLorentzVector
 	std::vector <double> dimuon_eta;
 	std::vector <double> dimuon_pt;
-	std::vector <double> dimuon_charge; //crosscheck
+	std::vector <double> dimuon_charge; 
 	TClonesArray* dimuon_vtx; //TVector3
 	std::vector <double> dimuon_dz_dimuonvtx_pvtx;
+	std::vector <double> dimuon_vtxProb;
 	std::vector <pat::CompositeCandidate> dimuonStored;
-	std::vector <double> dimuon_muon1_position; //stores position of positive muon in muon collection
-	std::vector <double> dimuon_muon2_position; //stores position of negative muon in muon collection
-	std::vector <double> dimuon_ctpv; //stores position of positive muon in muon collection
-	std::vector <double> dimuon_ctpvError; //stores position of negative muon in muon collection
+	std::vector <int> dimuon_muon1_position; //stores position of first muon in muon collection (no specific order)
+	std::vector <int> dimuon_muon2_position; //stores position of second muon in muon collection (no specific order)
+	std::vector <double> dimuon_ctpv; 
+	std::vector <double> dimuon_ctpvError; 
 
 
 
@@ -236,6 +234,8 @@ private:
 	std::vector <int> conv_tk2NumOfDOF;
 	std::vector <double> conv_track1Chi2;
 	std::vector <double> conv_track2Chi2;
+	std::vector <double> conv_Tr1_pt;
+	std::vector <double> conv_Tr2_pt;
 
 	std::vector <double> conv_minDistanceOfApproach;
 	TClonesArray*  conv_p4; //TLorentzVector
@@ -292,38 +292,16 @@ private:
 	std::vector <double> chi_eta;
 	std::vector <double> chi_pt;
 	pat::CompositeCandidate chi_cand;
-	std::vector <double> chi_daughterJpsi_position; //stores position of daughter Jpsi in dimuon collection
-	std::vector <double> chi_daughterConv_position; //stores position of daughter photon (conversion)
+	std::vector <int> chi_daughterJpsi_position; //stores position of daughter Jpsi in dimuon collection
+	std::vector <int> chi_daughterConv_position; //stores position of daughter photon (conversion)
 	std::vector <double> chi_dzPhotToDimuonVtx; //z distance of photon to dimuon vertex when dxy is minimal
 	std::vector <double> chi_dxyPhotToDimuonVtx; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
 	std::vector <pat::CompositeCandidate> chiStored;
 
-	// run and vertex info
-	//TBU
-	TVector3 primary_v;
-	TVector3 secondary_v;
-	TVector3 dimuon_v;
 
-	// chi info
+	// Trigger // to be updated
 
-
-	//double chi_dzPhotToDimuonVtx;
-
-	// Lorentz vectors
-	//TLorentzVector chi_p4;
-	TLorentzVector chi_dimuon_p4;
-	TLorentzVector muonP_p4;
-	TLorentzVector muonN_p4;
-	TLorentzVector photon_p4;
-
-	//Various
-	Double_t ele_lowerPt_pt;
-	Double_t ele_higherPt_pt;
-	Double_t pi0_abs_mass;
-	Double_t psi1S_nsigma;
-	Double_t psi2S_nsigma;
-	Double_t dz;
-	Int_t trigger;
+	int trigger;
 
 
 	//MC

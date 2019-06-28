@@ -1,6 +1,6 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_testNew3.root'
+outFileName = 'Chi_c_pPb8TeV_testNew5.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -74,7 +74,7 @@ process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
 process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(False)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
 

@@ -1,7 +1,7 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
 outFileName = 'Chi_c_pPb8TeV.root'
-#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
+inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
 
@@ -56,8 +56,8 @@ process.ChiPATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.pat
 process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
    src = cms.InputTag('ChiPATMuons'),
    cut = cms.string('muonID(\"TMOneStationTight\")'
-                    #' && abs(innerTrack.dxy) < 0.3'
-                    #' && abs(innerTrack.dz)  < 20.'
+                    ' && abs(innerTrack.dxy) < 0.3'
+                    ' && abs(innerTrack.dz)  < 20.'
                     ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
                     ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
                     ' && innerTrack.quality(\"highPurity\")'
@@ -74,7 +74,7 @@ process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
 process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && 5.0>mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(False)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
 
@@ -91,16 +91,16 @@ process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionPro
     convAlgo    = 'undefined',
     convQuality = [''], #O: Changed ['highPurity','generalTracksOnly']
     primaryVertexTag = 'offlinePrimaryVertices',
-    convSelection = 'conversionVertex.position.rho>0.0', #O: Changed 1.5
+    convSelection = 'conversionVertex.position.rho>1.5', #O: Changed 1.5
     wantTkVtxCompatibility = False,
     sigmaTkVtxComp = 50, #O: Changed 5
     wantCompatibleInnerHits = True,
     pfcandidates = 'particleFlow',
     pi0OnlineSwitch = False,
-    TkMinNumOfDOF = 0, #O: Changed 3
+    TkMinNumOfDOF = 3, #O: Changed 3
     wantHighpurity = False,
     #test
-    vertexChi2ProbCut = 0.0000,
+    vertexChi2ProbCut = 0.0005,
     trackchi2Cut = 1000,
     minDistanceOfApproachMinCut = -100.25,
     minDistanceOfApproachMaxCut = 100.00,
