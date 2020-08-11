@@ -436,7 +436,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					gen_chic_eta.push_back(genParticle.eta());
 					TLorentzVector gen_chic_p4_aux;
 					gen_chic_p4_aux.SetXYZT(genParticle.p4().x(), genParticle.p4().y(), genParticle.p4().z(), genParticle.p4().t());
-					new ((*gen_chic_p4)[i]) TLorentzVector(gen_chic_p4_aux);
+					new ((*gen_chic_p4)[0]) TLorentzVector(gen_chic_p4_aux); //assuming one chic in the event
 
 					int nDaughters = genParticle.numberOfDaughters();
 					if (nDaughters != 2) { cout << "weird gen decay" << endl; } //all of them should be J/psi + gamma
@@ -449,7 +449,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 							gen_Jpsi_eta.push_back(gen_chiDaughter.eta());
 							TLorentzVector gen_Jpsi_p4_aux;
 							gen_Jpsi_p4_aux.SetXYZT(gen_chiDaughter.p4().x(), gen_chiDaughter.p4().y(), gen_chiDaughter.p4().z(), gen_chiDaughter.p4().t());
-							new ((*gen_Jpsi_p4)[i]) TLorentzVector(gen_Jpsi_p4_aux);
+							new ((*gen_Jpsi_p4)[0]) TLorentzVector(gen_Jpsi_p4_aux);
 							int nMatches_aux;
 							double jpsi_rDelta_aux, jpsi_ptDeltaRel_aux;
 							gen_Jpsi_matchPosition.push_back(MatchGen(gen_chiDaughter, dimuon_handle, jpsi_maxDeltaR, jpsi_maxDPtRel, nMatches_aux, jpsi_rDelta_aux, jpsi_ptDeltaRel_aux));
@@ -469,7 +469,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 								gen_muon_eta.push_back(gen_chiMuon.eta());
 								TLorentzVector gen_muon_p4_aux;
 								gen_muon_p4_aux.SetXYZT(gen_chiMuon.p4().x(), gen_chiMuon.p4().y(), gen_chiMuon.p4().z(), gen_chiMuon.p4().t());
-								new ((*gen_muon_p4)[i]) TLorentzVector(gen_muon_p4_aux);
+								new ((*gen_muon_p4)[k]) TLorentzVector(gen_muon_p4_aux);
 								int nMatchesMuon_aux;
 								double muon_rDelta_aux, muon_ptDeltaRel_aux;
 								gen_muon_matchPosition.push_back(MatchGen(gen_chiMuon, muon_handle, muon_maxDeltaR, muon_maxDPtRel, nMatchesMuon_aux, muon_rDelta_aux, muon_ptDeltaRel_aux));
@@ -483,7 +483,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 							gen_phot_eta.push_back(gen_chiDaughter.eta());
 							TLorentzVector gen_phot_p4_aux;
 							gen_phot_p4_aux.SetXYZT(gen_chiDaughter.p4().x(), gen_chiDaughter.p4().y(), gen_chiDaughter.p4().z(), gen_chiDaughter.p4().t());
-							new ((*gen_phot_p4)[i]) TLorentzVector(gen_phot_p4_aux);
+							new ((*gen_phot_p4)[0]) TLorentzVector(gen_phot_p4_aux);
 							int nMatches_aux;
 							double conv_rDelta_aux, conv_ptDeltaRel_aux;
 							gen_conv_matchPosition.push_back(MatchGen(gen_chiDaughter, conversion_handle, conv_maxDeltaR, conv_maxDPtRel, nMatches_aux, conv_rDelta_aux, conv_ptDeltaRel_aux));

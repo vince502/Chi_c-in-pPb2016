@@ -1,6 +1,6 @@
-#This example can be run over files from AOD, therefore we need to build some information in fly.
+# To be run on AOD, done by Ota Kukral
 #
-outFileName = 'Chi_c_pPb8TeV_testNew5.root'
+outFileName = 'Chi_c_pPb8TeV_testNew6.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -14,7 +14,7 @@ process.load('Configuration.StandardSequences.ReconstructionHeavyIons_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff')
 
 from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_Prompt_v15', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_v19', '')
 
 #process.GlobalTag.toGet = cms.VPSet(
 #  cms.PSet(
@@ -33,35 +33,104 @@ process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileN
 process.options   = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 
 
-# we will select muons 
-import PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi
-process.ChiPATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuons.clone(
-    muonSource = 'muons',
-    #useParticleFlow = cms.bool (True),
-    embedTrack          = True,
-    embedCombinedMuon   = True,
-    embedStandAloneMuon = True,
-    embedPFCandidate    = False,
-    embedCaloMETMuonCorrs = cms.bool(False),
-    embedTcMETMuonCorrs   = cms.bool(False),
-    embedPfEcalEnergy     = cms.bool(False),
-    embedPickyMuon = False,
-    embedTpfmsMuon = False,
-    userIsolation = cms.PSet(),   # no extra isolation beyond what's in reco::Muon itself
-    isoDeposits = cms.PSet(),     # no heavy isodeposits
-    addGenMatch = False,          # no mc
+## we will select muons 
+#import PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi
+#process.ChiPATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.patMuons.clone(
+#    muonSource = 'muons',
+#    #useParticleFlow = cms.bool (True),
+#    embedTrack          = True,
+#    embedCombinedMuon   = True,
+#    embedStandAloneMuon = True,
+#    embedPFCandidate    = False,
+#    embedCaloMETMuonCorrs = cms.bool(False),
+#    embedTcMETMuonCorrs   = cms.bool(False),
+#    embedPfEcalEnergy     = cms.bool(False),
+#    embedPickyMuon = False,
+#    embedTpfmsMuon = False,
+#    userIsolation = cms.PSet(),   # no extra isolation beyond what's in reco::Muon itself
+#    isoDeposits = cms.PSet(),     # no heavy isodeposits
+#    addGenMatch = False,          # no mc
+#)
+
+## cuts on muons
+#process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
+#   src = cms.InputTag('ChiPATMuons'),
+#   cut = cms.string('muonID(\"TMOneStationTight\")'
+#                    ' && abs(innerTrack.dxy) < 0.3'
+#                    ' && abs(innerTrack.dz)  < 20.'
+#                    ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
+#                    ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
+#                    ' && innerTrack.quality(\"highPurity\")'
+#                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 0.7))'
+#   ),
+#   filter = cms.bool(False)
+#)
+
+## ==== Filters ====  from T&P
+### pPb Event Selection
+process.load('HeavyIonsAnalysis.Configuration.hfCoincFilter_cff')
+process.primaryVertexFilterPA = cms.EDFilter("VertexSelector",
+    src = cms.InputTag("offlinePrimaryVertices"),
+    cut = cms.string("!isFake && abs(z) <= 50 && position.Rho <= 2 && tracksSize >= 2"),
+    filter = cms.bool(True),
 )
+process.noScraping = cms.EDFilter("FilterOutScraping",
+    applyfilter = cms.untracked.bool(True),
+    debugOn = cms.untracked.bool(False), ## Or 'True' to get some per-event info
+    numtrack = cms.untracked.uint32(10),
+    thresh = cms.untracked.double(0.25)
+)
+
+### Trigger selection
+process.load("HLTrigger.HLTfilters.triggerResultsFilter_cfi")
+process.triggerResultsFilter.triggerConditions = cms.vstring('HLT_PAL2Mu*_v*', 'HLT_PAL3Mu*_v*')
+process.triggerResultsFilter.hltResults = cms.InputTag("TriggerResults","","HLT")
+process.triggerResultsFilter.l1tResults = cms.InputTag("gtStage2Digis") #O: needs to be this
+process.triggerResultsFilter.throw = False
+### Filter sequence
+process.fastFilter = cms.Sequence(process.hfCoincFilter + process.primaryVertexFilterPA + process.noScraping + process.triggerResultsFilter)
+
+
+## ==== Trigger matching
+process.load("MuonAnalysis.MuonAssociators.patMuonsWithTrigger_cff")
+from MuonAnalysis.MuonAssociators.patMuonsWithTrigger_cff import *
+## with some customization  O: values copied over from the HI onia trees (or T&P - same)
+process.muonL1Info.maxDeltaR = 0.3
+process.muonL1Info.maxDeltaEta = 0.2
+process.muonL1Info.fallbackToME1 = True
+process.muonMatchHLTL1.maxDeltaR = 0.3
+process.muonMatchHLTL1.maxDeltaEta = 0.2
+process.muonMatchHLTL1.fallbackToME1 = True
+process.muonMatchHLTL2.maxDeltaR = 0.3
+process.muonMatchHLTL2.maxDPtRel = 10.0
+process.muonMatchHLTL3.maxDeltaR = 0.1
+process.muonMatchHLTL3.maxDPtRel = 10.0
+## For trigger muons
+#switchOffAmbiguityResolution(process) # Switch off ambiguity resolution: allow multiple reco muons to match to the same trigger muon
+
+## For L1 muons
+addHLTL1Passthrough(process)
+useL1Stage2Candidates(process)
+process.patTrigger.collections.remove("hltL1extraParticles")
+process.patTrigger.collections.append("hltGmtStage2Digis:Muon")
+process.muonMatchHLTL1.matchedCuts = cms.string('coll("hltGmtStage2Digis:Muon")')
+process.muonMatchHLTL1.useStage2L1 = cms.bool(True)
+process.muonMatchHLTL1.useMB2InOverlap = cms.bool(True)
+process.muonMatchHLTL1.preselection = cms.string("")
+appendL1MatchingAlgo(process)
+
+
 
 # cuts on muons
 process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
-   src = cms.InputTag('ChiPATMuons'),
+   src = cms.InputTag('patMuonsWithTrigger'),
    cut = cms.string('muonID(\"TMOneStationTight\")'
                     ' && abs(innerTrack.dxy) < 0.3'
                     ' && abs(innerTrack.dz)  < 20.'
                     ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
                     ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
                     ' && innerTrack.quality(\"highPurity\")'
-                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 1.5))'
+                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 0.7))'
    ),
    filter = cms.bool(False)
 )
@@ -116,14 +185,31 @@ process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionPro
 process.load('HeavyIonsAnalysis.ChiAnalysis.ChiAnalyzer_cfi')
 process.ChiRootuple.muon_cand=cms.InputTag('ChiSelectedMuons')
 
+
+
+
 process.analysisPath = cms.Path(
-            process.ChiPATMuons *
+            process.fastFilter *
+            process.patMuonsWithTriggerSequence *
             process.ChiSelectedMuons * 
             process.HiOnia2MuMuPAT *
             process.PhotonCandidates *
             process.ChiSequence
 )
 
+
+process.out = cms.OutputModule("PoolOutputModule",
+        fileName = cms.untracked.string('TestOut.root'),
+        outputCommands =  cms.untracked.vstring(
+            'drop *',
+            'keep patMuons_patMuonsWithTrigger_*_*',    # All PAT muons including matches to triggers       
+            'keep *_centralityBin_*_*',                            # PA Centrality
+            'keep *_hiCentrality_*_*',                             # PA Centrality
+            'keep *_pACentrality_*_*',                             # PA Centrality
+            ),
+    )
+
+process.o= cms.EndPath(process.out)
 
 
 # muons without trigger info, alternatively in recent version of 80x you can use muon with trigger as well.

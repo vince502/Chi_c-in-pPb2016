@@ -1,7 +1,7 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
 outFileName = 'Chi_c_pPb8TeV_MC.root'
-inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_test.root'
+inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_test4.root'
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -74,13 +74,7 @@ process.ChiPATMuons = PhysicsTools.PatAlgos.producersLayer1.muonProducer_cfi.pat
 # cuts on muons
 process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
    src = cms.InputTag('ChiPATMuons'),
-   cut = cms.string('muonID(\"TMOneStationTight\")'
-                    ' && abs(innerTrack.dxy) < 0.3'
-                    ' && abs(innerTrack.dz)  < 20.'
-                    ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
-                    ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
-                    ' && innerTrack.quality(\"highPurity\")'
-                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 1.5))'
+   cut = cms.string(''
    ),
    filter = cms.bool(False)
 )
@@ -94,7 +88,7 @@ process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
 process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25")
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 50")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(True)
 process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
