@@ -46,8 +46,9 @@
 
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 #include "FWCore/Common/interface/TriggerNames.h"
-
+#include "DataFormats/HeavyIonEvent/interface/Centrality.h"
 
 //
 // class declaration
@@ -66,13 +67,14 @@ private:
 		
 	virtual void beginJob();																				// ------------ method called once each job just before starting event loop  ------------
 	virtual void endJob();																					// ------------ method called once each job just after ending the event loop  ------------
-	virtual void beginRun(edm::Run const &, edm::EventSetup const &);										// ------------ method called when starting to processes a run  ------------
+	virtual void beginRun(const edm::Run &iRun, const edm::EventSetup &iSetup);								// ------------ method called when starting to processes a run  ------------
 	virtual void endRun(edm::Run const &, edm::EventSetup const &);											// ------------ method called when ending the processing of a run  ------------
 	virtual void beginLuminosityBlock(edm::LuminosityBlock const &, edm::EventSetup const &);				// ------------ method called when starting to processes a luminosity block  ------------
 	virtual void endLuminosityBlock(edm::LuminosityBlock const &, edm::EventSetup const &);					// ------------ method called when ending the processing of a luminosity block  ------------
 
 	// general functions
 	void Clear();
+	int SelectVertex(edm::Handle<std::vector<reco::Vertex> >& priVtxs, double zPos); //returns the index (in the collection) of vertex matched to the z position
 
 	// photon checks
 	static bool lt_comparator(std::pair<double, short> a, std::pair<double, short> b); // comparator for checking conversions
@@ -110,6 +112,7 @@ private:
 	//edm::EDGetTokenT<pat::CompositeCandidateCollection> chi_label;
 	edm::EDGetTokenT<reco::VertexCollection> primaryVertices_label;
 	edm::EDGetTokenT<edm::TriggerResults> triggerResults_label;
+	edm::EDGetTokenT<reco::Centrality> centrality_label;
 	edm::EDGetTokenT<reco::GenParticleCollection> genParticles_label;
 
 	bool flag_doMC;
@@ -118,6 +121,10 @@ private:
 	const int PythCode_chic0 = 10441; //Pythia codes
 	const int PythCode_chic1 = 20443;
 	const int PythCode_chic2 = 445;
+
+	// constants for events and PV
+	const double cPVMatching_cutoff = 0.2; //If dimuon is within 2mm of PV[0], leave it. Based on dimuon.z - PV.z resolution. Has effect for peripheral events
+
 
 	// constants for muon cuts
 	const double muon_maxDeltaR = 0.5;
@@ -132,27 +139,37 @@ private:
 	const double conv_maxDeltaR = 0.2;
 	const double conv_maxDPtRel = 1;
 
+	std::string triggerName = "HLT_PAL1DoubleMuOpen_v1";
+	std::string triggerFilter = "hltL1fL1sDoubleMuOpenBptxANDL1Filtered0";
 
 	TTree* event_tree;
 
 	//general
 	long runNumber;
 	long eventNumber;
-	long nPrimVertices;
+	int nPrimVertices; 
 	int muonPerEvent;
 	int convPerTriggeredEvent;
 	int dimuonPerEvent;
 	int chiCandPerEvent;
 
-	//
+	int ntracks_inEvent;
+	double hfTowerSum_inEvent;
+	HLTConfigProvider hltConfig;
+	int Trig_Event_HLTDoubleMuOpen;
+
+
+	// vertex
 	std::vector <double> pvtx_z;
+	std::vector <double> pvtx_zError;
 	std::vector <double> pvtx_x;
 	std::vector <double> pvtx_y;
 	std::vector <double> pvtx_nTracks;
 	std::vector <bool> pvtx_isFake;
 
-
 	//muon info
+	std::vector <bool> muonIsHLTDoubleMuOpen;
+	std::vector <bool> muonIsHLTDoubleMuOpenFilter;
 	std::vector <bool> muonIsGlobal;
 	std::vector <bool> muonIsTracker;
 	std::vector <bool> muonIsPF;
@@ -188,6 +205,7 @@ private:
 	std::vector <double> dimuon_pt;
 	std::vector <double> dimuon_charge; 
 	TClonesArray* dimuon_vtx; //TVector3
+    std::vector <int>  dimuon_pvtx_index;
 	std::vector <double> dimuon_dz_dimuonvtx_pvtx;
 	std::vector <double> dimuon_vtxProb;
 	std::vector <pat::CompositeCandidate> dimuonStored;
@@ -195,7 +213,7 @@ private:
 	std::vector <int> dimuon_muon2_position; //stores position of second muon in muon collection (no specific order)
 	std::vector <double> dimuon_ctpv; 
 	std::vector <double> dimuon_ctpvError; 
-
+	
 
 
 	//conversion info

@@ -1,6 +1,6 @@
 # To be run on AOD, done by Ota Kukral
 #
-outFileName = 'Chi_c_pPb8TeV_testNew6.root'
+outFileName = 'Chi_c_pPb8TeV_testNew7_2mm.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -25,8 +25,8 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_v19', '')
 #    )
 #  )
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))
@@ -83,7 +83,7 @@ process.noScraping = cms.EDFilter("FilterOutScraping",
 
 ### Trigger selection
 process.load("HLTrigger.HLTfilters.triggerResultsFilter_cfi")
-process.triggerResultsFilter.triggerConditions = cms.vstring('HLT_PAL2Mu*_v*', 'HLT_PAL3Mu*_v*')
+process.triggerResultsFilter.triggerConditions = cms.vstring('HLT_PAL1DoubleMu*_v*')
 process.triggerResultsFilter.hltResults = cms.InputTag("TriggerResults","","HLT")
 process.triggerResultsFilter.l1tResults = cms.InputTag("gtStage2Digis") #O: needs to be this
 process.triggerResultsFilter.throw = False
@@ -118,7 +118,6 @@ process.muonMatchHLTL1.useStage2L1 = cms.bool(True)
 process.muonMatchHLTL1.useMB2InOverlap = cms.bool(True)
 process.muonMatchHLTL1.preselection = cms.string("")
 appendL1MatchingAlgo(process)
-
 
 
 # cuts on muons
@@ -198,18 +197,20 @@ process.analysisPath = cms.Path(
 )
 
 
-process.out = cms.OutputModule("PoolOutputModule",
-        fileName = cms.untracked.string('TestOut.root'),
-        outputCommands =  cms.untracked.vstring(
-            'drop *',
-            'keep patMuons_patMuonsWithTrigger_*_*',    # All PAT muons including matches to triggers       
-            'keep *_centralityBin_*_*',                            # PA Centrality
-            'keep *_hiCentrality_*_*',                             # PA Centrality
-            'keep *_pACentrality_*_*',                             # PA Centrality
-            ),
-    )
+#process.out = cms.OutputModule("PoolOutputModule",
+#        fileName = cms.untracked.string('TestOut.root'),
+#        outputCommands =  cms.untracked.vstring(
+#            'drop *',
+#            'keep patMuons_patMuonsWithTrigger_*_*',    # All PAT muons including matches to triggers       
+#            'keep *_centralityBin_*_*',                            # PA Centrality
+#            'keep *_hiCentrality_*_*',                             # PA Centrality
+#            'keep *_pACentrality_*_*',                             # PA Centrality
+#            'keep *_offlinePrimaryVertices_*_*',
+#            'keep *_TriggerResults_*_*',
+#            ),
+#    )
 
-process.o= cms.EndPath(process.out)
+#process.o= cms.EndPath(process.out)
 
 
 # muons without trigger info, alternatively in recent version of 80x you can use muon with trigger as well.
