@@ -121,6 +121,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("muonIsTight", &muonIsTight);
 	event_tree->Branch("muonIsNotGlobalNorTracker", &muonIsNotGlobalNorTracker);
 	event_tree->Branch("muonIDHas_TMOneStationTight", &muonIDHas_TMOneStationTight);
+	event_tree->Branch("muon_pvtx_index", &muon_pvtx_index);
 	event_tree->Branch("muonInnerTrack_dxy", &muonInnerTrack_dxy);
 	event_tree->Branch("muonInnerTrack_dz", &muonInnerTrack_dz);
 	event_tree->Branch("muonTrackerLayersWithMeasurement", &muonTrackerLayersWithMeasurement);
@@ -187,6 +188,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 		event_tree->Branch("conv_tkVtxCompatible_secondBestVertexB_test", &conv_tkVtxCompatible_secondBestVertexB_test);
 	}
 	event_tree->Branch("conv_vertexChi2Prob", &conv_vertexChi2Prob);
+	event_tree->Branch("conv_pvtx_index", &conv_pvtx_index);
 	event_tree->Branch("conv_zOfPriVtx", &conv_zOfPriVtx);
 	event_tree->Branch("conv_zOfPriVtxFromTracks", &conv_zOfPriVtxFromTracks);
 	event_tree->Branch("conv_dzToClosestPriVtx", &conv_dzToClosestPriVtx);
@@ -271,8 +273,6 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("chi_dxyPhotToDimuonVtx", &chi_dxyPhotToDimuonVtx);
 	event_tree->Branch("chiStored", "std::vector <pat::CompositeCandidate>", &chiStored);
 
-	//trigger
-	event_tree->Branch("trigger", &trigger, "trigger/I");
 
 
 }
@@ -344,8 +344,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		std::cout << "*** NO triggerResults found " << iEvent.id().run() << "," << iEvent.id().event() << std::endl;
 		return;
 	}
-	// if not trigger, skip the event (should not happen due to preselection in the main cfg)
-	if (Trig_Event_HLTDoubleMuOpen == 0) return;
+	// if not trigger, skip the event (should not happen due to preselection in the main cfg) // Leave for MC
+	if (Trig_Event_HLTDoubleMuOpen == 0 && flag_doMC==false) return;
 
 
 
@@ -419,16 +419,321 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	}
 	chiCandPerEvent = n_chic;
 
-	if (n_chic == 0) //don't save events without chic in them
+	if (n_chic == 0 && flag_doMC==false) //don't save events without chic in them, unless MC
 	{
 		Clear();
 		return;
 	}
 	
+	//PV
+	if (primaryVertices_handle.isValid()) {
+		//if (primaryVertices_handle->size() == 1) return; //test, to be deleted
+		for (uint i = 0; i < primaryVertices_handle->size(); i++) {
+			const reco::Vertex& pvtx = primaryVertices_handle->at(i);
+			pvtx_z.push_back(pvtx.z());
+			pvtx_zError.push_back(pvtx.zError());
+			pvtx_x.push_back(pvtx.x());
+			pvtx_y.push_back(pvtx.y());
+			pvtx_nTracks.push_back(pvtx.nTracks());
+			pvtx_isFake.push_back(pvtx.isFake());
 
-		////////////////
-		////// GEN ////
-		///////////////
+		}
+
+	}
+	else cout << "Problem with PV handle" << endl;
+
+	int pvtx_index = 0; // 0: top primary vertex. Set in dimuon loop to vertex that is "closest" in z to dimuon vertex (with a cut-off, see ChiRootupler::SelectVertex)
+
+	////////////////////////
+	////  D I M U O N   ///
+	//////////////////////
+
+	if (dimuon_handle.isValid())
+	{
+		for (uint i = 0; i < dimuon_handle->size(); i++) {
+			const pat::CompositeCandidate& dimuon = dimuon_handle->at(i);
+			TLorentzVector dimuon_p4_aux;
+			dimuon_p4_aux.SetPtEtaPhiM(dimuon.pt(), dimuon.eta(), dimuon.phi(), dimuon.mass());
+			new ((*dimuon_p4)[i]) TLorentzVector(dimuon_p4_aux);
+
+			dimuon_charge.push_back(dimuon.charge());
+			dimuon_eta.push_back(dimuon.eta());
+			dimuon_pt.push_back(dimuon.pt());
+
+			if (flag_saveExtraThings)
+			{
+				dimuonStored.push_back(dimuon);
+			}
+
+			const reco::Vertex* dimuon_recovtx = dimuon.userData<reco::Vertex>("commonVertex");
+			TVector3 dimuon_vtx_aux;
+			dimuon_vtx_aux.SetXYZ(dimuon_recovtx->x(), dimuon_recovtx->y(), dimuon_recovtx->z());
+			new ((*dimuon_vtx)[i]) TVector3(dimuon_vtx_aux);
+			pvtx_index = SelectVertex(primaryVertices_handle, dimuon_recovtx->z());
+			dimuon_pvtx_index.push_back(pvtx_index);
+			dimuon_dz_dimuonvtx_pvtx.push_back(dimuon_recovtx->z() - (*primaryVertices_handle.product())[pvtx_index].z());
+			dimuon_vtxProb.push_back(dimuon.userFloat("vProb"));
+
+			int muonPos1 = dimuon.userInt("muonPosition1");
+			int muonPos2 = dimuon.userInt("muonPosition2");
+			if (fabs(muon_handle->at(muonPos2).pt() - dimuon.daughter("muon2")->pt()) > 0.01) { cout << "SOMETHING WRONG WITH THE MATCHING FROM DIMUON TO MUON - possibly different muon collections used" << endl; }//muon matching assumes that muon collection going to dimuon producer and here is the same
+			dimuon_muon1_position.push_back(muonPos1);
+			dimuon_muon2_position.push_back(muonPos2);
+			dimuon_ctpv.push_back(dimuon.userFloat("ppdlPV"));
+			dimuon_ctpvError.push_back(dimuon.userFloat("ppdlErrPV"));
+			//cout << "Muon positions  " << muonPos1 << "   " << muonPos2 << endl;
+
+		}
+	}
+	else cout << "Problem with dimuon handle" << endl;
+
+
+
+	/////////////////////
+	//   M U O N S   ////
+	////////////////////
+	if (muon_handle.isValid()) {
+		for (uint i = 0; i < muon_handle->size(); i++) {
+			const pat::Muon& patMuon = muon_handle->at(i);
+			// pick the closest vertex of those that were selected by dimuon (and ignore the vertices that had no dimuon in them)
+			int bestPvtx_index = 0;
+			float minDz = 9999;
+			for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
+			{
+				float deltaZ = fabs(patMuon.innerTrack()->dz() - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());		
+				if (deltaZ < minDz) {
+					minDz = deltaZ;
+					bestPvtx_index = dimuon_pvtx_index.at(iVtx);
+				}
+			}
+			muon_pvtx_index.push_back(bestPvtx_index);
+			
+			const reco::Vertex& pvtx = primaryVertices_handle->at(bestPvtx_index); //use our selected PV
+			if (patMuon.triggerObjectMatchByPath(triggerName) != 0) {
+				muonIsHLTDoubleMuOpen.push_back(true);
+			}
+			else { muonIsHLTDoubleMuOpen.push_back(false); }
+			if (patMuon.triggerObjectMatchByFilter(triggerFilter) != 0) {
+				muonIsHLTDoubleMuOpenFilter.push_back(true);
+			}
+			else { muonIsHLTDoubleMuOpenFilter.push_back(false); }
+			muonIsGlobal.push_back(patMuon.isGlobalMuon());
+			muonIsTracker.push_back(patMuon.isTrackerMuon());
+			muonIsPF.push_back(patMuon.isPFMuon());
+			muonIsSoft.push_back(patMuon.isSoftMuon(pvtx));
+			muonIsTight.push_back(patMuon.isTightMuon(pvtx));
+			if (!patMuon.isGlobalMuon() && !patMuon.isTrackerMuon()) { muonIsNotGlobalNorTracker.push_back(true); }
+			else muonIsNotGlobalNorTracker.push_back(false); // just for convenience
+
+			muonIDHas_TMOneStationTight.push_back(patMuon.muonID("TMOneStationTight"));
+			if (patMuon.isGlobalMuon() || patMuon.isTrackerMuon()) {
+				muonInnerTrack_dxy.push_back(patMuon.innerTrack()->dxy());
+				muonInnerTrack_dz.push_back(patMuon.innerTrack()->dz());
+				muonTrackerLayersWithMeasurement.push_back(patMuon.innerTrack()->hitPattern().trackerLayersWithMeasurement());
+				muonPixelLayersWithMeasurement.push_back(patMuon.innerTrack()->hitPattern().pixelLayersWithMeasurement());
+				reco::TrackBase::TrackQuality tq = reco::TrackBase::qualityByName("highPurity");//high purity=2 //see DataFormats/TrackReco/interface/TrackBase.h
+				muonQuality_isHighPurity.push_back(patMuon.innerTrack()->quality(tq));
+			}
+			else
+			{
+				muonInnerTrack_dxy.push_back(-100);
+				muonInnerTrack_dz.push_back(-100);
+				muonTrackerLayersWithMeasurement.push_back(-1);
+				muonPixelLayersWithMeasurement.push_back(-1);
+				muonQuality_isHighPurity.push_back(0);
+			}
+			muon_charge.push_back(patMuon.charge());
+			muon_eta.push_back(patMuon.eta());
+			muon_pt.push_back(patMuon.pt());
+			TLorentzVector muon_p4_aux;
+			muon_p4_aux.SetPtEtaPhiM(patMuon.pt(), patMuon.eta(), patMuon.phi(), patMuon.mass());
+			new ((*muon_p4)[i]) TLorentzVector(muon_p4_aux);
+			// MC generated information
+			if (flag_doMC) {
+				bool muon_isMatchedMC_flag = patMuon.genLepton(); //false for null pointer, true if match exists, from pat::Lepton.h
+				muon_isMatchedMC.push_back(muon_isMatchedMC_flag);
+				if (muon_isMatchedMC_flag) {
+					const reco::GenParticle genMuon = *patMuon.genLepton();
+					muonGen_eta.push_back(genMuon.eta());
+					muonGen_pt.push_back(genMuon.pt());
+					TLorentzVector muonGen_p4_aux;
+					muonGen_p4_aux.SetPtEtaPhiM(genMuon.pt(), genMuon.eta(), genMuon.phi(), genMuon.mass());
+					new ((*muonGen_p4)[i]) TLorentzVector(muonGen_p4_aux);
+					muonGen_rDelta.push_back(reco::deltaR(patMuon, genMuon)); //sqrt(phi^2+eta^2)
+					muonGen_ptDelta.push_back(patMuon.pt() - genMuon.pt());
+					muonGen_ptDeltaRel.push_back((patMuon.pt() - genMuon.pt()) / genMuon.pt()); //defined in the matcher to be divided by genPt //MCTruthMatchers.cc
+				}
+				else { //default values to store if no match - in principle can be ommitted, just for direct looking at branches
+					muonGen_eta.push_back(-5);
+					muonGen_pt.push_back(0);
+					new ((*muonGen_p4)[i]) TLorentzVector(TLorentzVector());
+					muonGen_rDelta.push_back(-5);
+					muonGen_ptDelta.push_back(-5);
+					muonGen_ptDeltaRel.push_back(-5);
+				}
+			}
+
+
+			if (flag_saveExtraThings)
+			{
+				patMuonStored.push_back(patMuon);
+			}
+
+		}
+	}
+	else cout << "Problem with muon handle" << endl;
+
+
+	///////////////////////////////////////////
+	///////   C O N V E R S I O N S   ////////
+	/////////////////////////////////////////
+	if (conversion_handle.isValid())
+	{
+		for (uint i = 0; i < conversion_handle->size(); i++) {
+			const reco::Conversion& candPhoton = conversion_handle->at(i);
+			TLorentzVector conv_p4_aux;
+			conv_p4_aux.SetXYZT(candPhoton.refittedPair4Momentum().x(), candPhoton.refittedPair4Momentum().y(), candPhoton.refittedPair4Momentum().z(), candPhoton.refittedPair4Momentum().t());
+			new ((*conv_p4)[i]) TLorentzVector(conv_p4_aux);
+			conv_eta.push_back(conv_p4_aux.Eta());
+			conv_pt.push_back(conv_p4_aux.Pt());
+
+			convQuality_isHighPurity.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(8))); //8 is high purity, see reco::Conversion Class Reference
+			convQuality_isGeneralTracksOnly.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(0))); //0 is general tracks only, see reco::Conversion Class Reference
+			const reco::Vertex conv_recovtx = candPhoton.conversionVertex();
+			TVector3 conv_vtx_aux;
+			conv_vtx_aux.SetXYZ(conv_recovtx.x(), conv_recovtx.y(), conv_recovtx.z());
+			new ((*conv_vtx)[i]) TVector3(conv_vtx_aux);
+			conv_vertexPositionRho.push_back(candPhoton.conversionVertex().position().rho());
+			bool conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux;
+			double conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux;
+			if (flag_saveExtraThings)
+			{
+				conv_tkVtxCompatibilityOK_test.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), 20, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
+				conv_tkVtxCompatible_bestVertex_test.push_back(conv_tkVtxCompatible_bestVertex_aux);
+				conv_tkVtxCompatible_secondBestVertexA_test.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
+				conv_tkVtxCompatible_secondBestVertexB_test.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
+			}
+			conv_tkVtxCompatibilityOK.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), conv_TkVtxCompSigmaCut, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
+			conv_tkVtxCompatible_bestVertex.push_back(conv_tkVtxCompatible_bestVertex_aux);
+			conv_tkVtxCompatible_secondBestVertexA.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
+			conv_tkVtxCompatible_secondBestVertexB.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
+			conv_sigmaTkVtx1.push_back(conv_sigmaTkVtx1_aux);
+			conv_sigmaTkVtx2.push_back(conv_sigmaTkVtx2_aux);
+
+			if (candPhoton.tracks().size() == 2) {
+				const edm::RefToBase<reco::Track> conv_tk1 = candPhoton.tracks().at(0);
+				const edm::RefToBase<reco::Track> conv_tk2 = candPhoton.tracks().at(1);
+
+				reco::HitPattern hitPatA = conv_tk1->hitPattern();
+				reco::HitPattern hitPatB = conv_tk2->hitPattern();
+				conv_hitPat1.push_back(hitPatA);
+				conv_hitPat2.push_back(hitPatB);
+				conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
+
+
+				// pick the closest vertex of those that were selected by dimuon (and ignore the vertices that had no dimuon in them)
+				int bestPvtx_index = 0;
+				float minDz = 9999;
+				for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
+				{
+					float deltaZ = fabs(candPhoton.zOfPrimaryVertexFromTracks(primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).position()) - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());
+					if (deltaZ < minDz) {
+						minDz = deltaZ;
+						bestPvtx_index = dimuon_pvtx_index.at(iVtx);
+					}
+				}
+				conv_pvtx_index.push_back(bestPvtx_index);
+
+				conv_zOfPriVtx.push_back((*primaryVertices_handle.product())[bestPvtx_index].z());
+				conv_zOfPriVtxFromTracks.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()));
+				conv_dzToClosestPriVtx.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()) - (*primaryVertices_handle.product())[bestPvtx_index].z());
+				// Now check impact parameter wrt primary vertex
+				conv_dxyPriVtx_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
+				conv_dxyPriVtx_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
+				conv_dxyPriVtxTimesCharge_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk1->charge());
+				conv_dxyPriVtxTimesCharge_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk2->charge());
+				conv_dxyError_Tr1.push_back(conv_tk1->dxyError());
+				conv_dxyError_Tr2.push_back(conv_tk2->dxyError());
+
+				conv_tk1NumOfDOF.push_back(conv_tk1->ndof());
+				conv_tk2NumOfDOF.push_back(conv_tk2->ndof());
+				conv_track1Chi2.push_back(candPhoton.tracks().at(0)->normalizedChi2());
+				conv_track2Chi2.push_back(candPhoton.tracks().at(1)->normalizedChi2());
+				conv_Tr1_pt.push_back(conv_tk1->pt());
+				conv_Tr2_pt.push_back(conv_tk2->pt());
+
+			}
+			else conv_compatibleInnerHitsOK.push_back(-1);
+
+			conv_vertexChi2Prob.push_back(ChiSquaredProbability(candPhoton.conversionVertex().chi2(), candPhoton.conversionVertex().ndof()));
+			conv_minDistanceOfApproach.push_back(candPhoton.distOfMinimumApproach());
+			//if (candPhoton.distOfMinimumApproach() > -10 && candPhoton.distOfMinimumApproach() < 10) { conv_minDistanceOfApproach = candPhoton.distOfMinimumApproach(); }
+			//else conv_minDistanceOfApproach = 0;
+
+			//MC for conversions
+			if (flag_doMC)
+			{
+				if (genParticles_handle.isValid()) {
+					reco::GenParticle genConv_best = reco::GenParticle();
+					bool conv_isMatchedMC_aux = false;
+					for (uint i = 0; i < genParticles_handle->size(); i++) {
+						const reco::GenParticle& genParticle = genParticles_handle->at(i);
+
+						int pdgId = genParticle.pdgId();
+						if (pdgId != 22) { continue; } //if not photon, don't bother
+						if (genParticle.status() != 1) {
+							//cout << "notStable" << endl;
+							//cout << genParticle.daughter(0)->pdgId() << endl;
+							//cout << "ptdif " << genParticle.daughter(0)->pt() - genParticle.pt() << endl;
+							continue;
+						} //if not stable, don't bother
+
+						bool genParticleMatched = false; //this particular - is it matched?
+						genParticleMatched = Conv_isMatched(candPhoton.refittedPair4Momentum(), genParticle, conv_maxDeltaR, conv_maxDPtRel);
+						if (genParticleMatched == true) {
+							if (conv_isMatchedMC_aux == false) {//first one found
+								conv_isMatchedMC_aux = true;
+								genConv_best = genParticle;
+							}
+							else { //check whether the second match is better by deltaR than the first, save the better one
+								if (reco::deltaR(candPhoton.refittedPair4Momentum(), genConv_best) > reco::deltaR(candPhoton.refittedPair4Momentum(), genParticle)) { genConv_best = genParticle; }
+							}
+						}
+					}
+					if (conv_isMatchedMC_aux) {
+						conv_isMatchedMC.push_back(true);
+						convGen_eta.push_back(genConv_best.eta());
+						convGen_pt.push_back(genConv_best.pt());
+						TLorentzVector convGen_p4_aux;
+						convGen_p4_aux.SetPtEtaPhiM(genConv_best.pt(), genConv_best.eta(), genConv_best.phi(), genConv_best.mass());
+						new ((*convGen_p4)[i]) TLorentzVector(convGen_p4_aux);
+
+						convGen_rDelta.push_back(reco::deltaR(candPhoton.refittedPair4Momentum(), genConv_best)); //sqrt(phi^2+eta^2)
+						convGen_ptDelta.push_back(candPhoton.refittedPair4Momentum().pt() - genConv_best.pt());
+						convGen_ptDeltaRel.push_back((candPhoton.refittedPair4Momentum().pt() - genConv_best.pt()) / genConv_best.pt()); //defined in the matcher to be divided by genPt //MCTruthMatchers.cc
+						convGen_motherCode.push_back(genConv_best.mother()->pdgId());
+					}
+					else { //default values to store if no match - in principle can be ommitted, just for direct looking at branches
+						conv_isMatchedMC.push_back(false);
+						convGen_eta.push_back(-5);
+						convGen_pt.push_back(0);
+						new ((*convGen_p4)[i]) TLorentzVector(TLorentzVector());
+						convGen_rDelta.push_back(-5);
+						convGen_ptDelta.push_back(-5);
+						convGen_ptDeltaRel.push_back(-5);
+						convGen_motherCode.push_back(-1);
+					}
+				}
+				else cout << "Problem with gen handle" << endl;
+			}
+		}
+	}
+	else { cout << "Conversions handle problem" << endl; }
+
+
+	////////////////
+	////// GEN ////
+	///////////////
 
 	if (flag_doMC) {
 		if (genParticles_handle.isValid()) {
@@ -523,294 +828,6 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	}
 
 
-
-
-
-	//PV
-	if (primaryVertices_handle.isValid()) {
-		//if (primaryVertices_handle->size() == 1) return; //test, to be deleted
-		for (uint i = 0; i < primaryVertices_handle->size(); i++) {
-			const reco::Vertex& pvtx = primaryVertices_handle->at(i);
-			pvtx_z.push_back(pvtx.z());
-			pvtx_zError.push_back(pvtx.zError());
-			pvtx_x.push_back(pvtx.x());
-			pvtx_y.push_back(pvtx.y());
-			pvtx_nTracks.push_back(pvtx.nTracks());
-			pvtx_isFake.push_back(pvtx.isFake());
-
-		}
-
-	}
-	else cout << "Problem with PV handle" << endl;
-
-	int pvtx_index = 0; //top primary vertex used for now
-
-	/////////////////////
-	//   M U O N S   ////
-	////////////////////
-	if (muon_handle.isValid()) {
-		for (uint i = 0; i < muon_handle->size(); i++) {
-			const pat::Muon& patMuon = muon_handle->at(i);
-			const reco::Vertex& pvtx = primaryVertices_handle->at(pvtx_index); //use our selected PV
-			if (patMuon.triggerObjectMatchByPath(triggerName) != 0) {
-				muonIsHLTDoubleMuOpen.push_back(true);
-			}
-			else { muonIsHLTDoubleMuOpen.push_back(false); }
-			if (patMuon.triggerObjectMatchByFilter(triggerFilter) != 0) {
-				muonIsHLTDoubleMuOpenFilter.push_back(true);
-			}
-			else { muonIsHLTDoubleMuOpenFilter.push_back(false); }
-			muonIsGlobal.push_back(patMuon.isGlobalMuon());
-			muonIsTracker.push_back(patMuon.isTrackerMuon());
-			muonIsPF.push_back(patMuon.isPFMuon());
-			muonIsSoft.push_back(patMuon.isSoftMuon(pvtx));
-			muonIsTight.push_back(patMuon.isTightMuon(pvtx));
-			if (!patMuon.isGlobalMuon() && !patMuon.isTrackerMuon()) { muonIsNotGlobalNorTracker.push_back(true); }
-			else muonIsNotGlobalNorTracker.push_back(false); // just for convenience
-
-			muonIDHas_TMOneStationTight.push_back(patMuon.muonID("TMOneStationTight"));
-			if (patMuon.isGlobalMuon() || patMuon.isTrackerMuon()) {
-				muonInnerTrack_dxy.push_back(patMuon.innerTrack()->dxy());
-				muonInnerTrack_dz.push_back(patMuon.innerTrack()->dz());
-				muonTrackerLayersWithMeasurement.push_back(patMuon.innerTrack()->hitPattern().trackerLayersWithMeasurement());
-				muonPixelLayersWithMeasurement.push_back(patMuon.innerTrack()->hitPattern().pixelLayersWithMeasurement());
-				reco::TrackBase::TrackQuality tq = reco::TrackBase::qualityByName("highPurity");//high purity=2 //see DataFormats/TrackReco/interface/TrackBase.h
-				muonQuality_isHighPurity.push_back(patMuon.innerTrack()->quality(tq));
-			}
-			else
-			{
-				muonInnerTrack_dxy.push_back(-100);
-				muonInnerTrack_dz.push_back(-100);
-				muonTrackerLayersWithMeasurement.push_back(-1);
-				muonPixelLayersWithMeasurement.push_back(-1);
-				muonQuality_isHighPurity.push_back(0);
-			}
-			muon_charge.push_back(patMuon.charge());
-			muon_eta.push_back(patMuon.eta());
-			muon_pt.push_back(patMuon.pt());
-			TLorentzVector muon_p4_aux;
-			muon_p4_aux.SetPtEtaPhiM(patMuon.pt(), patMuon.eta(), patMuon.phi(), patMuon.mass());
-			new ((*muon_p4)[i]) TLorentzVector(muon_p4_aux);
-			// MC generated information
-			if (flag_doMC) {
-				bool muon_isMatchedMC_flag = patMuon.genLepton(); //false for null pointer, true if match exists, from pat::Lepton.h
-				muon_isMatchedMC.push_back(muon_isMatchedMC_flag);
-				if (muon_isMatchedMC_flag) {
-					const reco::GenParticle genMuon = *patMuon.genLepton();
-					muonGen_eta.push_back(genMuon.eta());
-					muonGen_pt.push_back(genMuon.pt());
-					TLorentzVector muonGen_p4_aux;
-					muonGen_p4_aux.SetPtEtaPhiM(genMuon.pt(), genMuon.eta(), genMuon.phi(), genMuon.mass());
-					new ((*muonGen_p4)[i]) TLorentzVector(muonGen_p4_aux);
-					muonGen_rDelta.push_back(reco::deltaR(patMuon, genMuon)); //sqrt(phi^2+eta^2)
-					muonGen_ptDelta.push_back(patMuon.pt() - genMuon.pt());
-					muonGen_ptDeltaRel.push_back((patMuon.pt() - genMuon.pt()) / genMuon.pt()); //defined in the matcher to be divided by genPt //MCTruthMatchers.cc
-				}
-				else { //default values to store if no match - in principle can be ommitted, just for direct looking at branches
-					muonGen_eta.push_back(-5);
-					muonGen_pt.push_back(0);
-					new ((*muonGen_p4)[i]) TLorentzVector(TLorentzVector());
-					muonGen_rDelta.push_back(-5);
-					muonGen_ptDelta.push_back(-5);
-					muonGen_ptDeltaRel.push_back(-5);
-				}
-			}
-
-
-			if (flag_saveExtraThings)
-			{
-				patMuonStored.push_back(patMuon);
-			}
-
-		}
-	}
-	else cout << "Problem with muon handle" << endl;
-
-	////////////////////////
-	////  D I M U O N   ///
-	//////////////////////
-
-	if (dimuon_handle.isValid())
-	{
-		for (uint i = 0; i < dimuon_handle->size(); i++) {
-			const pat::CompositeCandidate& dimuon = dimuon_handle->at(i);
-			TLorentzVector dimuon_p4_aux;
-			dimuon_p4_aux.SetPtEtaPhiM(dimuon.pt(), dimuon.eta(), dimuon.phi(), dimuon.mass());
-			new ((*dimuon_p4)[i]) TLorentzVector(dimuon_p4_aux);
-
-			dimuon_charge.push_back(dimuon.charge());
-			dimuon_eta.push_back(dimuon.eta());
-			dimuon_pt.push_back(dimuon.pt());
-
-			if (flag_saveExtraThings)
-			{
-				dimuonStored.push_back(dimuon);
-			}
-
-			const reco::Vertex* dimuon_recovtx = dimuon.userData<reco::Vertex>("commonVertex");
-			TVector3 dimuon_vtx_aux;
-			dimuon_vtx_aux.SetXYZ(dimuon_recovtx->x(), dimuon_recovtx->y(), dimuon_recovtx->z());
-			new ((*dimuon_vtx)[i]) TVector3(dimuon_vtx_aux);
-			int dimuon_pvtx_index_aux = SelectVertex(primaryVertices_handle, dimuon_recovtx->z());
-			dimuon_pvtx_index.push_back(dimuon_pvtx_index_aux);
-			dimuon_dz_dimuonvtx_pvtx.push_back(dimuon_recovtx->z() - (*primaryVertices_handle.product())[dimuon_pvtx_index_aux].z());
-			dimuon_vtxProb.push_back(dimuon.userFloat("vProb"));
-
-			int muonPos1 = dimuon.userInt("muonPosition1");
-			int muonPos2 = dimuon.userInt("muonPosition2");
-			if (fabs(muon_handle->at(muonPos2).pt() - dimuon.daughter("muon2")->pt()) > 0.01) { cout << "SOMETHING WRONG WITH THE MATCHING FROM DIMUON TO MUON - possibly different muon collections used" << endl; }//muon matching assumes that muon collection going to dimuon producer and here is the same
-			dimuon_muon1_position.push_back(muonPos1);
-			dimuon_muon2_position.push_back(muonPos2);
-			dimuon_ctpv.push_back(dimuon.userFloat("ppdlPV"));
-			dimuon_ctpvError.push_back(dimuon.userFloat("ppdlErrPV"));
-			//cout << "Muon positions  " << muonPos1 << "   " << muonPos2 << endl;
-
-		}
-	}
-	else cout << "Problem with dimuon handle" << endl;
-
-
-
-	// conversions
-
-	if (conversion_handle.isValid())
-	{
-		for (uint i = 0; i < conversion_handle->size(); i++) {
-			const reco::Conversion& candPhoton = conversion_handle->at(i);
-			TLorentzVector conv_p4_aux;
-			conv_p4_aux.SetXYZT(candPhoton.refittedPair4Momentum().x(), candPhoton.refittedPair4Momentum().y(), candPhoton.refittedPair4Momentum().z(), candPhoton.refittedPair4Momentum().t());
-			new ((*conv_p4)[i]) TLorentzVector(conv_p4_aux);
-			conv_eta.push_back(conv_p4_aux.Eta());
-			conv_pt.push_back(conv_p4_aux.Pt());
-
-			convQuality_isHighPurity.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(8))); //8 is high purity, see reco::Conversion Class Reference
-			convQuality_isGeneralTracksOnly.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(0))); //0 is general tracks only, see reco::Conversion Class Reference
-			const reco::Vertex conv_recovtx = candPhoton.conversionVertex();
-			TVector3 conv_vtx_aux;
-			conv_vtx_aux.SetXYZ(conv_recovtx.x(), conv_recovtx.y(), conv_recovtx.z());
-			new ((*conv_vtx)[i]) TVector3(conv_vtx_aux);
-			conv_vertexPositionRho.push_back(candPhoton.conversionVertex().position().rho());
-			bool conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux;
-			double conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux;
-			if (flag_saveExtraThings)
-			{
-				conv_tkVtxCompatibilityOK_test.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), 20, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
-				conv_tkVtxCompatible_bestVertex_test.push_back(conv_tkVtxCompatible_bestVertex_aux);
-				conv_tkVtxCompatible_secondBestVertexA_test.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
-				conv_tkVtxCompatible_secondBestVertexB_test.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
-			}
-			conv_tkVtxCompatibilityOK.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), conv_TkVtxCompSigmaCut, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
-			conv_tkVtxCompatible_bestVertex.push_back(conv_tkVtxCompatible_bestVertex_aux);
-			conv_tkVtxCompatible_secondBestVertexA.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
-			conv_tkVtxCompatible_secondBestVertexB.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
-			conv_sigmaTkVtx1.push_back(conv_sigmaTkVtx1_aux);
-			conv_sigmaTkVtx2.push_back(conv_sigmaTkVtx2_aux);
-
-			if (candPhoton.tracks().size() == 2) {
-				const edm::RefToBase<reco::Track> conv_tk1 = candPhoton.tracks().at(0);
-				const edm::RefToBase<reco::Track> conv_tk2 = candPhoton.tracks().at(1);
-
-				reco::HitPattern hitPatA = conv_tk1->hitPattern();
-				reco::HitPattern hitPatB = conv_tk2->hitPattern();
-				conv_hitPat1.push_back(hitPatA);
-				conv_hitPat2.push_back(hitPatB);
-				conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
-
-				//find vertex that points closest - // right now turned off, the 0 vertex used
-				int closest_pv_index = 0;
-				//int i = 0;
-				//BOOST_FOREACH(const reco::Vertex& vtx, *primaryVertices_handle.product()) {
-					//if (fabs(candPhoton.zOfPrimaryVertexFromTracks(vtx.position()) - vtx.z()) < fabs(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()) - (*primaryVertices_handle.product())[closest_pv_index].z())) { closest_pv_index = i; }
-					//i++;
-				//}
-				conv_zOfPriVtx.push_back((*primaryVertices_handle.product())[closest_pv_index].z());
-				conv_zOfPriVtxFromTracks.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()));
-				conv_dzToClosestPriVtx.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[closest_pv_index].position()) - (*primaryVertices_handle.product())[closest_pv_index].z());
-				// Now check impact parameter wtr with the just found closest primary vertex
-				conv_dxyPriVtx_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[closest_pv_index].position()));
-				conv_dxyPriVtx_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[closest_pv_index].position()));
-				conv_dxyPriVtxTimesCharge_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[closest_pv_index].position())*conv_tk1->charge());
-				conv_dxyPriVtxTimesCharge_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[closest_pv_index].position())*conv_tk2->charge());
-				conv_dxyError_Tr1.push_back(conv_tk1->dxyError());
-				conv_dxyError_Tr2.push_back(conv_tk2->dxyError());
-
-				conv_tk1NumOfDOF.push_back(conv_tk1->ndof());
-				conv_tk2NumOfDOF.push_back(conv_tk2->ndof());
-				conv_track1Chi2.push_back(candPhoton.tracks().at(0)->normalizedChi2());
-				conv_track2Chi2.push_back(candPhoton.tracks().at(1)->normalizedChi2());
-				conv_Tr1_pt.push_back(conv_tk1->pt());
-				conv_Tr2_pt.push_back(conv_tk2->pt());
-
-			}
-			else conv_compatibleInnerHitsOK.push_back(-1);
-
-			conv_vertexChi2Prob.push_back(ChiSquaredProbability(candPhoton.conversionVertex().chi2(), candPhoton.conversionVertex().ndof()));
-			conv_minDistanceOfApproach.push_back(candPhoton.distOfMinimumApproach());
-			//if (candPhoton.distOfMinimumApproach() > -10 && candPhoton.distOfMinimumApproach() < 10) { conv_minDistanceOfApproach = candPhoton.distOfMinimumApproach(); }
-			//else conv_minDistanceOfApproach = 0;
-
-			//MC for conversions
-			if (flag_doMC)
-			{
-				if (genParticles_handle.isValid()) {
-					reco::GenParticle genConv_best = reco::GenParticle();
-					bool conv_isMatchedMC_aux = false;
-					for (uint i = 0; i < genParticles_handle->size(); i++) {
-						const reco::GenParticle& genParticle = genParticles_handle->at(i);
-
-						int pdgId = genParticle.pdgId();
-						if (pdgId != 22) { continue; } //if not photon, don't bother
-						if (genParticle.status() != 1) {
-							//cout << "notStable" << endl;
-							//cout << genParticle.daughter(0)->pdgId() << endl;
-							//cout << "ptdif " << genParticle.daughter(0)->pt() - genParticle.pt() << endl;
-							continue;
-						} //if not stable, don't bother
-
-						bool genParticleMatched = false; //this particular - is it matched?
-						genParticleMatched = Conv_isMatched(candPhoton.refittedPair4Momentum(), genParticle, conv_maxDeltaR, conv_maxDPtRel);
-						if (genParticleMatched == true) {
-							if (conv_isMatchedMC_aux == false) {//first one found
-								conv_isMatchedMC_aux = true;
-								genConv_best = genParticle;
-							}
-							else { //check whether the second match is better by deltaR than the first, save the better one
-								if (reco::deltaR(candPhoton.refittedPair4Momentum(), genConv_best) > reco::deltaR(candPhoton.refittedPair4Momentum(), genParticle)) { genConv_best = genParticle; }
-							}
-						}
-					}
-					if (conv_isMatchedMC_aux) {
-						conv_isMatchedMC.push_back(true);
-						convGen_eta.push_back(genConv_best.eta());
-						convGen_pt.push_back(genConv_best.pt());
-						TLorentzVector convGen_p4_aux;
-						convGen_p4_aux.SetPtEtaPhiM(genConv_best.pt(), genConv_best.eta(), genConv_best.phi(), genConv_best.mass());
-						new ((*convGen_p4)[i]) TLorentzVector(convGen_p4_aux);
-
-						convGen_rDelta.push_back(reco::deltaR(candPhoton.refittedPair4Momentum(), genConv_best)); //sqrt(phi^2+eta^2)
-						convGen_ptDelta.push_back(candPhoton.refittedPair4Momentum().pt() - genConv_best.pt());
-						convGen_ptDeltaRel.push_back((candPhoton.refittedPair4Momentum().pt() - genConv_best.pt()) / genConv_best.pt()); //defined in the matcher to be divided by genPt //MCTruthMatchers.cc
-						convGen_motherCode.push_back(genConv_best.mother()->pdgId());
-					}
-					else { //default values to store if no match - in principle can be ommitted, just for direct looking at branches
-						conv_isMatchedMC.push_back(false);
-						convGen_eta.push_back(-5);
-						convGen_pt.push_back(0);
-						new ((*convGen_p4)[i]) TLorentzVector(TLorentzVector());
-						convGen_rDelta.push_back(-5);
-						convGen_ptDelta.push_back(-5);
-						convGen_ptDeltaRel.push_back(-5);
-						convGen_motherCode.push_back(-1);
-					}
-				}
-				else cout << "Problem with gen handle" << endl;
-			}
-		}
-	}
-	else { cout << "Conversions handle problem" << endl; }
-
-
-
 	event_tree->Fill();
 	Clear();
 
@@ -869,6 +886,7 @@ void ChiRootupler::Clear()
 	muonIsTight.clear();
 	muonIsNotGlobalNorTracker.clear();
 	muonIDHas_TMOneStationTight.clear();
+	muon_pvtx_index.clear();
 	muonInnerTrack_dxy.clear();
 	muonInnerTrack_dz.clear();
 	muonTrackerLayersWithMeasurement.clear();
@@ -908,6 +926,7 @@ void ChiRootupler::Clear()
 	convQuality_isHighPurity.clear();
 	convQuality_isGeneralTracksOnly.clear();
 	conv_vtx->Clear();
+
 	conv_vertexPositionRho.clear();
 	conv_sigmaTkVtx1.clear();
 	conv_sigmaTkVtx2.clear();
@@ -924,6 +943,7 @@ void ChiRootupler::Clear()
 	conv_hitPat1.clear();
 	conv_hitPat2.clear();
 	conv_isCustomHighPurity.clear();
+	conv_pvtx_index.clear();
 	conv_zOfPriVtx.clear();
 	conv_zOfPriVtxFromTracks.clear();
 	conv_dzToClosestPriVtx.clear();

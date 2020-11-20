@@ -3,7 +3,7 @@ from CRABClient.UserUtilities import config
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC5'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC5_v2'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False

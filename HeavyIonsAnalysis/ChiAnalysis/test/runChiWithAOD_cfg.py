@@ -1,6 +1,6 @@
 # To be run on AOD, done by Ota Kukral
 #
-outFileName = 'Chi_c_pPb8TeV_testNew7_2mm.root'
+outFileName = 'Chi_c_pPb8TeV_testNew8.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList

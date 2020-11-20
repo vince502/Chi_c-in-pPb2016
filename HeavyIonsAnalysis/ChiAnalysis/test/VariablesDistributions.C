@@ -36,8 +36,11 @@ double binsConvEffpT[] = { 0.0, 0.1, 0.5, 1.0, 1.5, 2.5, 5.0};
 int  nbinsConvEffpT = sizeof(binsConvEffpT) / sizeof(double) - 1;
 int weird_decay_counter = 0;
 
-//variables
 
+int Trig_Event_HLTDoubleMuOpen;
+
+//variables
+std::vector <bool>* muonIsHLTDoubleMuOpen = 0;
 std::vector <bool>* muonIsGlobal = 0;
 std::vector <bool>* muonIsTracker = 0;
 std::vector <int>* muonTrackerLayersWithMeasurement = 0;
@@ -45,8 +48,21 @@ std::vector <bool>* muonIsSoft = 0;
 std::vector <double>* muon_eta = 0;
 std::vector <double>* muon_pt = 0;
 
-// MC general
+//dimuon
+TClonesArray*  dimuon_p4 = new TClonesArray("TLorentzVector", 100);
+std::vector <double>* dimuon_eta = 0;
+std::vector <double>* dimuon_pt = 0;
+std::vector <double>* dimuon_charge = 0;
+std::vector <int>*  dimuon_pvtx_index = 0;
+std::vector <double>* dimuon_dz_dimuonvtx_pvtx = 0;
+std::vector <double>* dimuon_vtxProb = 0;
+std::vector <int>* dimuon_muon1_position = 0; //stores position of first muon in muon collection 
+std::vector <int>* dimuon_muon2_position = 0; //stores position of second muon in muon collection 
+std::vector <double>* dimuon_ctpv = 0;
+std::vector <double>* dimuon_ctpvError = 0;
 
+
+// MC general
 std::vector <int>* gen_pdgId = 0;
 std::vector <double>* gen_chic_pt = 0;
 std::vector <double>* gen_chic_eta = 0;
@@ -58,7 +74,6 @@ std::vector <int>* gen_Jpsi_nMatches = 0;
 std::vector <double>* gen_Jpsi_rDelta = 0; //in principle duplicates information
 std::vector <double>* gen_Jpsi_ptDeltaRel = 0;//in principle duplicates information
 TClonesArray* gen_Jpsi_p4 = new TClonesArray("TLorentzVector", 100);
-
 std::vector <int>* gen_muon_charge = 0;
 std::vector <int>* gen_muon_nMatches = 0;
 std::vector <int>* gen_muon_matchPosition = 0;
@@ -66,7 +81,6 @@ std::vector <double>* gen_muon_eta = 0;
 std::vector <double>* gen_muon_pt = 0;
 std::vector <double>* gen_muon_rDelta = 0;
 std::vector <double>* gen_muon_ptDeltaRel = 0;
-
 std::vector <double>* gen_phot_pt = 0;
 std::vector <double>* gen_phot_eta = 0;
 std::vector <int>* gen_conv_matchPosition = 0;
@@ -75,16 +89,13 @@ std::vector <double>* gen_conv_rDelta = 0;
 std::vector <double>* gen_conv_ptDeltaRel = 0;
 
 
-
 //// Conversions  /////
-
 std::vector <bool>* convQuality_isHighPurity = 0;
 std::vector <bool>* convQuality_isGeneralTracksOnly = 0;
 std::vector <double>* conv_vertexPositionRho = 0;
 std::vector <double>* conv_sigmaTkVtx1 = 0;
 std::vector <double>* conv_sigmaTkVtx2 = 0;
 std::vector <bool>* conv_tkVtxCompatibilityOK = 0;
-
 std::vector <int>* conv_compatibleInnerHitsOK = 0; //-1: less than 2 tracks, 0: not compatible, 1: yes
 std::vector <double>* conv_vertexChi2Prob = 0;
 std::vector <double>* conv_zOfPriVtx = 0;
@@ -96,7 +107,6 @@ std::vector <double>* conv_dxyPriVtxTimesCharge_Tr1 = 0;
 std::vector <double>* conv_dxyPriVtxTimesCharge_Tr2 = 0;
 std::vector <double>* conv_dxyError_Tr1 = 0;
 std::vector <double>* conv_dxyError_Tr2 = 0;
-
 std::vector <int>* conv_tk1NumOfDOF = 0;
 std::vector <int>* conv_tk2NumOfDOF = 0;
 std::vector <double>* conv_track1Chi2 = 0;
@@ -105,7 +115,6 @@ std::vector <double>* conv_minDistanceOfApproach = 0;
 std::vector <double>* conv_eta = 0;
 std::vector <double>* conv_pt = 0;
 
-
 // chi
 std::vector <double>* chi_eta = 0;
 std::vector <double>* chi_pt = 0;
@@ -113,6 +122,98 @@ std::vector <int>* chi_daughterJpsi_position = 0; //stores position of daughter 
 std::vector <int>* chi_daughterConv_position = 0; //stores position of daughter photon (conversion)
 std::vector <double>* chi_dzPhotToDimuonVtx = 0; //z distance of photon to dimuon vertex when dxy is minimal
 std::vector <double>* chi_dxyPhotToDimuonVtx = 0; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
+
+///////////////////////
+//////   D A T A   ////
+//////////////////////////
+
+int Trig_Event_HLTDoubleMuOpenRD;
+
+//variables
+std::vector <bool>* muonIsHLTDoubleMuOpenRD = 0;
+std::vector <bool>* muonIsGlobalRD = 0;
+std::vector <bool>* muonIsTrackerRD = 0;
+std::vector <int>* muonTrackerLayersWithMeasurementRD = 0;
+std::vector <bool>* muonIsSoftRD = 0;
+std::vector <double>* muon_etaRD = 0;
+std::vector <double>* muon_ptRD = 0;
+
+//dimuon
+TClonesArray*  dimuon_p4RD = new TClonesArray("TLorentzVector", 100);
+std::vector <double>* dimuon_etaRD = 0;
+std::vector <double>* dimuon_ptRD = 0;
+std::vector <double>* dimuon_chargeRD = 0;
+std::vector <int>*  dimuon_pvtx_indexRD = 0;
+std::vector <double>* dimuon_dz_dimuonvtx_pvtxRD = 0;
+std::vector <double>* dimuon_vtxProbRD = 0;
+std::vector <int>* dimuon_muon1_positionRD = 0; //stores position of first muon in muon collection 
+std::vector <int>* dimuon_muon2_positionRD = 0; //stores position of second muon in muon collection 
+std::vector <double>* dimuon_ctpvRD = 0;
+std::vector <double>* dimuon_ctpvErrorRD = 0;
+
+
+// MC general
+std::vector <int>* gen_pdgIdRD = 0;
+std::vector <double>* gen_chic_ptRD = 0;
+std::vector <double>* gen_chic_etaRD = 0;
+TClonesArray* gen_chic_p4RD = new TClonesArray("TLorentzVector", 100);
+std::vector <double>* gen_Jpsi_ptRD = 0;
+std::vector <double>* gen_Jpsi_etaRD = 0;
+std::vector <int>* gen_Jpsi_matchPositionRD = 0;
+std::vector <int>* gen_Jpsi_nMatchesRD = 0;
+std::vector <double>* gen_Jpsi_rDeltaRD = 0; //in principle duplicates information
+std::vector <double>* gen_Jpsi_ptDeltaRelRD = 0;//in principle duplicates information
+TClonesArray* gen_Jpsi_p4RD = new TClonesArray("TLorentzVector", 100);
+std::vector <int>* gen_muon_chargeRD = 0;
+std::vector <int>* gen_muon_nMatchesRD = 0;
+std::vector <int>* gen_muon_matchPositionRD = 0;
+std::vector <double>* gen_muon_etaRD = 0;
+std::vector <double>* gen_muon_ptRD = 0;
+std::vector <double>* gen_muon_rDeltaRD = 0;
+std::vector <double>* gen_muon_ptDeltaRelRD = 0;
+std::vector <double>* gen_phot_ptRD = 0;
+std::vector <double>* gen_phot_etaRD = 0;
+std::vector <int>* gen_conv_matchPositionRD = 0;
+std::vector <int>* gen_conv_nMatchesRD = 0;
+std::vector <double>* gen_conv_rDeltaRD = 0;
+std::vector <double>* gen_conv_ptDeltaRelRD = 0;
+
+
+//// Conversions  /////
+std::vector <bool>* convQuality_isHighPurityRD = 0;
+std::vector <bool>* convQuality_isGeneralTracksOnlyRD = 0;
+std::vector <double>* conv_vertexPositionRhoRD = 0;
+std::vector <double>* conv_sigmaTkVtx1RD = 0;
+std::vector <double>* conv_sigmaTkVtx2RD = 0;
+std::vector <bool>* conv_tkVtxCompatibilityOKRD = 0;
+std::vector <int>* conv_compatibleInnerHitsOKRD = 0; //-1: less than 2 tracks, 0: not compatible, 1: yes
+std::vector <double>* conv_vertexChi2ProbRD = 0;
+std::vector <double>* conv_zOfPriVtxRD = 0;
+std::vector <double>* conv_zOfPriVtxFromTracksRD = 0;
+std::vector <double>* conv_dzToClosestPriVtxRD = 0;
+std::vector <double>* conv_dxyPriVtx_Tr1RD = 0;
+std::vector <double>* conv_dxyPriVtx_Tr2RD = 0;
+std::vector <double>* conv_dxyPriVtxTimesCharge_Tr1RD = 0;
+std::vector <double>* conv_dxyPriVtxTimesCharge_Tr2RD = 0;
+std::vector <double>* conv_dxyError_Tr1RD = 0;
+std::vector <double>* conv_dxyError_Tr2RD = 0;
+std::vector <int>* conv_tk1NumOfDOFRD = 0;
+std::vector <int>* conv_tk2NumOfDOFRD = 0;
+std::vector <double>* conv_track1Chi2RD = 0;
+std::vector <double>* conv_track2Chi2RD = 0;
+std::vector <double>* conv_minDistanceOfApproachRD = 0;
+std::vector <double>* conv_etaRD = 0;
+std::vector <double>* conv_ptRD = 0;
+
+// chi
+std::vector <double>* chi_etaRD = 0;
+std::vector <double>* chi_ptRD = 0;
+std::vector <int>* chi_daughterJpsi_positionRD = 0; //stores position of daughter Jpsi in dimuon collection
+std::vector <int>* chi_daughterConv_positionRD = 0; //stores position of daughter photon (conversion)
+std::vector <double>* chi_dzPhotToDimuonVtxRD = 0; //z distance of photon to dimuon vertex when dxy is minimal
+std::vector <double>* chi_dxyPhotToDimuonVtxRD = 0; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
+
+
 
 
 
@@ -132,11 +233,19 @@ bool PhotAcceptance(double eta, double pt)
 	return true;
 }
 
+bool MuonSelectionPass(int muonPos)  //uses variables loaded in main function
+{
+	if (muonIsSoft->at(muonPos) != 1) return false;
+	if (muonIsHLTDoubleMuOpen->at(muonPos) != 1) return false;
+	return true;
+}
+
 bool MuonSelectionPassMC(int muonPos)  //uses variables loaded in main function
 {
 	int matchPosition = gen_muon_matchPosition->at(muonPos);
 	if (matchPosition < -0.5) return false; //not matched
 	if (muonIsSoft->at(matchPosition) != 1) return false;
+	if (muonIsHLTDoubleMuOpen->at(matchPosition) != 1) return false;
 	return true;
 }
 
@@ -165,6 +274,51 @@ bool PhotSelectionPassMC(int photPos)  //uses variables loaded in main function
 }
 
 
+
+bool PhotSelectionNMinusOne(int photPos, int selToSkip)  //uses variables loaded in main function
+{
+	if (photPos < -0.5) return false; //not matched
+	if (selToSkip != 1 && convQuality_isHighPurity->at(photPos) != 1) return false;
+	if (selToSkip != 2 && convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
+	if (selToSkip != 3 && conv_vertexPositionRho->at(photPos) <= 1.5) return false;
+	if (selToSkip != 4 && conv_sigmaTkVtx1->at(photPos) > 10) return false;
+	if (selToSkip != 5 && conv_sigmaTkVtx2->at(photPos) > 10) return false;
+	if (selToSkip != 6 && conv_tkVtxCompatibilityOK->at(photPos) != 1) return false;
+	if (selToSkip != 7 && conv_compatibleInnerHitsOK->at(photPos) != 1) return false;
+	if (selToSkip != 8 && conv_vertexChi2Prob->at(photPos) <= 0.01) return false;
+	//if (fabs(conv_zOfPriVtx->at(photPos)) >= 20) return false;
+	if (selToSkip != 9 && fabs(conv_dzToClosestPriVtx->at(photPos)) >= 10) return false;
+	if (selToSkip != 10 && conv_tk1NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToSkip != 11 && conv_tk2NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToSkip != 12 && conv_track1Chi2->at(photPos) >= 10) return false;
+	if (selToSkip != 13 && conv_track2Chi2->at(photPos) >= 10) return false;
+	if (selToSkip != 14 && conv_minDistanceOfApproach->at(photPos) <= -0.25) return false;
+	if (selToSkip != 15 && conv_minDistanceOfApproach->at(photPos) >= 1.00) return false;
+	return true;
+}
+
+bool PhotSelectionSingle(int photPos, int selToDo)  //uses variables loaded in main function
+{
+	if (photPos < -0.5) return false; //not matched
+	if (selToDo == 1 && convQuality_isHighPurity->at(photPos) != 1) return false;
+	if (selToDo == 2 && convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
+	if (selToDo == 3 && conv_vertexPositionRho->at(photPos) <= 1.5) return false;
+	if (selToDo == 4 && conv_sigmaTkVtx1->at(photPos) > 10) return false;
+	if (selToDo == 5 && conv_sigmaTkVtx2->at(photPos) > 10) return false;
+	if (selToDo == 6 && conv_tkVtxCompatibilityOK->at(photPos) != 1) return false;
+	if (selToDo == 7 && conv_compatibleInnerHitsOK->at(photPos) != 1) return false;
+	if (selToDo == 8 && conv_vertexChi2Prob->at(photPos) <= 0.01) return false;
+	//if (fabs(conv_zOfPriVtx->at(photPos)) >= 20) return false;
+	if (selToDo == 9 && fabs(conv_dzToClosestPriVtx->at(photPos)) >= 10) return false;
+	if (selToDo == 10 && conv_tk1NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToDo == 11 && conv_tk2NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToDo == 12 && conv_track1Chi2->at(photPos) >= 10) return false;
+	if (selToDo == 13 && conv_track2Chi2->at(photPos) >= 10) return false;
+	if (selToDo == 14 && conv_minDistanceOfApproach->at(photPos) <= -0.25) return false;
+	if (selToDo == 15 && conv_minDistanceOfApproach->at(photPos) >= 1.00) return false;
+	return true;
+}
+
 bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main function
 {
 	int matchPosition = gen_conv_matchPosition->at(photPos);
@@ -189,15 +343,30 @@ bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main func
 	return true;
 }
 
+bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main function
+{
+	if (dimuon_charge->at(dimuonPos) != 0) return false;
+	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
+	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	return true;
+}
 
-int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const char* fileOut = "Chi_c_distributionsMC5.root")
+bool DimuonSelectionPassMC(int dimuonPos)  //uses variables loaded in main function
+{
+	int matchPosition = gen_Jpsi_matchPosition->at(dimuonPos);
+	if (matchPosition < -0.5) return false; //not matched
+	if (dimuon_charge->at(matchPosition) != 0) return false;
+	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
+	if (dimuon_vtxProb->at(matchPosition) < 0.01) return false;
+	return true;
+}
+
+
+int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", const char* fileInRD = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-bothDirRW2.root", const char* fileOut = "Chi_c_distributionsMC5Tests.root")
 {
 	gStyle->SetOptStat(1111);
 	gROOT->ProcessLine("#include <vector>");
 
-	//TH2F* hdxy_dz = new TH2F("hdxy_dz", "pt vs abseta", 250, 0, 2.5, 200, 0, 50);
-	//TH1D* hSignal = new TH1D("hSignal", "", 600, 3, 6);
-	//TH1D* hSignal = new TH1D("hSignal", "", 120, 3.2, 3.8);
 	TH1D* h_muon_ptRel1 = new TH1D("h_muon_ptRel1", "deltaPtRel from matching", 100, 0.0, 0.5);
 	TH1D* h_muon_ptRel2 = new TH1D("h_muon_ptRel2", "deltaPtRel by hand", 100, 0.0, 0.5);
 
@@ -212,14 +381,16 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 
 
 	//conversions
-	TH1I* h_convQuality_isHighPurity = new TH1I("h_convQuality_isHighPurity", "h_convQuality_isHighPurity", 2, 0, 2);
-	TH1I* h_convQuality_isGeneralTracksOnly = new TH1I("h_convQuality_isGeneralTracksOnly", "h_convQuality_isGeneralTracksOnly", 2, 0, 2);
+	const char* hname = "h_convQuality_isHighPurity";
+	TH1D* h_convQuality_isHighPurity = new TH1D(hname, hname, 2, 0, 2);
+	//TH1D* h_convQuality_isHighPurity = new TH1D("h_convQuality_isHighPurity", "h_convQuality_isHighPurity", 2, 0, 2);
+	TH1D* h_convQuality_isGeneralTracksOnly = new TH1D("h_convQuality_isGeneralTracksOnly", "h_convQuality_isGeneralTracksOnly", 2, 0, 2);
 	TH1D* h_conv_vertexPositionRho = new TH1D("h_conv_vertexPositionRho", "h_conv_vertexPositionRho", 200, 0, 100);
 	TH1D* h_conv_sigmaTkVtx1 = new TH1D("h_conv_sigmaTkVtx1", "h_conv_sigmaTkVtx1", 200, 0, 100);
 	TH1D* h_conv_sigmaTkVtx2 = new TH1D("h_conv_sigmaTkVtx2", "h_conv_sigmaTkVtx2", 200, 0, 100);
-	TH1I* h_conv_tkVtxCompatibilityOK = new TH1I("h_conv_tkVtxCompatibilityOK", "h_conv_tkVtxCompatibilityOK", 2, 0, 2);
+	TH1D* h_conv_tkVtxCompatibilityOK = new TH1D("h_conv_tkVtxCompatibilityOK", "h_conv_tkVtxCompatibilityOK", 2, 0, 2);
 
-	TH1I* h_conv_compatibleInnerHitsOK = new TH1I("h_conv_compatibleInnerHitsOK", "h_conv_compatibleInnerHitsOK", 3, -1, 2); //-1: less than 2 tracks, 0: not compatible, 1: yes
+	TH1D* h_conv_compatibleInnerHitsOK = new TH1D("h_conv_compatibleInnerHitsOK", "h_conv_compatibleInnerHitsOK", 3, -1, 2); //-1: less than 2 tracks, 0: not compatible, 1: yes
 	TH1D* h_conv_vertexChi2Prob = new TH1D("h_conv_vertexChi2Prob", "h_conv_vertexChi2Prob", 200, 0, 1);
 	TH1D* h_conv_zOfPriVtx = new TH1D("h_conv_zOfPriVtx", "h_conv_zOfPriVtx", 240, -60, 60);
 	TH1D* h_conv_zOfPriVtxFromTracks = new TH1D("h_conv_zOfPriVtxFromTracks", "h_conv_zOfPriVtxFromTracks", 240, -60, 60);
@@ -231,8 +402,8 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 	TH1D* h_conv_dxyError_Tr1 = new TH1D("h_conv_dxyError_Tr1", "h_conv_dxyError_Tr1", 200, 0, 10);
 	TH1D* h_conv_dxyError_Tr2 = new TH1D("h_conv_dxyError_Tr2", "h_conv_dxyError_Tr2", 200, 0, 10);
 
-	TH1I* h_conv_tk1NumOfDOF = new TH1I("h_conv_tk1NumOfDOF", "h_conv_tk1NumOfDOF", 70, 0, 70);
-	TH1I* h_conv_tk2NumOfDOF = new TH1I("h_conv_tk2NumOfDOF", "h_conv_tk2NumOfDOF", 70, 0, 70);
+	TH1D* h_conv_tk1NumOfDOF = new TH1D("h_conv_tk1NumOfDOF", "h_conv_tk1NumOfDOF", 70, 0, 70);
+	TH1D* h_conv_tk2NumOfDOF = new TH1D("h_conv_tk2NumOfDOF", "h_conv_tk2NumOfDOF", 70, 0, 70);
 	TH1D* h_conv_track1Chi2 = new TH1D("h_conv_track1Chi2", "h_conv_track1Chi2", 400, 0, 40);
 	TH1D* h_conv_track2Chi2 = new TH1D("h_conv_track2Chi2", "h_conv_track2Chi2", 400, 0, 40);
 	TH1D* h_conv_minDistanceOfApproach = new TH1D("h_conv_minDistanceOfApproach", "h_conv_minDistanceOfApproach", 400, -2, 2);
@@ -247,71 +418,23 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 	TH1D* h_gen_conv_ptDeltaRel = new TH1D("h_gen_conv_ptDeltaRel", "h_gen_conv_ptDeltaRel", 200, -1, 1);
 
 
+	// Conversion study
+	TH1D* hConversionCutsInAcc[16];
+	//char*[16] 
 
-	// ACCEPTANCE
-	TH2D* h_muonAcceptance2D_den = new TH2D("h_muonAcceptance2D_den", "h_muonAcceptance2D_den; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_muonAcceptance2D_num = new TH2D("h_muonAcceptance2D_num", "h_muonAcceptance2D_num; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_muonAcceptance2D_rat = new TH2D("h_muonAcceptance2D_rat", "h_muonAcceptance2D_rat; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_photAcceptance2D_den = new TH2D("h_photAcceptance2D_den", "h_photAcceptance2D_den; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_photAcceptance2D_num = new TH2D("h_photAcceptance2D_num", "h_photAcceptance2D_num; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_photAcceptance2D_rat = new TH2D("h_photAcceptance2D_rat", "h_photAcceptance2D_rat; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_JpsiAcceptance2D_den = new TH2D("h_JpsiAcceptance2D_den", "h_JpsiAcceptance2D_den; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_JpsiAcceptance2D_num = new TH2D("h_JpsiAcceptance2D_num", "h_JpsiAcceptance2D_num; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_JpsiAcceptance2D_rat = new TH2D("h_JpsiAcceptance2D_rat", "h_JpsiAcceptance2D_rat; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_JpsiAcceptance2D_y_den = new TH2D("h_JpsiAcceptance2D_y_den", "h_JpsiAcceptance2D_y_den; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_JpsiAcceptance2D_y_num = new TH2D("h_JpsiAcceptance2D_y_num", "h_JpsiAcceptance2D_y_num; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_JpsiAcceptance2D_y_rat = new TH2D("h_JpsiAcceptance2D_y_rat", "h_JpsiAcceptance2D_y_rat; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_den = new TH2D("h_chiAcceptance2D_den", "h_chiAcceptance2D_den; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_num = new TH2D("h_chiAcceptance2D_num", "h_chiAcceptance2D_num; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_rat = new TH2D("h_chiAcceptance2D_rat", "h_chiAcceptance2D_rat; #eta; p_{T}", 60, -6, 6, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_y_den = new TH2D("h_chiAcceptance2D_y_den", "h_chiAcceptance2D_y_den; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_y_num = new TH2D("h_chiAcceptance2D_y_num", "h_chiAcceptance2D_y_num; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_chiAcceptance2D_y_rat = new TH2D("h_chiAcceptance2D_y_rat", "h_chiAcceptance2D_y_rat; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	// EFFICIENCY
-	TH2D* h_muonEfficiency2D_den = new TH2D("h_muonEfficiency2D_den", "h_muonEfficiency2D_den; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_muonEfficiency2D_num = new TH2D("h_muonEfficiency2D_num", "h_muonEfficiency2D_num; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_muonEfficiency2D_rat = new TH2D("h_muonEfficiency2D_rat", "h_muonEfficiency2D_rat; #eta; p_{T}", 60, -3.0, 3.0, 100, 0, 10);
-	TH2D* h_photEfficiency2D_den = new TH2D("h_photEfficiency2D_den", "h_photEfficiency2D_den; #eta; p_{T}", 10, -3.0, 3.0, nbinsConvEffpT, binsConvEffpT);
-	TH2D* h_photEfficiency2D_num = new TH2D("h_photEfficiency2D_num", "h_photEfficiency2D_num; #eta; p_{T}", 10, -3.0, 3.0, nbinsConvEffpT, binsConvEffpT);
-	TH2D* h_photEfficiency2D_rat = new TH2D("h_photEfficiency2D_rat", "h_photEfficiency2D_rat; #eta; p_{T}", 10, -3.0, 3.0, nbinsConvEffpT, binsConvEffpT);
-	TH2D* h_JpsiEfficiency2D_y_den = new TH2D("h_JpsiEfficiency2D_y_den", "h_JpsiEfficiency2D_y_den; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_JpsiEfficiency2D_y_num = new TH2D("h_JpsiEfficiency2D_y_num", "h_JpsiEfficiency2D_y_num; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_JpsiEfficiency2D_y_rat = new TH2D("h_JpsiEfficiency2D_y_rat", "h_JpsiEfficiency2D_y_rat; y_{lab}; p_{T}", 60, -3.0, 3.0, 100, 0, 20);
-	TH2D* h_chiEfficiency2D_y_den = new TH2D("h_chiEfficiency2D_y_den", "h_chiEfficiency2D_y_den; y_{lab}; p_{T}", 10, -3.0, 3.0, nbinsChiEffpT, binsChiEffpT);
-	TH2D* h_chiEfficiency2D_y_num = new TH2D("h_chiEfficiency2D_y_num", "h_chiEfficiency2D_y_num; y_{lab}; p_{T}", 10, -3.0, 3.0, nbinsChiEffpT, binsChiEffpT);
-	TH2D* h_chiEfficiency2D_y_rat = new TH2D("h_chiEfficiency2D_y_rat", "h_chiEfficiency2D_y_rat; y_{lab}; p_{T}", 10, -3.0, 3.0, nbinsChiEffpT, binsChiEffpT);
+	
 
-	TH1D* h_photEfficiency1D_den = new TH1D("h_photEfficiency1D_den", "h_photEfficiency1D_den; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_photEfficiency1D_num = new TH1D("h_photEfficiency1D_num", "h_photEfficiency1D_num; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_photEfficiency1D_rat = new TH1D("h_photEfficiency1D_rat", "h_photEfficiency1D_rat; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_photEfficiency1D_relative_den = new TH1D("h_photEfficiency1D_relative_den", "h_photEfficiency1D_relative_den; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_photEfficiency1D_relative_num = new TH1D("h_photEfficiency1D_relative_num", "h_photEfficiency1D_relative_num; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_photEfficiency1D_relative_rat = new TH1D("h_photEfficiency1D_relative_rat", "h_photEfficiency1D_relative_rat; p_{T}", nbinsConvEffpT, binsConvEffpT);
-	TH1D* h_JpsiEfficiency1D_den = new TH1D("h_JpsiEfficiency1D_den", "h_JpsiEfficiency1D_den; p_{T}", 100, 0, 20);
-	TH1D* h_JpsiEfficiency1D_num = new TH1D("h_JpsiEfficiency1D_num", "h_JpsiEfficiency1D_num; p_{T}", 100, 0, 20);
-	TH1D* h_JpsiEfficiency1D_rat = new TH1D("h_JpsiEfficiency1D_rat", "h_JpsiEfficiency1D_rat; p_{T}", 100, 0, 20);
-	TH1D* h_chiEfficiency1D_den = new TH1D("h_chiEfficiency1D_den", "h_chiEfficiency1D_den; p_{T}", nbinsChiEffpT, binsChiEffpT);
-	TH1D* h_chiEfficiency1D_num = new TH1D("h_chiEfficiency1D_num", "h_chiEfficiency1D_num; p_{T}", nbinsChiEffpT, binsChiEffpT);
-	TH1D* h_chiEfficiency1D_rat = new TH1D("h_chiEfficiency1D_rat", "h_chiEfficiency1D_rat; p_{T}", nbinsChiEffpT, binsChiEffpT);
+	TFile* fMC = new TFile(fileInMC, "READ");
 
 
-	TFile* f1 = new TFile(fileIn, "READ");
-
-	//double Mdiff, dimuonVertexP, EHF_trans;
-	//TLorentzVector* LVchic, *LVdimuon, *LVphoton, *LVmuonP, *LVmuonN;
-	//TVector3* V3primaryV, *V3secondaryV;
-	//int trig;
-
-
-
-
-	TTree* event_tree = (TTree*)f1->Get("ChiRootuple/event_tree");
+	TTree* event_tree = (TTree*)fMC->Get("ChiRootuple/event_tree");
 	if (!event_tree) { 
 		cout << "Problem with event Tree";
 		return 1;
 	}
 
-
+	event_tree->SetBranchAddress("Trig_Event_HLTDoubleMuOpen", &Trig_Event_HLTDoubleMuOpen);
+	event_tree->SetBranchAddress("muonIsHLTDoubleMuOpen", &muonIsHLTDoubleMuOpen);
 	event_tree->SetBranchAddress("muonIsGlobal", &muonIsGlobal);
 	event_tree->SetBranchAddress("muonIsTracker", &muonIsTracker);
 	event_tree->SetBranchAddress("muonIsSoft", &muonIsSoft);
@@ -320,7 +443,17 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 	event_tree->SetBranchAddress("muon_eta", &muon_eta);
 	event_tree->SetBranchAddress("muon_pt", &muon_pt);
 	
-	
+	event_tree->SetBranchAddress("dimuon_p4", &dimuon_p4);
+	event_tree->SetBranchAddress("dimuon_eta", &dimuon_eta);
+	event_tree->SetBranchAddress("dimuon_pt", &dimuon_pt);
+	event_tree->SetBranchAddress("dimuon_charge", &dimuon_charge);
+	event_tree->SetBranchAddress("dimuon_pvtx_index", &dimuon_pvtx_index);
+	event_tree->SetBranchAddress("dimuon_dz_dimuonvtx_pvtx", &dimuon_dz_dimuonvtx_pvtx);
+	event_tree->SetBranchAddress("dimuon_vtxProb", &dimuon_vtxProb);
+	event_tree->SetBranchAddress("dimuon_muon1_position", &dimuon_muon1_position);
+	event_tree->SetBranchAddress("dimuon_muon2_position", &dimuon_muon2_position);
+	event_tree->SetBranchAddress("dimuon_ctpv", &dimuon_ctpv);
+	event_tree->SetBranchAddress("dimuon_ctpvError", &dimuon_ctpvError);
 	
 	// MC
 
@@ -349,9 +482,6 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 	event_tree->SetBranchAddress("gen_conv_nMatches", &gen_conv_nMatches);
 	event_tree->SetBranchAddress("gen_conv_rDelta", &gen_conv_rDelta);
 	event_tree->SetBranchAddress("gen_conv_ptDeltaRel", &gen_conv_ptDeltaRel);
-
-
-
 
 	//Conversions
 	event_tree->SetBranchAddress("convQuality_isHighPurity", &convQuality_isHighPurity);
@@ -402,6 +532,7 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 
 		//cout << "here" << endl;
 		if (i % 10000 == 0) { cout << "event: " << i << " done: " << 100 * i / nentries << "%" << endl; }
+
 
 		//in the latest MC, a few chic decay weirdly (no phot, or no J/psi) - skip those
 		if (gen_Jpsi_pt->size() != 1 || gen_muon_pt->size() != 2 || gen_phot_pt->size() != 1)
@@ -478,70 +609,96 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 			h_gen_conv_ptDeltaRel->Fill(gen_conv_ptDeltaRel->at(0));
 
 		}
-		//Chic part
-		// ACCEPTANCE
-		double eta1 = gen_muon_eta->at(0);
-		double pt1 = gen_muon_pt->at(0);
-		double eta2 = gen_muon_eta->at(1);
-		double pt2 = gen_muon_pt->at(1);
-		h_muonAcceptance2D_den->Fill(eta1, pt1);
-		h_muonAcceptance2D_den->Fill(eta2, pt2);
-		if (MuonAcceptance(eta1, pt1) == true) h_muonAcceptance2D_num->Fill(eta1, pt1);
-		if (MuonAcceptance(eta2, pt2) == true) h_muonAcceptance2D_num->Fill(eta2, pt2);
-		double eta_phot = gen_phot_eta->at(0);
-		double pt_phot = gen_phot_pt->at(0);
-		h_photAcceptance2D_den->Fill(eta_phot, pt_phot);
-		if (PhotAcceptance(eta_phot, pt_phot) == true) h_photAcceptance2D_num->Fill(eta_phot, pt_phot);
-		double eta_Jpsi = gen_Jpsi_eta->at(0);
-		double pt_Jpsi = gen_Jpsi_pt->at(0);
-		h_JpsiAcceptance2D_den->Fill(eta_Jpsi, pt_Jpsi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true) h_JpsiAcceptance2D_num->Fill(eta_Jpsi, pt_Jpsi);
-		TLorentzVector* LVJpsi = (TLorentzVector*)gen_Jpsi_p4->At(0);
-		h_JpsiAcceptance2D_y_den->Fill(LVJpsi->Rapidity(), pt_Jpsi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_JpsiAcceptance2D_y_num->Fill(LVJpsi->Rapidity(), pt_Jpsi);
 
-		double eta_chi = gen_chic_eta->at(0);
-		double pt_chi = gen_chic_pt->at(0);
-		h_chiAcceptance2D_den->Fill(eta_chi, pt_chi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot)==true) h_chiAcceptance2D_num->Fill(eta_chi, pt_chi);
-		TLorentzVector* LVchic = (TLorentzVector*)gen_chic_p4->At(0);
-		h_chiAcceptance2D_y_den->Fill(LVchic->Rapidity(), pt_chi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_chiAcceptance2D_y_num->Fill(LVchic->Rapidity(), pt_chi);
+		////   N-1 EFFICIENCIES
+		//double eta1 = gen_muon_eta->at(0);
+		//double pt1 = gen_muon_pt->at(0);
+		//double eta2 = gen_muon_eta->at(1);
+		//double pt2 = gen_muon_pt->at(1);
+		//double eta_phot = gen_phot_eta->at(0);
+		//double pt_phot = gen_phot_pt->at(0);
+		//// acceptance and selection for muons, etc.
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true)
+		//{
 
-		// EFFICIENCY
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) //do only if everything in acceptance
-		{
-			h_muonEfficiency2D_den->Fill(eta1, pt1);
-			h_muonEfficiency2D_den->Fill(eta2, pt2);
-			if (MuonSelectionPassMC(0) == true) h_muonEfficiency2D_num->Fill(eta1, pt1);
-			if (MuonSelectionPassMC(1) == true) h_muonEfficiency2D_num->Fill(eta2, pt2);
+		//	for (int sel = 1; sel < 16; sel++)
+		//	{
+		//		PhotSelectionNMinusOne(int photPos, int selToSkip)
+		//	}
+		//}
 
-			h_photEfficiency2D_den->Fill(eta_phot, pt_phot);
-			h_photEfficiency1D_den->Fill(pt_phot);
-			if (PhotSelectionPassMC(0) == true) {
-				h_photEfficiency2D_num->Fill(eta_phot, pt_phot);
-				h_photEfficiency1D_num->Fill(pt_phot);
-				h_photEfficiency1D_relative_num->Fill(pt_phot);
 
-			}
-			if (PhotSelectionPassMCLoose(0) == true) {
-				h_photEfficiency1D_relative_den->Fill(pt_phot);
-			}
 
-			h_JpsiEfficiency2D_y_den->Fill(LVJpsi->Rapidity(), pt_Jpsi);
-			h_JpsiEfficiency1D_den->Fill(pt_Jpsi);
-			if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true) {
-				h_JpsiEfficiency2D_y_num->Fill(LVJpsi->Rapidity(), pt_Jpsi);
-				h_JpsiEfficiency1D_num->Fill(pt_Jpsi);
-			}
-			h_chiEfficiency2D_y_den->Fill(LVchic->Rapidity(), pt_chi);
-			h_chiEfficiency1D_den->Fill(pt_chi);
-			if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && PhotSelectionPassMC(0) == true) {
-				h_chiEfficiency2D_y_num->Fill(LVchic->Rapidity(), pt_chi);
-				h_chiEfficiency1D_num->Fill(pt_chi);
-			}
-		}
 
+
+
+
+
+
+
+		////Chic part
+		//// ACCEPTANCE
+		//double eta1 = gen_muon_eta->at(0);
+		//double pt1 = gen_muon_pt->at(0);
+		//double eta2 = gen_muon_eta->at(1);
+		//double pt2 = gen_muon_pt->at(1);
+		//h_muonAcceptance2D_den->Fill(eta1, pt1);
+		//h_muonAcceptance2D_den->Fill(eta2, pt2);
+		//if (MuonAcceptance(eta1, pt1) == true) h_muonAcceptance2D_num->Fill(eta1, pt1);
+		//if (MuonAcceptance(eta2, pt2) == true) h_muonAcceptance2D_num->Fill(eta2, pt2);
+		//double eta_phot = gen_phot_eta->at(0);
+		//double pt_phot = gen_phot_pt->at(0);
+		//h_photAcceptance2D_den->Fill(eta_phot, pt_phot);
+		//if (PhotAcceptance(eta_phot, pt_phot) == true) h_photAcceptance2D_num->Fill(eta_phot, pt_phot);
+		//double eta_Jpsi = gen_Jpsi_eta->at(0);
+		//double pt_Jpsi = gen_Jpsi_pt->at(0);
+		//h_JpsiAcceptance2D_den->Fill(eta_Jpsi, pt_Jpsi);
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true) h_JpsiAcceptance2D_num->Fill(eta_Jpsi, pt_Jpsi);
+		//TLorentzVector* LVJpsi = (TLorentzVector*)gen_Jpsi_p4->At(0);
+		//h_JpsiAcceptance2D_y_den->Fill(LVJpsi->Rapidity(), pt_Jpsi);
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_JpsiAcceptance2D_y_num->Fill(LVJpsi->Rapidity(), pt_Jpsi);
+
+		//double eta_chi = gen_chic_eta->at(0);
+		//double pt_chi = gen_chic_pt->at(0);
+		//h_chiAcceptance2D_den->Fill(eta_chi, pt_chi);
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot)==true) h_chiAcceptance2D_num->Fill(eta_chi, pt_chi);
+		//TLorentzVector* LVchic = (TLorentzVector*)gen_chic_p4->At(0);
+		//h_chiAcceptance2D_y_den->Fill(LVchic->Rapidity(), pt_chi);
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_chiAcceptance2D_y_num->Fill(LVchic->Rapidity(), pt_chi);
+
+		//// EFFICIENCY
+		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) //do only if everything in acceptance
+		//{
+		//	h_muonEfficiency2D_den->Fill(eta1, pt1);
+		//	h_muonEfficiency2D_den->Fill(eta2, pt2);
+		//	if (MuonSelectionPassMC(0) == true) h_muonEfficiency2D_num->Fill(eta1, pt1);
+		//	if (MuonSelectionPassMC(1) == true) h_muonEfficiency2D_num->Fill(eta2, pt2);
+		//	h_photEfficiency2D_den->Fill(eta_phot, pt_phot);
+		//	h_photEfficiency1D_den->Fill(pt_phot);
+		//	if (PhotSelectionPassMC(0) == true) {
+		//		h_photEfficiency2D_num->Fill(eta_phot, pt_phot);
+		//		h_photEfficiency1D_num->Fill(pt_phot);
+		//		h_photEfficiency1D_relative_num->Fill(pt_phot);
+
+		//	}
+		//	if (PhotSelectionPassMCLoose(0) == true) {
+		//		h_photEfficiency1D_relative_den->Fill(pt_phot);
+		//	}
+
+		//	h_JpsiEfficiency2D_y_den->Fill(LVJpsi->Rapidity(), pt_Jpsi);
+		//	h_JpsiEfficiency1D_den->Fill(pt_Jpsi);
+		//	if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && DimuonSelectionPassMC(0)==true) {
+		//		h_JpsiEfficiency2D_y_num->Fill(LVJpsi->Rapidity(), pt_Jpsi);
+		//		h_JpsiEfficiency1D_num->Fill(pt_Jpsi);
+		//	}
+
+		//	h_chiEfficiency2D_y_den->Fill(LVchic->Rapidity(), pt_chi);
+		//	h_chiEfficiency1D_den->Fill(pt_chi);
+		//	if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && DimuonSelectionPassMC(0) == true && PhotSelectionPassMC(0) == true) {
+		//		h_chiEfficiency2D_y_num->Fill(LVchic->Rapidity(), pt_chi);
+		//		h_chiEfficiency1D_num->Fill(pt_chi);
+		//	}
+		//}
 
 
 
@@ -551,32 +708,6 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 
 	cout << "weird decays: " << weird_decay_counter << "  out of  " << nentries << endl;
 
-
-	h_muonAcceptance2D_rat->Divide(h_muonAcceptance2D_num, h_muonAcceptance2D_den);
-	h_photAcceptance2D_rat->Divide(h_photAcceptance2D_num, h_photAcceptance2D_den);
-	h_JpsiAcceptance2D_rat->Divide(h_JpsiAcceptance2D_num, h_JpsiAcceptance2D_den);
-	h_JpsiAcceptance2D_y_rat->Divide(h_JpsiAcceptance2D_y_num, h_JpsiAcceptance2D_y_den);
-	h_chiAcceptance2D_rat->Divide(h_chiAcceptance2D_num, h_chiAcceptance2D_den);
-	h_chiAcceptance2D_y_rat->Divide(h_chiAcceptance2D_y_num, h_chiAcceptance2D_y_den);
-
-	h_muonEfficiency2D_rat->Divide(h_muonEfficiency2D_num, h_muonEfficiency2D_den);
-	h_photEfficiency2D_rat->Divide(h_photEfficiency2D_num, h_photEfficiency2D_den);
-	h_JpsiEfficiency2D_y_rat->Divide(h_JpsiEfficiency2D_y_num, h_JpsiEfficiency2D_y_den);
-	h_chiEfficiency2D_y_rat->Divide(h_chiEfficiency2D_y_num, h_chiEfficiency2D_y_den);
-
-	h_photEfficiency1D_num->Sumw2();
-	h_photEfficiency1D_den->Sumw2();
-	h_photEfficiency1D_relative_num->Sumw2();
-	h_photEfficiency1D_relative_den->Sumw2();
-	h_JpsiEfficiency1D_num->Sumw2();
-	h_JpsiEfficiency1D_den->Sumw2();
-	h_chiEfficiency1D_num->Sumw2();
-	h_chiEfficiency1D_den->Sumw2();
-
-	h_photEfficiency1D_rat->Divide(h_photEfficiency1D_num, h_photEfficiency1D_den, 1, 1, "B");
-	h_photEfficiency1D_relative_rat->Divide(h_photEfficiency1D_relative_num, h_photEfficiency1D_relative_den, 1, 1, "B");
-	h_JpsiEfficiency1D_rat->Divide(h_JpsiEfficiency1D_num, h_JpsiEfficiency1D_den, 1, 1, "B");
-	h_chiEfficiency1D_rat->Divide(h_chiEfficiency1D_num, h_chiEfficiency1D_den, 1, 1, "B");
 
 	
 	//TCanvas* can1 = new TCanvas("can1", "plot", 1200, 800);
@@ -640,52 +771,9 @@ int VariablesDistributions(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const
 	h_gen_conv_rDelta->Write();
 	h_gen_conv_ptDeltaRel->Write();
 
-	h_muonAcceptance2D_den->Write();
-	h_muonAcceptance2D_num->Write();
-	h_muonAcceptance2D_rat->Write();
-	h_photAcceptance2D_den->Write();
-	h_photAcceptance2D_num->Write();
-	h_photAcceptance2D_rat->Write();
-	h_JpsiAcceptance2D_den->Write();
-	h_JpsiAcceptance2D_num->Write();
-	h_JpsiAcceptance2D_rat->Write();
-	h_JpsiAcceptance2D_y_den->Write();
-	h_JpsiAcceptance2D_y_num->Write();
-	h_JpsiAcceptance2D_y_rat->Write();
-	h_chiAcceptance2D_den->Write();
-	h_chiAcceptance2D_num->Write();
-	h_chiAcceptance2D_rat->Write();
-	h_chiAcceptance2D_y_den->Write();
-	h_chiAcceptance2D_y_num->Write();
-	h_chiAcceptance2D_y_rat->Write();
-
-	h_muonEfficiency2D_den->Write();
-	h_muonEfficiency2D_num->Write();
-	h_muonEfficiency2D_rat->Write();
-	h_photEfficiency2D_den->Write();
-	h_photEfficiency2D_num->Write();
-	h_photEfficiency2D_rat->Write();
-	h_JpsiEfficiency2D_y_den->Write();
-	h_JpsiEfficiency2D_y_num->Write();
-	h_JpsiEfficiency2D_y_rat->Write();
-	h_chiEfficiency2D_y_den->Write();
-	h_chiEfficiency2D_y_num->Write();
-	h_chiEfficiency2D_y_rat->Write();
-	h_photEfficiency1D_den->Write();
-	h_photEfficiency1D_num->Write();
-	h_photEfficiency1D_rat->Write();
-	h_photEfficiency1D_relative_den->Write();
-	h_photEfficiency1D_relative_num->Write();
-	h_photEfficiency1D_relative_rat->Write();
-	h_JpsiEfficiency1D_den->Write();
-	h_JpsiEfficiency1D_num->Write();
-	h_JpsiEfficiency1D_rat->Write();
-	h_chiEfficiency1D_den->Write();
-	h_chiEfficiency1D_num->Write();
-	h_chiEfficiency1D_rat->Write();
 
 	fout->Close();
-	f1->Close();
+	fMC->Close();
 	cout << "END" << endl;
 	return 0;
 }

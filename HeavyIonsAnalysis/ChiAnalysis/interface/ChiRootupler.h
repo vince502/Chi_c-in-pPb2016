@@ -177,6 +177,7 @@ private:
 	std::vector <bool> muonIsTight;
 	std::vector <bool> muonIsNotGlobalNorTracker;
 	std::vector <bool> muonIDHas_TMOneStationTight;
+	std::vector <int>  muon_pvtx_index;
 	std::vector <double> muonInnerTrack_dxy;
 	std::vector <double> muonInnerTrack_dz;
 	std::vector <int> muonTrackerLayersWithMeasurement;
@@ -209,8 +210,8 @@ private:
 	std::vector <double> dimuon_dz_dimuonvtx_pvtx;
 	std::vector <double> dimuon_vtxProb;
 	std::vector <pat::CompositeCandidate> dimuonStored;
-	std::vector <int> dimuon_muon1_position; //stores position of first muon in muon collection (no specific order)
-	std::vector <int> dimuon_muon2_position; //stores position of second muon in muon collection (no specific order)
+	std::vector <int> dimuon_muon1_position; //stores position of first muon in muon collection (probably one with higher pT due to ordering in the collection)
+	std::vector <int> dimuon_muon2_position; //stores position of second muon in muon collection 
 	std::vector <double> dimuon_ctpv; 
 	std::vector <double> dimuon_ctpvError; 
 	
@@ -238,7 +239,8 @@ private:
 	std::vector <reco::HitPattern> conv_hitPat2;
 	std::vector <bool> conv_isCustomHighPurity;//tbd - is just a sum of some other cuts, not creating at the time
 	std::vector <double> conv_vertexChi2Prob;
-	std::vector <double> conv_zOfPriVtx;
+	std::vector <int>  conv_pvtx_index;
+	std::vector <double> conv_zOfPriVtx; // z of primary vertex that is used in the conversions (could be obtained also from pvtx_z)
 	std::vector <double> conv_zOfPriVtxFromTracks;
 	std::vector <double> conv_dzToClosestPriVtx;
 	std::vector <double> conv_dxyPriVtx_Tr1;
