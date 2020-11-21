@@ -13,6 +13,7 @@
 <use   name="DataFormats/TrackReco"/>
 <use   name="DataFormats/PatCandidates"/>
 <use   name="DataFormats/HepMCCandidate"/>
+<use   name="HLTrigger/HLTcore"/>
 <use   name="TrackingTools/PatternTools"/>
 <use   name="SimDataFormats/Vertex"/>
 <use   name="RecoVertex/KinematicFit"/>
