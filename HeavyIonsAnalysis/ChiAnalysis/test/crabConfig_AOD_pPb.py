@@ -3,12 +3,13 @@ from CRABClient.UserUtilities import config
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_pPb_RW2'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_pPb_RW3'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False
 
 config.section_("JobType")
+config.JobType.allowUndistributedCMSSW = True #Allow SLC7
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'runChiWithAOD_cfg_prod.py'
 config.JobType.maxMemoryMB = 2500

@@ -82,19 +82,26 @@ private:
 	bool Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB);
 	//photon MC
 	bool Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel);
+	bool ConvSelection(const reco::Conversion& conv);
 
 	// chi functions
-	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate&, const pat::CompositeCandidate&);
-	double Getdz(const pat::CompositeCandidate&, const reco::Candidate::Point &); //gets dz when dxy to the point is the smallest
-	double Getdxy(const pat::CompositeCandidate&, const reco::Candidate::Point &); //gets dxy when dz to the point =0
+	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate& dimuon, const pat::CompositeCandidate& photon);
+	double Getdz(const pat::CompositeCandidate& c, const reco::Candidate::Point& p); //gets dz when dxy to the point is the smallest
+	double Getdxy(const pat::CompositeCandidate& c, const reco::Candidate::Point& p); //gets dxy when dz to the point =0
+	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate& dimuon, const reco::Conversion& photon);
+	double Getdz(const reco::Conversion& c, const reco::Candidate::Point& p); //gets dz when dxy to the point is the smallest
+	double Getdxy(const reco::Conversion& c, const reco::Candidate::Point& p); //gets dxy when dz to the point =0
 
 	// gen functions
 	template <typename particle_in, typename particle_type>
 	int MatchGen(particle_in& genParticle, edm::Handle< std::vector <particle_type>>& collToBeMatched, double maxDeltaR, double maxDPtRel, int& nMatches_Out, double& rDelta_Out, double& ptDeltaRel_Out);
+	template <typename particle_in, typename particle_type>
+	int MatchGen(particle_in& genParticle, std::vector <particle_type>* collToBeMatched, double maxDeltaR, double maxDPtRel, int& nMatches_Out, double& rDelta_Out, double& ptDeltaRel_Out);
 	template <typename T>  reco::LeafCandidate GetRecoCandidate(const T& a); //default, however momentum is stored differently for conversion and pats
 	reco::LeafCandidate GetRecoCandidate(const reco::Conversion& conv); //momentum is stored differently for conversion
 	reco::LeafCandidate GetRecoCandidate(const pat::CompositeCandidate& comp);
 	reco::LeafCandidate GetRecoCandidate(const pat::Muon& comp);
+	reco::LeafCandidate GetRecoCandidate(const reco::GenParticle& comp);
 
 	//template <typename particle_type>
 	//int MatchGen(particle_type& genParticle, double maxDeltaR, double maxDPtRel) { return 0; }
@@ -107,7 +114,7 @@ private:
 	//edm::EDGetTokenT< edm::View <pat::Muon> > muon_label; //is a muon collection
 	edm::EDGetTokenT<pat::MuonCollection>  muon_label;
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_label;
-	edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_label;
+	//edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_label;
 	edm::EDGetTokenT<reco::ConversionCollection> conversion_label;
 	//edm::EDGetTokenT<pat::CompositeCandidateCollection> chi_label;
 	edm::EDGetTokenT<reco::VertexCollection> primaryVertices_label;
@@ -116,11 +123,13 @@ private:
 	edm::EDGetTokenT<reco::GenParticleCollection> genParticles_label;
 
 	bool flag_doMC;
-	bool flag_saveExtraThings = false;  //saves all muons, and other not so necessary data
+	bool flag_saveExtraThings = false;  //saves all muons, and other not so necessary data. Should be false unless some debugging needs it
+	bool flag_doKinematicRefit = true; // do kinematic refit based on github.com/alberto-sanchez/chi-analysis-miniaod/blob/master/src/OniaPhotonKinematicFit.cc from Alberto 
 	
 	const int PythCode_chic0 = 10441; //Pythia codes
 	const int PythCode_chic1 = 20443;
 	const int PythCode_chic2 = 445;
+	double jpsi_mass = 3.097;
 
 	// constants for events and PV
 	const double cPVMatching_cutoff = 0.2; //If dimuon is within 2mm of PV[0], leave it. Based on dimuon.z - PV.z resolution. Has effect for peripheral events
@@ -276,10 +285,16 @@ private:
 
 	// MC general
 
+	std::vector <bool> gen_isGoodChicDecay; // saves true if chic decay was -> J/psi gamma -> mumu(+gammas) gamma; false otherwise
 	std::vector <int> gen_pdgId;
 	std::vector <double> gen_chic_pt;
 	std::vector <double> gen_chic_eta;
 	TClonesArray* gen_chic_p4; //TLorentzVector
+	std::vector <int> gen_chic_matchPosition;
+	std::vector <int> gen_chic_nMatches;
+	std::vector <double> gen_chic_rDelta; //in principle duplicates information
+	std::vector <double> gen_chic_ptDeltaRel;//in principle duplicates information
+
 	std::vector <double> gen_Jpsi_pt;
 	std::vector <double> gen_Jpsi_eta;
 	std::vector <int> gen_Jpsi_matchPosition;
@@ -287,6 +302,10 @@ private:
 	std::vector <double> gen_Jpsi_rDelta; //in principle duplicates information
 	std::vector <double> gen_Jpsi_ptDeltaRel;//in principle duplicates information
 	TClonesArray* gen_Jpsi_p4; //TLorentzVector
+
+	std::vector <int> gen_Jpsi_photon_n;
+	std::vector <double> gen_Jpsi_photon_pt;
+	TClonesArray* gen_Jpsi_photon_p4; //TLorentzVector
 
 	std::vector <int> gen_muon_charge;
 	std::vector <double> gen_muon_pt;
@@ -317,12 +336,12 @@ private:
 	std::vector <double> chi_dzPhotToDimuonVtx; //z distance of photon to dimuon vertex when dxy is minimal
 	std::vector <double> chi_dxyPhotToDimuonVtx; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
 	std::vector <pat::CompositeCandidate> chiStored;
-
-
-	// Trigger // to be updated
-
-	int trigger;
-
+	std::vector <int> chi_kinematicRefitFlag; // -1 kinematic refit not done, 1 done: +2 needed extra refit for photon +4 something wrong with photon at the end +8 something wrong with the final fit 
+	std::vector <int> chi_refit_origChicPosition; //stores position of the chic candidate for the refit (there will be gaps if refit fails) 
+	std::vector <pat::CompositeCandidate> chi_refitStored;
+	std::vector <double> chi_refit_vprob;
+	std::vector <double> chi_refit_ctauPV;
+	std::vector <double> chi_refit_ctauErrPV;
 
 	//MC
 	TLorentzVector MC_chic_p4;

@@ -39,6 +39,26 @@
 #include "DataFormats/EgammaCandidates/interface/Conversion.h"
 #include "DataFormats/TrackReco/interface/HitPattern.h"
 
+// for kinematic refit
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "MagneticField/Engine/interface/MagneticField.h"            
+#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h"
+#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
+#include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
+#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticle.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/TransientTrackKinematicParticle.h"
+#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+
+
+
+
 #include "TLorentzVector.h"
 #include "TVector3.h"
 #include "TTree.h"
@@ -59,7 +79,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	//muon_label(consumes<edm::View <pat::Muon> >(iConfig.getParameter < edm::InputTag >("muon_cand"))),
 	muon_label(consumes< pat::MuonCollection >(iConfig.getParameter < edm::InputTag >("muon_cand"))),
 	dimuon_label(consumes<pat::CompositeCandidateCollection>(iConfig.getParameter < edm::InputTag >("dimuon_cand"))),
-	photon_label(consumes<pat::CompositeCandidateCollection>(iConfig.getParameter < edm::InputTag >("photon_cand"))),
+	//photon_label(consumes<pat::CompositeCandidateCollection>(iConfig.getParameter < edm::InputTag >("photon_cand"))),
 	conversion_label(consumes<reco::ConversionCollection>(iConfig.getParameter < edm::InputTag >("conversions_ch"))),
 	primaryVertices_label(consumes<reco::VertexCollection>(iConfig.getParameter < edm::InputTag >("primaryVertices"))),
 	triggerResults_label(consumes<edm::TriggerResults>(iConfig.getParameter < edm::InputTag >("TriggerResults"))),
@@ -81,6 +101,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 	gen_chic_p4 = new TClonesArray("TLorentzVector", 100);
 	gen_Jpsi_p4 = new TClonesArray("TLorentzVector", 100);
+	gen_Jpsi_photon_p4 = new TClonesArray("TLorentzVector", 100);
 	gen_muon_p4 = new TClonesArray("TLorentzVector", 100);
 	gen_phot_p4 = new TClonesArray("TLorentzVector", 100);
 
@@ -233,6 +254,10 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 		event_tree->Branch("gen_chic_pt", &gen_chic_pt);
 		event_tree->Branch("gen_chic_eta", &gen_chic_eta);
 		event_tree->Branch("gen_chic_p4", "TClonesArray", &gen_chic_p4, 32000, 0);
+		event_tree->Branch("gen_chic_matchPosition", &gen_chic_matchPosition);
+		event_tree->Branch("gen_chic_nMatches", &gen_chic_nMatches);
+		event_tree->Branch("gen_chic_rDelta", &gen_chic_rDelta);
+		event_tree->Branch("gen_chic_ptDeltaRel", &gen_chic_ptDeltaRel);
 
 		event_tree->Branch("gen_Jpsi_pt", &gen_Jpsi_pt);
 		event_tree->Branch("gen_Jpsi_eta", &gen_Jpsi_eta);
@@ -241,6 +266,10 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 		event_tree->Branch("gen_Jpsi_nMatches", &gen_Jpsi_nMatches);
 		event_tree->Branch("gen_Jpsi_rDelta", &gen_Jpsi_rDelta);
 		event_tree->Branch("gen_Jpsi_ptDeltaRel", &gen_Jpsi_ptDeltaRel);
+
+		event_tree->Branch("gen_Jpsi_photon_n", &gen_Jpsi_photon_n);
+		event_tree->Branch("gen_Jpsi_photon_pt", &gen_Jpsi_photon_pt);
+		event_tree->Branch("gen_Jpsi_photon_p4", "TClonesArray", &gen_Jpsi_photon_p4, 32000, 0);
 
 		event_tree->Branch("gen_muon_charge", &gen_muon_charge);
 		event_tree->Branch("gen_muon_pt", &gen_muon_pt);
@@ -264,6 +293,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 	//chi
 
+	event_tree->Branch("gen_isGoodChicDecay", &gen_isGoodChicDecay);
 	event_tree->Branch("chi_p4", "TClonesArray", &chi_p4, 32000, 0);
 	event_tree->Branch("chi_eta", &chi_eta);
 	event_tree->Branch("chi_pt", &chi_pt);
@@ -272,8 +302,12 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("chi_dzPhotToDimuonVtx", &chi_dzPhotToDimuonVtx);
 	event_tree->Branch("chi_dxyPhotToDimuonVtx", &chi_dxyPhotToDimuonVtx);
 	event_tree->Branch("chiStored", "std::vector <pat::CompositeCandidate>", &chiStored);
-
-
+	event_tree->Branch("chi_kinematicRefitFlag", &chi_kinematicRefitFlag);
+	event_tree->Branch("chi_refit_origChicPosition", &chi_refit_origChicPosition);
+	event_tree->Branch("chi_refit_vprob", &chi_refit_vprob);
+	event_tree->Branch("chi_refitStored", "std::vector <pat::CompositeCandidate>", &chi_refitStored);
+	event_tree->Branch("chi_refit_ctauPV", &chi_refit_ctauPV);
+	event_tree->Branch("chi_refit_ctauErrPV", &chi_refit_ctauErrPV);
 
 }
 
@@ -295,8 +329,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	edm::Handle < std::vector < pat::CompositeCandidate > >dimuon_handle;
 	iEvent.getByToken(dimuon_label, dimuon_handle);
 
-	edm::Handle < std::vector < pat::CompositeCandidate > >photon_handle;
-	iEvent.getByToken(photon_label, photon_handle);
+	//edm::Handle < std::vector < pat::CompositeCandidate > >photon_handle;
+	//iEvent.getByToken(photon_label, photon_handle);
 
 	edm::Handle < std::vector <reco::Conversion>> conversion_handle;
 	iEvent.getByToken(conversion_label, conversion_handle);
@@ -366,6 +400,10 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	}
 	else cout << "Problem with conv handle" << endl;
 
+	//int photonSize = photon_handle->size();
+	//if (photonSize != convPerTriggeredEvent) cout << "Different photon and conversion counts " << photonSize << "    " << convPerTriggeredEvent << endl;
+
+
 	dimuonPerEvent = 0;
 	if (dimuon_handle.isValid())
 	{
@@ -383,19 +421,27 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	else cout << "Problem with centrality handle" << endl;
 
 
+	if (dimuonPerEvent == 0 && flag_doMC == false) //don't save events without J/psi in them, unless MC
+	{
+		Clear();
+		return;
+	}
+
 	//////////////////////
 	//    C H I       ////
 	/////////////////////
 
 	/// create the collection 
-
+	//cout << "At chic" << endl;
 	int n_chic = 0;  // counter for n chic in event
 	pat::CompositeCandidateCollection* chiCandColl = new pat::CompositeCandidateCollection;
 	for (pat::CompositeCandidateCollection::const_iterator dimuonCand = dimuon_handle->begin(); dimuonCand != dimuon_handle->end(); ++dimuonCand)
 	{
 
 		// loop on conversion candidates, make chi cand
-		for (pat::CompositeCandidateCollection::const_iterator photCand = photon_handle->begin(); photCand != photon_handle->end(); ++photCand) {
+		for (reco::ConversionCollection::const_iterator photCand = conversion_handle->begin(); photCand != conversion_handle->end(); ++photCand) {
+
+			if (ConvSelection(*photCand) == false) { continue; } //pre-select photons here
 
 			chi_cand = makeChiCandidate(*dimuonCand, *photCand);
 
@@ -410,21 +456,183 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			chi_eta.push_back(chi_p4_aux.Eta());
 			chi_pt.push_back(chi_p4_aux.Pt());
 			chi_daughterJpsi_position.push_back(std::distance(dimuon_handle->begin(), dimuonCand));
-			chi_daughterConv_position.push_back(std::distance(photon_handle->begin(), photCand));
+			chi_daughterConv_position.push_back(std::distance(conversion_handle->begin(), photCand));
 			chi_dzPhotToDimuonVtx.push_back(Getdz(*photCand, dimuonCand->vertex()));
 			chi_dxyPhotToDimuonVtx.push_back(Getdxy(*photCand, dimuonCand->vertex()));
+			chiStored.push_back(chi_cand);
 
 			chiCandColl->push_back(chi_cand);
+
+			// KinematicRefit - the following is based on github.com/alberto-sanchez/chi-analysis-miniaod/blob/master/src/OniaPhotonKinematicFit.cc from Alberto  
+			int refitStatusFlag = 0;
+			bool refitGoodFitFlag = false;
+			if (flag_doKinematicRefit) {
+				if ((dimuonCand->daughter("muon1")->isTrackerMuon()|| dimuonCand->daughter("muon1")->isGlobalMuon()) && (dimuonCand->daughter("muon2")->isTrackerMuon() || dimuonCand->daughter("muon2")->isGlobalMuon())) //if not, it doesn't have inner track, no way to refit anything
+				{
+					//cout << "in kinematic refit  " << n_chic<<endl;
+					refitStatusFlag += 1;
+					edm::ESHandle<TransientTrackBuilder> theB;
+					iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
+
+
+					reco::TrackRef JpsiTk[2] = { (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon1")))->innerTrack(), (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon2")))->innerTrack() };
+
+					const reco::Track conv_tk1 = *(photCand->tracks().at(0));
+					const reco::Track conv_tk2 = *(photCand->tracks().at(1));
+					//photCand->
+					//conv.tracks()[0]
+					//const reco::Track tk0 = *(dynamic_cast<const pat::CompositeCandidate*>(chi_cand.daughter("photon"))->userData<reco::Track>("track0"));
+					//const reco::Track tk1 = *(dynamic_cast<const pat::CompositeCandidate*>(chi_cand.daughter("photon"))->userData<reco::Track>("track1"));
+					//convTracks.push_back(conv_tk1);
+					//convTracks.push_back(conv_tk2);
+					const reco::Vertex thePrimaryV = *(dimuonCand->userData<reco::Vertex>("PVwithmuons"));
+					//const reco::Vertex& pvtx = primaryVertices_handle->at(0);
+					//if (abs(thePrimaryV.x() - pvtx.x()) > 0.01) { cout << "primaryV x   " << thePrimaryV.x() << "    " << pvtx.x() << endl; } //check if it is always 0th vertex
+
+
+					//cout << "dimuon  " << dimuonCand->userInt("muonPosition1") << endl;
+					//cout << "dimuon  " << dimuonCand->userInt("muonPosition2") << endl;
+					//const edm::RefToBase<reco::Track> conv_tk1 = photCand->tracks().at(0);
+					//cout<<"mom  " << conv_tk1.outerP()<<endl;
+					//cout << chi_cand.daughter("photon")->pt() << endl;
+					//cout << chi_cand.daughter("photon")->userData<reco::Track>("track1")->outerPt() << endl;
+
+					std::vector<reco::TransientTrack> MuMuTT;
+					MuMuTT.push_back((*theB).build(&JpsiTk[0]));
+					MuMuTT.push_back((*theB).build(&JpsiTk[1]));
+
+					std::vector<reco::TransientTrack> EETT;
+					EETT.push_back((*theB).build(conv_tk1));
+					EETT.push_back((*theB).build(conv_tk2));
+
+					//values copied from Alberto
+					const ParticleMass photon_mass(0);
+					float photon_sigmaM = 1E-6;
+					const ParticleMass ele_mass(0.000511);
+					float ele_sigmaM = 1E-6;
+					const ParticleMass muon_mass(0.1056584);
+					float muon_sigmaM = muon_mass * 1E-6;
+
+					KinematicParticleFactoryFromTransientTrack pFactory;
+					std::vector<RefCountedKinematicParticle> PhotonParticles;
+					PhotonParticles.push_back(pFactory.particle(EETT[0], ele_mass, float(0), float(0), ele_sigmaM));
+					PhotonParticles.push_back(pFactory.particle(EETT[1], ele_mass, float(0), float(0), ele_sigmaM));
+
+					KinematicParticleVertexFitter fitter;
+					RefCountedKinematicTree photonVertexFitTree;
+					photonVertexFitTree = fitter.fit(PhotonParticles);
+
+					if (!photonVertexFitTree->isValid()) {
+						refitStatusFlag += 2;
+						edm::ParameterSet pSet;
+						pSet.addParameter<double>("maxDistance", 3);
+						pSet.addParameter<int>("maxNbrOfIterations", 10000);
+						KinematicParticleVertexFitter fitter2(pSet);
+						photonVertexFitTree = fitter2.fit(PhotonParticles);
+					}
+
+					if (photonVertexFitTree->isValid()) {
+						// now apply Photon mass constraint
+						KinematicParticleFitter csFitterPhoton;
+						KinematicConstraint * pho_c = new MassKinematicConstraint(photon_mass, photon_sigmaM);
+
+						// add mass constraint to the photon fit to do a constrained fit:
+						photonVertexFitTree->movePointerToTheTop();
+						photonVertexFitTree = csFitterPhoton.fit(pho_c, photonVertexFitTree);
+
+						photonVertexFitTree->movePointerToTheTop();
+						RefCountedKinematicParticle fitPhoton = photonVertexFitTree->currentParticle();
+						std::vector<RefCountedKinematicParticle> allChiDaughters;
+						allChiDaughters.push_back(pFactory.particle(MuMuTT[0], muon_mass, float(0), float(0), muon_sigmaM));
+						allChiDaughters.push_back(pFactory.particle(MuMuTT[1], muon_mass, float(0), float(0), muon_sigmaM));
+						allChiDaughters.push_back(fitPhoton);
+
+						KinematicConstrainedVertexFitter constVertexFitter;
+
+						MultiTrackKinematicConstraint *chic_mtc = new  TwoTrackMassKinematicConstraint(jpsi_mass);
+						RefCountedKinematicTree ChiKinTree = constVertexFitter.fit(allChiDaughters, chic_mtc);
+
+						if (!ChiKinTree->isEmpty()) {
+
+							ChiKinTree->movePointerToTheTop();
+							RefCountedKinematicParticle fitChi = ChiKinTree->currentParticle();
+							RefCountedKinematicVertex ChiDecayVertex = ChiKinTree->currentDecayVertex();
+
+							if (fitChi->currentState().isValid()) { //Get Chi         
+
+								refitGoodFitFlag = true;
+								float ChiM_fit = fitChi->currentState().mass();
+								float ChiPx_fit = fitChi->currentState().kinematicParameters().momentum().x();
+								float ChiPy_fit = fitChi->currentState().kinematicParameters().momentum().y();
+								float ChiPz_fit = fitChi->currentState().kinematicParameters().momentum().z();
+								float ChiVtxX_fit = ChiDecayVertex->position().x();
+								float ChiVtxY_fit = ChiDecayVertex->position().y();
+								float ChiVtxZ_fit = ChiDecayVertex->position().z();
+								float ChiVtxP_fit = ChiSquaredProbability((double)(ChiDecayVertex->chiSquared()),
+									(double)(ChiDecayVertex->degreesOfFreedom()));
+
+								reco::CompositeCandidate recoChiRefit(0, math::XYZTLorentzVector(ChiPx_fit, ChiPy_fit, ChiPz_fit,
+									sqrt(ChiM_fit*ChiM_fit + ChiPx_fit * ChiPx_fit + ChiPy_fit * ChiPy_fit + ChiPz_fit * ChiPz_fit)), 
+									math::XYZPoint(ChiVtxX_fit,	ChiVtxY_fit, ChiVtxZ_fit), PythCode_chic1); //code is for pythyia, chosen without meaning
+
+								chi_refit_origChicPosition.push_back(n_chic-1); //stores position of the chic candidate for the refit (there will be gaps if refit fails)
+								pat::CompositeCandidate patChiRefit(recoChiRefit);
+								chi_refitStored.push_back(patChiRefit);								
+								chi_refit_vprob.push_back(ChiVtxP_fit);
+
+								// lifetime using PV
+								TVector3 vtx;
+								TVector3 pvtx;
+								VertexDistanceXY vdistXY;
+								reco::Vertex myVertex = *ChiDecayVertex;
+
+								vtx.SetXYZ(ChiVtxX_fit, ChiVtxY_fit, 0);
+								pvtx.SetXYZ(thePrimaryV.position().x(), thePrimaryV.position().y(), 0);
+								TVector3 pperp(ChiPx_fit, ChiPy_fit, 0);
+								AlgebraicVector3 vpperp(pperp.x(), pperp.y(), 0);
+
+								TVector3 vdiff = vtx - pvtx;
+								double cosAlpha = vdiff.Dot(pperp) / (vdiff.Perp() * pperp.Perp());
+								Measurement1D distXY = vdistXY.distance(myVertex, thePrimaryV);
+								double ctauPV = distXY.value() * cosAlpha * ChiM_fit / pperp.Perp();
+								GlobalError v1e = myVertex.error();
+								GlobalError v2e = thePrimaryV.error();
+								AlgebraicSymMatrix33 vXYe = v1e.matrix() + v2e.matrix();
+								double ctauErrPV = sqrt(ROOT::Math::Similarity(vpperp, vXYe)) * ChiM_fit / (pperp.Perp2());
+
+								chi_refit_ctauPV.push_back(ctauPV);
+								chi_refit_ctauErrPV.push_back(ctauErrPV);
+							}
+							else refitStatusFlag += 16;
+						}
+						else refitStatusFlag += 8;
+					}
+					else refitStatusFlag += 4;
+
+
+
+				}
+				else
+				{
+				refitStatusFlag = -1;
+				}
+			}
+
+			if (refitGoodFitFlag == false) //fill some default value for direct looking at the branches
+			{
+				chi_refit_vprob.push_back(-1);
+				chi_refit_ctauPV.push_back(-100);
+				chi_refit_ctauErrPV.push_back(-100);
+			}
+			chi_kinematicRefitFlag.push_back(refitStatusFlag);
+
 		}
+
 	}
 	chiCandPerEvent = n_chic;
-
-	if (n_chic == 0 && flag_doMC==false) //don't save events without chic in them, unless MC
-	{
-		Clear();
-		return;
-	}
 	
+
+
 	//PV
 	if (primaryVertices_handle.isValid()) {
 		//if (primaryVertices_handle->size() == 1) return; //test, to be deleted
@@ -450,6 +658,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	if (dimuon_handle.isValid())
 	{
+		//cout << "At Dimuon" << endl;
 		for (uint i = 0; i < dimuon_handle->size(); i++) {
 			const pat::CompositeCandidate& dimuon = dimuon_handle->at(i);
 			TLorentzVector dimuon_p4_aux;
@@ -488,25 +697,32 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	else cout << "Problem with dimuon handle" << endl;
 
 
-
 	/////////////////////
 	//   M U O N S   ////
 	////////////////////
 	if (muon_handle.isValid()) {
+		//cout << "At muons" << endl;
 		for (uint i = 0; i < muon_handle->size(); i++) {
 			const pat::Muon& patMuon = muon_handle->at(i);
 			// pick the closest vertex of those that were selected by dimuon (and ignore the vertices that had no dimuon in them)
+						
 			int bestPvtx_index = 0;
 			float minDz = 9999;
-			for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
+			if (patMuon.isTrackerMuon() == true || patMuon.isGlobalMuon() == true) //If the muon has an inner track, we can see if it comes from a different vertex than the one with index 0. If it is just standalone muon, it doesn't change anything.
 			{
-				float deltaZ = fabs(patMuon.innerTrack()->dz() - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());		
-				if (deltaZ < minDz) {
-					minDz = deltaZ;
-					bestPvtx_index = dimuon_pvtx_index.at(iVtx);
+				for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
+				{
+					float deltaZ = fabs(patMuon.innerTrack()->dz() - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());
+					if (deltaZ < minDz) {
+						minDz = deltaZ;
+						bestPvtx_index = dimuon_pvtx_index.at(iVtx);
+					}
 				}
 			}
+			//bestPvtx_index = 0; //disable
+
 			muon_pvtx_index.push_back(bestPvtx_index);
+
 			
 			const reco::Vertex& pvtx = primaryVertices_handle->at(bestPvtx_index); //use our selected PV
 			if (patMuon.triggerObjectMatchByPath(triggerName) != 0) {
@@ -549,11 +765,14 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			muon_p4_aux.SetPtEtaPhiM(patMuon.pt(), patMuon.eta(), patMuon.phi(), patMuon.mass());
 			new ((*muon_p4)[i]) TLorentzVector(muon_p4_aux);
 			// MC generated information
+			//cout << "At muonMC" << endl;
 			if (flag_doMC) {
-				bool muon_isMatchedMC_flag = patMuon.genLepton(); //false for null pointer, true if match exists, from pat::Lepton.h
+				bool muon_isMatchedMC_flag = patMuon.genLepton(); //false for null pointer, true if match exists, from pat::Lepton.h //O: Stopped working in MC v5, since not really needed, left out
+				//cout << muon_isMatchedMC_flag << endl;
 				muon_isMatchedMC.push_back(muon_isMatchedMC_flag);
 				if (muon_isMatchedMC_flag) {
 					const reco::GenParticle genMuon = *patMuon.genLepton();
+					//cout << "Got gen particle " << endl;
 					muonGen_eta.push_back(genMuon.eta());
 					muonGen_pt.push_back(genMuon.pt());
 					TLorentzVector muonGen_p4_aux;
@@ -572,7 +791,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					muonGen_ptDeltaRel.push_back(-5);
 				}
 			}
-
+			//cout << "out of muonMC" << endl;
 
 			if (flag_saveExtraThings)
 			{
@@ -589,6 +808,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	/////////////////////////////////////////
 	if (conversion_handle.isValid())
 	{
+		//cout << "At conversions" << endl;
 		for (uint i = 0; i < conversion_handle->size(); i++) {
 			const reco::Conversion& candPhoton = conversion_handle->at(i);
 			TLorentzVector conv_p4_aux;
@@ -737,6 +957,19 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	if (flag_doMC) {
 		if (genParticles_handle.isValid()) {
+			//cout << endl<< "entered Gen part, evt: " << eventNumber<< endl;
+			//for (uint i = 0; i < genParticles_handle->size(); i++) {
+			//	const reco::GenParticle& genParticle = genParticles_handle->at(i);
+			//	int gen_pdgId_aux = genParticle.pdgId();
+			//	if (gen_pdgId_aux == 443 || gen_pdgId_aux == -13 || gen_pdgId_aux == 13)
+			//	{
+			//		cout << "Gen pdg ID: " << gen_pdgId_aux << endl;
+			//		if (gen_pdgId_aux == 443)
+			//		{
+			//			cout << "  Is last copy: " << genParticle.isLastCopy() << " and has daughters " << genParticle.numberOfDaughters() << endl;
+			//		}
+			//	}
+			//}
 			//bool foundChicInEvent=false;
 			for (uint i = 0; i < genParticles_handle->size(); i++) {
 				const reco::GenParticle& genParticle = genParticles_handle->at(i);
@@ -745,6 +978,32 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				if (genParticle.isLastCopy() == false) { continue; } // if not last copy of a given particle, skip
 				//foundChicInEvent
 				// it is the chic
+				bool isGoodMCchic = true; //we have some weird decays, skip those
+				int nDaughters = genParticle.numberOfDaughters();
+				if (nDaughters != 2) { cout << "weird gen decay, number of daughters is: " << nDaughters << "  in event number : " << eventNumber << endl; isGoodMCchic = false; } //all of them should be J/psi + gamma
+				for (int j = 0; j < nDaughters; j++) {
+					const reco::Candidate& gen_chiDaughter = *genParticle.daughter(j);
+					int dauId = gen_chiDaughter.pdgId();
+					if (dauId != 443 && dauId != 22) { isGoodMCchic = false; } //not J/psi gamma decay
+
+					if (dauId == 443) {
+						int nDaughtJpsi = gen_chiDaughter.numberOfDaughters();
+						for (int k = 0; k < nDaughtJpsi; k++) { // loop over jpsi daughters
+							const reco::Candidate& gen_chiMuon = *gen_chiDaughter.daughter(k);
+							if (abs(gen_chiMuon.pdgId()) != 13 && gen_chiMuon.pdgId() != 22)
+							{
+								//cout << "Warning, jpsi decay daughter is not a muon nor photon" << endl; //continue; 
+								//cout << "ID: " << gen_chiMuon.pdgId() << "  and pt:  " << gen_chiMuon.pt() << "  in event number : " << eventNumber << endl;
+								isGoodMCchic = false;
+								continue;
+							}
+						}
+					}
+				}
+				gen_isGoodChicDecay.push_back(isGoodMCchic);
+				if (isGoodMCchic == false) { continue; } //only few bad MC decays (as of v6), thus we just skip them
+
+
 				gen_pdgId.push_back(gen_pdgId_aux);
 				gen_chic_pt.push_back(genParticle.pt());
 				gen_chic_eta.push_back(genParticle.eta());
@@ -752,11 +1011,18 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				gen_chic_p4_aux.SetXYZT(genParticle.p4().x(), genParticle.p4().y(), genParticle.p4().z(), genParticle.p4().t());
 				new ((*gen_chic_p4)[0]) TLorentzVector(gen_chic_p4_aux); //assuming one chic in the event
 
-				int nDaughters = genParticle.numberOfDaughters();
-				if (nDaughters != 2) { cout << "weird gen decay" << endl; } //all of them should be J/psi + gamma
+				int nMatches_chic_aux;
+				double chic_rDelta_aux, chic_ptDeltaRel_aux;
+				gen_chic_matchPosition.push_back(MatchGen(genParticle, chiCandColl, jpsi_maxDeltaR, jpsi_maxDPtRel, nMatches_chic_aux, chic_rDelta_aux, chic_ptDeltaRel_aux));
+				gen_chic_nMatches.push_back(nMatches_chic_aux);
+				gen_chic_rDelta.push_back(chic_rDelta_aux); 
+				gen_chic_ptDeltaRel.push_back(chic_ptDeltaRel_aux);
+
+
+				//loop over the daughters
 				for (int j = 0; j < nDaughters; j++) {
 					const reco::Candidate& gen_chiDaughter = *genParticle.daughter(j);
-					//if (gen_chiDaughter->isLastCopy() == false) { cout << "Warning: daughter is not a last copy!" << endl; } //doesn't work
+					//if (gen_chiDaughter.isLastCopy() == false) { cout << "Warning: daughter is not a last copy!" << endl; } //doesn't work
 					int dauId = gen_chiDaughter.pdgId();
 					if (dauId == 443) {//Jpsi
 						gen_Jpsi_pt.push_back(gen_chiDaughter.pt());
@@ -772,18 +1038,36 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 						gen_Jpsi_ptDeltaRel.push_back(jpsi_ptDeltaRel_aux);
 
 						//check the decay muons
+
+						int gen_Jpsi_nPhoton = 0;
 						int nDaughtJpsi = gen_chiDaughter.numberOfDaughters();
-						if (nDaughtJpsi != 2) { cout << "weird Jpsi decay" << endl; } //all of them should be mu+mu-
-						for (int k = 0; k < nDaughters; k++) { // loop over jpsi daughters
+						for (int k = 0; k < nDaughtJpsi; k++) { // loop over jpsi daughters
 							const reco::Candidate& gen_chiMuon = *gen_chiDaughter.daughter(k);
-							//cout << gen_chiMuon.pdgId() << endl;
-							if (abs(gen_chiMuon.pdgId()) != 13) { cout << "Warning, jpsi decay daughter is not a muon" << endl; }
-							gen_muon_charge.push_back(gen_chiMuon.charge());
+							//cout << "ID: "<<gen_chiMuon.pdgId() << endl;
+
+							if (abs(gen_chiMuon.pdgId()) != 13 && gen_chiMuon.pdgId() != 22)
+							{ 
+								//cout << "Warning, jpsi decay daughter is not a muon nor photon" << endl; //continue; 
+								//cout << "ID: " << gen_chiMuon.pdgId()<< "  and pt:  " << gen_chiMuon.pt() << "  in event number : "<< eventNumber << endl;
+								continue;
+							}
+
+							if (gen_chiMuon.pdgId() == 22) // if it is the extra photon
+							{
+								gen_Jpsi_photon_pt.push_back(gen_chiMuon.pt());
+								TLorentzVector gen_phot_p4_aux;
+								gen_phot_p4_aux.SetXYZT(gen_chiMuon.p4().x(), gen_chiMuon.p4().y(), gen_chiMuon.p4().z(), gen_chiMuon.p4().t());
+								new ((*gen_Jpsi_photon_p4)[gen_Jpsi_nPhoton]) TLorentzVector(gen_phot_p4_aux);
+								gen_Jpsi_nPhoton++;
+								continue;
+							}
+							
+							gen_muon_charge.push_back(gen_chiMuon.charge()); 
 							gen_muon_pt.push_back(gen_chiMuon.pt());
 							gen_muon_eta.push_back(gen_chiMuon.eta());
 							TLorentzVector gen_muon_p4_aux;
 							gen_muon_p4_aux.SetXYZT(gen_chiMuon.p4().x(), gen_chiMuon.p4().y(), gen_chiMuon.p4().z(), gen_chiMuon.p4().t());
-							new ((*gen_muon_p4)[k]) TLorentzVector(gen_muon_p4_aux);
+							new ((*gen_muon_p4)[k]) TLorentzVector(gen_muon_p4_aux); //Assumes that the muon pair is the first two daughters, otherwise would need a separate counter as is done for photons from Jpsi
 							int nMatchesMuon_aux;
 							double muon_rDelta_aux, muon_ptDeltaRel_aux;
 							gen_muon_matchPosition.push_back(MatchGen(gen_chiMuon, muon_handle, muon_maxDeltaR, muon_maxDPtRel, nMatchesMuon_aux, muon_rDelta_aux, muon_ptDeltaRel_aux));
@@ -791,6 +1075,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 							gen_muon_rDelta.push_back(muon_rDelta_aux);
 							gen_muon_ptDeltaRel.push_back(muon_ptDeltaRel_aux);
 						}
+						gen_Jpsi_photon_n.push_back(gen_Jpsi_nPhoton);
 					}
 					else if (dauId == 22) {//photon
 						gen_phot_pt.push_back(gen_chiDaughter.pt());
@@ -823,6 +1108,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 				break; //We found chic, no need to go through the rest of the collection. However, very few events (<1%) exist with multiple chic in them - this takes only the first one into account
 			}
+			//cout << "Done with Gen part, evt: " << eventNumber << endl;
 		}
 		else cout << "Problem with gen handle" << endl;
 	}
@@ -979,9 +1265,14 @@ void ChiRootupler::Clear()
 
 	//MC
 	gen_pdgId.clear();
+	gen_isGoodChicDecay.clear();
 	gen_chic_pt.clear();
 	gen_chic_eta.clear();
 	gen_chic_p4->Clear();
+	gen_chic_matchPosition.clear();
+	gen_chic_nMatches.clear();
+	gen_chic_rDelta.clear();
+	gen_chic_ptDeltaRel.clear();
 	gen_Jpsi_pt.clear();
 	gen_Jpsi_eta.clear();
 	gen_Jpsi_p4->Clear();
@@ -989,6 +1280,9 @@ void ChiRootupler::Clear()
 	gen_Jpsi_nMatches.clear();
 	gen_Jpsi_rDelta.clear();
 	gen_Jpsi_ptDeltaRel.clear();
+	gen_Jpsi_photon_n.clear();
+	gen_Jpsi_photon_pt.clear();
+	gen_Jpsi_photon_p4->Clear();
 	gen_muon_charge.clear();
 	gen_muon_pt.clear();
 	gen_muon_eta.clear();
@@ -1014,7 +1308,12 @@ void ChiRootupler::Clear()
 	chi_dzPhotToDimuonVtx.clear();
 	chi_dxyPhotToDimuonVtx.clear();
 	chiStored.clear();
-
+	chi_kinematicRefitFlag.clear();
+	chi_refit_origChicPosition.clear();
+	chi_refitStored.clear();
+	chi_refit_vprob.clear();
+	chi_refit_ctauPV.clear();
+	chi_refit_ctauErrPV.clear();
 }
 
 
@@ -1178,6 +1477,42 @@ double ChiRootupler::Getdxy(const pat::CompositeCandidate& c, const reco::Candid
 	return dxy;
 }
 
+const pat::CompositeCandidate ChiRootupler::makeChiCandidate(const pat::CompositeCandidate& dimuon, const reco::Conversion& photon) {
+	pat::CompositeCandidate chiCand;
+	chiCand.addDaughter(dimuon, "dimuon");
+	pat::CompositeCandidate photonComp;
+
+	//chiCand.addDaughter(photon, "photon");
+	chiCand.setVertex(dimuon.vertex());
+	reco::Candidate::LorentzVector vChic = dimuon.p4() + photon.refittedPair4Momentum();  //checked, works
+	chiCand.setP4(vChic);
+	return chiCand;
+}
+
+double ChiRootupler::Getdz(const reco::Conversion& c, const reco::Candidate::Point &p) {
+	math::XYZTLorentzVectorF mom = c.refittedPair4Momentum();
+	reco::Candidate::Point vtx = c.conversionVertex().position();
+	double dz = (vtx.Z() - p.Z()) - ((vtx.X() - p.X())*mom.X() + (vtx.Y() - p.Y())*mom.Y()) / mom.Rho() * mom.Z() / mom.Rho();
+	return dz;
+}
+
+double ChiRootupler::Getdxy(const reco::Conversion& c, const reco::Candidate::Point &p) {
+	math::XYZTLorentzVectorF mom = c.refittedPair4Momentum();
+	reco::Candidate::Point vtx = c.conversionVertex().position();
+	double dx = (vtx.X() - p.X()) - ((vtx.Z() - p.Z()) * mom.X() / mom.Z());
+	double dy = (vtx.Y() - p.Y()) - ((vtx.Z() - p.Z()) * mom.Y() / mom.Z());
+	double dxy = sqrt(dx*dx + dy * dy);
+	return dxy;
+}
+
+bool ChiRootupler::ConvSelection(const reco::Conversion& conv)
+{
+	math::XYZTLorentzVectorF mom = conv.refittedPair4Momentum();
+	if (mom.eta() > 2.5) return false;
+	if (mom.pt() < 0.2) return false;
+	return true;
+}
+
 
 ///////////////////////////////////
 ////  G E N   P A R T S  //////////
@@ -1235,6 +1570,52 @@ int ChiRootupler::MatchGen(particle_in& myGenParticle, edm::Handle< std::vector 
 	}
 }
 
+template <typename particle_in, typename particle_type>
+int ChiRootupler::MatchGen(particle_in& myGenParticle, std::vector <particle_type>* collToBeMatched, double maxDeltaR, double maxDPtRel, int& nMatches_Out, double& rDelta_Out, double& ptDeltaRel_Out) //returns position of the best match
+{
+	nMatches_Out = 0;
+	rDelta_Out = -5;
+	ptDeltaRel_Out = -5;
+	bool isMatched = false;
+	int bestMatchPosition = -1;
+
+
+	for (uint j = 0; j < collToBeMatched->size(); j++) { //loop over the collection, find the best match
+		const particle_type& myParticle = collToBeMatched->at(j);
+		const reco::Candidate& recoParticle = GetRecoCandidate(myParticle); //get reco candidate of whatever type went in
+		const reco::Candidate& genParticle = GetRecoCandidate(myGenParticle);
+		double deltaR = reco::deltaR(recoParticle, genParticle);// reco::deltaR(inCand.eta(), inCand.phi(), mCand.eta(), mCand.phi());
+		double dPtRel = std::fabs(recoParticle.pt() - genParticle.pt()) / (double)(genParticle.pt() + 1E-9); //defined in the matcher to be divided by genPt //MCTruthMatchers.cc
+		//std::cout << "pt reco "<< recoParticle.pt()<<" pt gen "<< genParticle.pt()<<"  and relative "<<dPtRel << "   difference "<< std::fabs(recoParticle.pt() - genParticle.pt())<<"  and denom "<< (genParticle.pt() + 1E-9) <<std::endl;
+
+		if ((deltaR < maxDeltaR) && (dPtRel < maxDPtRel) && (recoParticle.charge() == genParticle.charge())) //this particular is matched
+		{
+			if (isMatched == false)//first match
+			{
+				isMatched = true;
+				nMatches_Out++;
+				bestMatchPosition = j;
+				rDelta_Out = deltaR;
+				ptDeltaRel_Out = dPtRel;
+			}
+			else //it has been matched already
+			{
+				nMatches_Out++;
+				//compare with the best match by R, save the better one
+				const reco::Candidate& prevMatch = GetRecoCandidate(collToBeMatched->at(bestMatchPosition));
+				if (deltaR < reco::deltaR(prevMatch, genParticle)) {
+					bestMatchPosition = j;
+					rDelta_Out = deltaR;
+					ptDeltaRel_Out = dPtRel;
+				}
+			}
+
+		}
+
+	}
+	return bestMatchPosition;
+
+}
 
 template<typename T>  reco::LeafCandidate ChiRootupler::GetRecoCandidate(const T& a) { return (reco::LeafCandidate) a; }
 
@@ -1255,10 +1636,6 @@ reco::LeafCandidate ChiRootupler::GetRecoCandidate(const reco::Conversion& conv)
 
 reco::LeafCandidate ChiRootupler::GetRecoCandidate(const pat::CompositeCandidate& comp)
 {
-	//const reco::Candidate cand = (PATObject<reco::CompositeCandidate>(comp)).originalObject();
-	//const reco::Candidate cand2 = dynamic_cast<const reco::Candidate> *cand;
-	//return (reco::LeafCandidate) cand;
-
 	reco::Candidate::LorentzVector p4 = comp.p4();
 	reco::LeafCandidate out;
 	out.setP4(p4);
@@ -1269,10 +1646,16 @@ reco::LeafCandidate ChiRootupler::GetRecoCandidate(const pat::CompositeCandidate
 
 reco::LeafCandidate ChiRootupler::GetRecoCandidate(const pat::Muon& comp)
 {
-	//const reco::Candidate cand = (PATObject<reco::CompositeCandidate>(comp)).originalObject();
-	//const reco::Candidate cand2 = dynamic_cast<const reco::Candidate> *cand;
-	//return (reco::LeafCandidate) cand;
 
+	reco::Candidate::LorentzVector p4 = comp.p4();
+	reco::LeafCandidate out;
+	out.setP4(p4);
+	out.setCharge(comp.charge());
+	return out;
+}
+
+reco::LeafCandidate ChiRootupler::GetRecoCandidate(const reco::GenParticle& comp)
+{
 	reco::Candidate::LorentzVector p4 = comp.p4();
 	reco::LeafCandidate out;
 	out.setP4(p4);

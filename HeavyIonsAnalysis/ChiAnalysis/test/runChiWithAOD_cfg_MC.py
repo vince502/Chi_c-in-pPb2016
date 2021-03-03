@@ -1,7 +1,10 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
 outFileName = 'Chi_c_pPb8TeV_MC.root'
-inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_test4.root'
+inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_2.root' #v5 MC
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/MCTestFile_v4.root' #v4 MC
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -92,10 +95,30 @@ process.muonMatchHLTL1.preselection = cms.string("")
 appendL1MatchingAlgo(process)
 
 
+## cuts on muons
+#process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
+#   src = cms.InputTag('patMuonsWithTrigger'),
+#   cut = cms.string('muonID(\"TMOneStationTight\")'
+#                    ' && abs(innerTrack.dxy) < 0.3'
+#                    ' && abs(innerTrack.dz)  < 20.'
+#                    ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
+#                    ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
+#                    ' && innerTrack.quality(\"highPurity\")'
+#                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 0.7))'
+#   ),
+#   filter = cms.bool(False)
+#)
+
 # cuts on muons
 process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
    src = cms.InputTag('patMuonsWithTrigger'),
-   cut = cms.string(''
+   cut = cms.string(''#'muonID(\"TMOneStationTight\")'
+                   # ' && abs(innerTrack.dxy) < 0.3'
+                   # ' && abs(innerTrack.dz)  < 20.'
+                   # ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
+                   # ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
+                   # ' && innerTrack.quality(\"highPurity\")'
+                   # ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 0.7))'
    ),
    filter = cms.bool(False)
 )
@@ -106,10 +129,10 @@ process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
 process.load("HeavyIonsAnalysis.HiOnia2MuMu.HiOnia2MuMuPAT_cfi")
 process.HiOnia2MuMuPAT.muons=cms.InputTag('ChiSelectedMuons')
 process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
-process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
+process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.HiOnia2MuMuPAT.dimuonSelection=cms.string("0.2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 50")
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25 && pt>5.0")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(True)
 process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
@@ -118,32 +141,6 @@ process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
 
 #mc matching done by hand in rootupler - because it doesn't work well with OniaPhotonConversionProducer
 
-# The low energy photons are reconstructed here.
-import HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi
-process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer_cfi.PhotonCandidates.clone(
-    conversions = 'allConversions',
-    convAlgo    = 'undefined',
-    convQuality = [''], #O: Changed ['highPurity','generalTracksOnly']
-    primaryVertexTag = 'offlinePrimaryVertices',
-    convSelection = 'conversionVertex.position.rho>0.0', #O: Changed 1.5
-    wantTkVtxCompatibility = False,
-    sigmaTkVtxComp = 50, #O: Changed 5
-    wantCompatibleInnerHits = True,
-    pfcandidates = 'particleFlow',
-    pi0OnlineSwitch = False,
-    TkMinNumOfDOF = 0, #O: Changed 3
-    wantHighpurity = False,
-    #test
-    vertexChi2ProbCut = 0.0000,
-    trackchi2Cut = 1000,
-    minDistanceOfApproachMinCut = -100.25,
-    minDistanceOfApproachMaxCut = 100.00,
-    #O: Original
-    #vertexChi2ProbCut = 0.0005,
-    #trackchi2Cut = 10,
-    #minDistanceOfApproachMinCut = -0.25,
-    #minDistanceOfApproachMaxCut = 1.00,
-)
 
 
 # Chi parts
@@ -156,7 +153,7 @@ process.analysisPath = cms.Path(
             process.patMuonsWithTriggerSequence *
             process.ChiSelectedMuons * 
             process.HiOnia2MuMuPAT *
-            process.PhotonCandidates *
+          #  process.PhotonCandidates *
             process.ChiSequence
 )
 
