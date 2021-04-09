@@ -35,7 +35,7 @@ int  nbinsChiEffpT = sizeof(binsChiEffpT) / sizeof(double) - 1;
 double binsConvEffpT[] = { 0.0, 0.1, 0.5, 1.0, 1.5, 2.5, 5.0};
 int  nbinsConvEffpT = sizeof(binsConvEffpT) / sizeof(double) - 1;
 int weird_decay_counter = 0;
-
+TLorentzVector* LVchic, *LVJpsi, *LVconv, *LVmuon1, *LVmuon2, *LVJpsi_phot;
 
 int Trig_Event_HLTDoubleMuOpen;
 
@@ -47,6 +47,15 @@ std::vector <int>* muonTrackerLayersWithMeasurement = 0;
 std::vector <bool>* muonIsSoft = 0;
 std::vector <double>* muon_eta = 0;
 std::vector <double>* muon_pt = 0;
+
+// vertex
+std::vector <double>* pvtx_z = 0;
+std::vector <double>* pvtx_zError = 0;
+std::vector <double>* pvtx_x = 0;
+std::vector <double>* pvtx_y = 0;
+std::vector <double>* pvtx_nTracks = 0;
+std::vector <bool>* pvtx_isFake = 0;
+
 
 //dimuon
 TClonesArray*  dimuon_p4 = new TClonesArray("TLorentzVector", 100);
@@ -66,6 +75,10 @@ std::vector <double>* dimuon_ctpvError = 0;
 std::vector <int>* gen_pdgId = 0;
 std::vector <double>* gen_chic_pt = 0;
 std::vector <double>* gen_chic_eta = 0;
+std::vector <int>* gen_chic_matchPosition = 0;
+std::vector <int>* gen_chic_nMatches = 0;
+std::vector <double>* gen_chic_rDelta = 0; //in principle duplicates information
+std::vector <double>* gen_chic_ptDeltaRel = 0;//in principle duplicates information
 TClonesArray* gen_chic_p4 = new TClonesArray("TLorentzVector", 100);
 std::vector <double>* gen_Jpsi_pt = 0;
 std::vector <double>* gen_Jpsi_eta = 0;
@@ -74,6 +87,9 @@ std::vector <int>* gen_Jpsi_nMatches = 0;
 std::vector <double>* gen_Jpsi_rDelta = 0; //in principle duplicates information
 std::vector <double>* gen_Jpsi_ptDeltaRel = 0;//in principle duplicates information
 TClonesArray* gen_Jpsi_p4 = new TClonesArray("TLorentzVector", 100);
+std::vector <int>* gen_Jpsi_photon_n = 0;
+std::vector <double>* gen_Jpsi_photon_pt = 0;
+TClonesArray* gen_Jpsi_photon_p4 = new TClonesArray("TLorentzVector", 100);
 std::vector <int>* gen_muon_charge = 0;
 std::vector <int>* gen_muon_nMatches = 0;
 std::vector <int>* gen_muon_matchPosition = 0;
@@ -81,6 +97,7 @@ std::vector <double>* gen_muon_eta = 0;
 std::vector <double>* gen_muon_pt = 0;
 std::vector <double>* gen_muon_rDelta = 0;
 std::vector <double>* gen_muon_ptDeltaRel = 0;
+TClonesArray* gen_muon_p4 = new TClonesArray("TLorentzVector", 100);
 std::vector <double>* gen_phot_pt = 0;
 std::vector <double>* gen_phot_eta = 0;
 std::vector <int>* gen_conv_matchPosition = 0;
@@ -122,6 +139,17 @@ std::vector <int>* chi_daughterJpsi_position = 0; //stores position of daughter 
 std::vector <int>* chi_daughterConv_position = 0; //stores position of daughter photon (conversion)
 std::vector <double>* chi_dzPhotToDimuonVtx = 0; //z distance of photon to dimuon vertex when dxy is minimal
 std::vector <double>* chi_dxyPhotToDimuonVtx = 0; //dxy distance of photon to dimuon vertex when dz is 0 - probably not too good for very midrapidity conversions
+std::vector <int>* chi_kinematicRefitFlag = 0; // -1 kinematic refit not done, 1 done: +2 needed extra refit for photon +4 something wrong with photon at the end +8 something wrong with the final fit 
+std::vector <int>* chi_refit_origChicPosition = 0;
+std::vector <double>* chi_refit_vprob = 0;
+std::vector <double>* chi_refit_ctauPV = 0;
+std::vector <double>* chi_refit_ctauErrPV = 0;
+std::vector <double>* chi_refit_ctauPV3D = 0;
+std::vector <double>* chi_refit_pvtxFromPVwithMuons_x = 0;
+std::vector <double>* chi_refit_pvtxFromPVwithMuons_y = 0;
+std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
+
+
 
 ///////////////////////
 //////   D A T A   ////
@@ -219,10 +247,11 @@ std::vector <double>* chi_dxyPhotToDimuonVtxRD = 0; //dxy distance of photon to 
 
 bool MuonAcceptance(double eta, double pt)
 {
-	if (fabs(eta) > 2.4) return false;
-	if (fabs(eta) < 0.8 && pt < 3.3) return false;
-	if (fabs(eta) >= 0.8 && fabs(eta) < 1.5 && pt < 5.81 - 3.14*fabs(eta)) return false;
-	if (fabs(eta) >= 1.5 && (pt < 0.8 || pt < 1.89 - 0.526*fabs(eta))) return false;
+	if (fabs(eta) > 2.4) return false;  //2.4
+	if (fabs(eta) < 0.3 && pt < 3.4) return false;
+	if (fabs(eta) < 1.1 && pt < 3.3) return false;
+	if (fabs(eta) >= 1.1 && fabs(eta) < 2.1 && pt < 5.5 - 2 * fabs(eta)) return false;
+	if (fabs(eta) >= 2.1 && pt < 1.3) return false;
 	return true;
 }
 
@@ -230,6 +259,13 @@ bool PhotAcceptance(double eta, double pt)
 {
 	if (fabs(eta) > 2.5) return false;
 	if (pt < 0.2) return false;
+	return true;
+}
+
+bool DimuonAcceptance(double eta, double pt)
+{
+	//if (fabs(eta) > 2.4) return false;  //2.4
+	if (pt < 6.0) return false;
 	return true;
 }
 
@@ -278,22 +314,22 @@ bool PhotSelectionPassMC(int photPos)  //uses variables loaded in main function
 bool PhotSelectionNMinusOne(int photPos, int selToSkip)  //uses variables loaded in main function
 {
 	if (photPos < -0.5) return false; //not matched
-	if (selToSkip != 1 && convQuality_isHighPurity->at(photPos) != 1) return false;
-	if (selToSkip != 2 && convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
-	if (selToSkip != 3 && conv_vertexPositionRho->at(photPos) <= 1.5) return false;
-	if (selToSkip != 4 && conv_sigmaTkVtx1->at(photPos) > 10) return false;
-	if (selToSkip != 5 && conv_sigmaTkVtx2->at(photPos) > 10) return false;
-	if (selToSkip != 6 && conv_tkVtxCompatibilityOK->at(photPos) != 1) return false;
-	if (selToSkip != 7 && conv_compatibleInnerHitsOK->at(photPos) != 1) return false;
-	if (selToSkip != 8 && conv_vertexChi2Prob->at(photPos) <= 0.01) return false;
+	if (selToSkip != 0 && convQuality_isHighPurity->at(photPos) != 1) return false;
+	if (selToSkip != 1 && convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
+	if (selToSkip != 2 && conv_vertexPositionRho->at(photPos) <= 1.5) return false;
+	if (selToSkip != 3 && conv_sigmaTkVtx1->at(photPos) > 10) return false;
+	if (selToSkip != 4 && conv_sigmaTkVtx2->at(photPos) > 10) return false;
+	if (selToSkip != 5 && conv_tkVtxCompatibilityOK->at(photPos) != 1) return false;
+	if (selToSkip != 6 && conv_compatibleInnerHitsOK->at(photPos) != 1) return false;
+	if (selToSkip != 7 && conv_vertexChi2Prob->at(photPos) <= 0.01) return false;
 	//if (fabs(conv_zOfPriVtx->at(photPos)) >= 20) return false;
-	if (selToSkip != 9 && fabs(conv_dzToClosestPriVtx->at(photPos)) >= 10) return false;
-	if (selToSkip != 10 && conv_tk1NumOfDOF->at(photPos) < 2.5) return false;
-	if (selToSkip != 11 && conv_tk2NumOfDOF->at(photPos) < 2.5) return false;
-	if (selToSkip != 12 && conv_track1Chi2->at(photPos) >= 10) return false;
-	if (selToSkip != 13 && conv_track2Chi2->at(photPos) >= 10) return false;
-	if (selToSkip != 14 && conv_minDistanceOfApproach->at(photPos) <= -0.25) return false;
-	if (selToSkip != 15 && conv_minDistanceOfApproach->at(photPos) >= 1.00) return false;
+	if (selToSkip != 8 && fabs(conv_dzToClosestPriVtx->at(photPos)) >= 10) return false;
+	if (selToSkip != 9 && conv_tk1NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToSkip != 10 && conv_tk2NumOfDOF->at(photPos) < 2.5) return false;
+	if (selToSkip != 11 && conv_track1Chi2->at(photPos) >= 10) return false;
+	if (selToSkip != 12 && conv_track2Chi2->at(photPos) >= 10) return false;
+	if (selToSkip != 13 && conv_minDistanceOfApproach->at(photPos) <= -0.25) return false;
+	if (selToSkip != 14 && conv_minDistanceOfApproach->at(photPos) >= 1.00) return false;
 	return true;
 }
 
@@ -347,7 +383,7 @@ bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main functio
 {
 	if (dimuon_charge->at(dimuonPos) != 0) return false;
 	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
-	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	//if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
 	return true;
 }
 
@@ -357,12 +393,12 @@ bool DimuonSelectionPassMC(int dimuonPos)  //uses variables loaded in main funct
 	if (matchPosition < -0.5) return false; //not matched
 	if (dimuon_charge->at(matchPosition) != 0) return false;
 	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
-	if (dimuon_vtxProb->at(matchPosition) < 0.01) return false;
+	//if (dimuon_vtxProb->at(matchPosition) < 0.01) return false;
 	return true;
 }
 
 
-int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", const char* fileInRD = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-bothDirRW2.root", const char* fileOut = "Chi_c_distributionsMC5Tests.root")
+int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV-MC6v4.root", const char* fileInRD = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-bothDirRW2.root", const char* fileOut = "Chi_c_distributionsMC6Tests.root")
 {
 	gStyle->SetOptStat(1111);
 	gROOT->ProcessLine("#include <vector>");
@@ -380,10 +416,21 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	TH1D* h_gen_muon_rDelta = new TH1D("h_gen_muon_rDelta", "h_gen_muon_rDelta", 100, 0, 0.5);
 
 
+	// Jpsi
+	TH1I* h_gen_Jpsi_photon_n = new TH1I("h_gen_Jpsi_photon_n", "h_gen_Jpsi_photon_n", 10, 0, 10);
+	TH1D* h_gen_Jpsi_photon_pt = new TH1D("h_gen_Jpsi_photon_pt", "h_gen_Jpsi_photon_pt", 100, 0, 2);
+	TH1D* h_gen_Jpsi_mass_GEN = new TH1D("h_gen_Jpsi_mass_GEN", "h_gen_Jpsi_mass_GEN", 300, 3, 3.15);
+	TH1D* h_gen_Jpsi_mass_GENMuonOnly = new TH1D("h_gen_Jpsi_mass_GENMuonOnly", "h_gen_Jpsi_mass_GENMuonOnly", 300, 3, 3.15);
+	TH1D* h_gen_Jpsi_mass_GENMuonOnlyWide = new TH1D("h_gen_Jpsi_mass_GENMuonOnlyWide", "h_gen_Jpsi_mass_GENMuonOnlyWide", 300, 1, 3.3);
+	TH1D* h_gen_Jpsi_mass_GENMuonPhoton = new TH1D("h_gen_Jpsi_mass_GENMuonPhoton", "h_gen_Jpsi_mass_GENMuonPhoton", 300, 3, 3.15);
+	TH1D* h_gen_Jpsi_mass_GENMuonPhotonWide = new TH1D("h_gen_Jpsi_mass_GENMuonPhotonWide", "h_gen_Jpsi_mass_GENMuonPhotonWide", 300, 1, 5);
+
+	TH1D* h_dimuon_vtxProb = new TH1D("h_dimuon_vtxProb", "h_dimuon_vtxProb", 200, 0, 1);
+
 	//conversions
-	const char* hname = "h_convQuality_isHighPurity";
-	TH1D* h_convQuality_isHighPurity = new TH1D(hname, hname, 2, 0, 2);
-	//TH1D* h_convQuality_isHighPurity = new TH1D("h_convQuality_isHighPurity", "h_convQuality_isHighPurity", 2, 0, 2);
+	//const char* hname = "h_convQuality_isHighPurity";
+	//TH1D* h_convQuality_isHighPurity = new TH1D(hname, hname, 2, 0, 2);
+	TH1D* h_convQuality_isHighPurity = new TH1D("h_convQuality_isHighPurity", "h_convQuality_isHighPurity", 2, 0, 2);
 	TH1D* h_convQuality_isGeneralTracksOnly = new TH1D("h_convQuality_isGeneralTracksOnly", "h_convQuality_isGeneralTracksOnly", 2, 0, 2);
 	TH1D* h_conv_vertexPositionRho = new TH1D("h_conv_vertexPositionRho", "h_conv_vertexPositionRho", 200, 0, 100);
 	TH1D* h_conv_sigmaTkVtx1 = new TH1D("h_conv_sigmaTkVtx1", "h_conv_sigmaTkVtx1", 200, 0, 100);
@@ -418,9 +465,20 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	TH1D* h_gen_conv_ptDeltaRel = new TH1D("h_gen_conv_ptDeltaRel", "h_gen_conv_ptDeltaRel", 200, -1, 1);
 
 
+	//chic
+	TH1I* h_chic_Refit_Flag = new TH1I("h_chic_Refit_Flag", "h_chic_Refit_Flag", 13, 0, 13);
+	TH1D* h_chic_Refit_vtxProb = new TH1D("h_chic_Refit_vtxProb", "h_chic_Refit_vtxProb", 250, -1.5, 1);
+	TH1D* h_chic_Refit_vtxProbZoom = new TH1D("h_chic_Refit_vtxProbZoom", "h_chic_Refit_vtxProbZoom", 100, 0, 1);
+	TH1D* h_chic_Refit_vtxProbAfterSel = new TH1D("h_chic_Refit_vtxProbAfterSel", "h_chic_Refit_vtxProbAfterSel", 250, -1.5, 1);
+	TH1D* h_chic_Refit_vtxProbAfterSelZoom = new TH1D("h_chic_Refit_vtxProbAfterSelZoom", "h_chic_Refit_vtxProbAfterSelZoom", 100, 0, 1);
+	TH2D* h_chic_Refit_vtxProb2D = new TH2D("h_chic_Refit_vtxProb2D", "h_chic_Refit_vtxProb2D;Jpsi_vtxProb;Chic_vtxProb", 100, 0, 1, 100, 0, 1);
+	TH1D* h_chic_Refit_ctau = new TH1D("h_chic_Refit_ctau", "h_chic_Refit_ctau", 200, -0.2, 0.2);
+	TH1D* h_chic_Refit_ctau3D = new TH1D("h_chic_Refit_ctau3D", "h_chic_Refit_ctau3D", 200, -0.2, 0.2);
+	TH1D* h_chic_Diff = new TH1D("h_chic_Diff", "h_chic_Diff", 200, -0.001, 0.001);
+
 	// Conversion study
 	TH1D* hConversionCutsInAcc[16];
-	//char*[16] 
+	const char* histNameInAcc[16] = { "h_convQuality_isHighPurity", "h_convQuality_isGeneralTracksOnly", "h_conv_vertexPositionRho", "h_conv_sigmaTkVtx1", "h_conv_sigmaTkVtx2", "h_conv_tkVtxCompatibilityOK", "h_conv_compatibleInnerHitsOK", "h_conv_vertexChi2Prob",   };
 
 	
 
@@ -443,6 +501,15 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	event_tree->SetBranchAddress("muon_eta", &muon_eta);
 	event_tree->SetBranchAddress("muon_pt", &muon_pt);
 	
+	//vertex
+
+	event_tree->SetBranchAddress("pvtx_z", &pvtx_z);
+	event_tree->SetBranchAddress("pvtx_zError", &pvtx_zError);
+	event_tree->SetBranchAddress("pvtx_x", &pvtx_x);
+	event_tree->SetBranchAddress("pvtx_y", &pvtx_y);
+	event_tree->SetBranchAddress("pvtx_nTracks", &pvtx_nTracks);
+	event_tree->SetBranchAddress("pvtx_isFake", &pvtx_isFake);
+
 	event_tree->SetBranchAddress("dimuon_p4", &dimuon_p4);
 	event_tree->SetBranchAddress("dimuon_eta", &dimuon_eta);
 	event_tree->SetBranchAddress("dimuon_pt", &dimuon_pt);
@@ -460,7 +527,12 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	event_tree->SetBranchAddress("gen_pdgId", &gen_pdgId);
 	event_tree->SetBranchAddress("gen_chic_pt", &gen_chic_pt);
 	event_tree->SetBranchAddress("gen_chic_eta", &gen_chic_eta);
+	event_tree->SetBranchAddress("gen_chic_matchPosition", &gen_chic_matchPosition);
+	event_tree->SetBranchAddress("gen_chic_nMatches", &gen_chic_nMatches);
+	event_tree->SetBranchAddress("gen_chic_rDelta", &gen_chic_rDelta);
+	event_tree->SetBranchAddress("gen_chic_ptDeltaRel", &gen_chic_ptDeltaRel);
 	event_tree->SetBranchAddress("gen_chic_p4", &gen_chic_p4);
+
 	event_tree->SetBranchAddress("gen_Jpsi_pt", &gen_Jpsi_pt);
 	event_tree->SetBranchAddress("gen_Jpsi_eta", &gen_Jpsi_eta);
 	event_tree->SetBranchAddress("gen_Jpsi_matchPosition", &gen_Jpsi_matchPosition);
@@ -469,12 +541,17 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	event_tree->SetBranchAddress("gen_Jpsi_ptDeltaRel", &gen_Jpsi_ptDeltaRel);
 	event_tree->SetBranchAddress("gen_Jpsi_p4", &gen_Jpsi_p4);
 
+	event_tree->SetBranchAddress("gen_Jpsi_photon_n", &gen_Jpsi_photon_n);
+	event_tree->SetBranchAddress("gen_Jpsi_photon_pt", &gen_Jpsi_photon_pt);
+	event_tree->SetBranchAddress("gen_Jpsi_photon_p4", &gen_Jpsi_photon_p4);
+
 	event_tree->SetBranchAddress("gen_muon_nMatches", &gen_muon_nMatches);
 	event_tree->SetBranchAddress("gen_muon_matchPosition", &gen_muon_matchPosition);
 	event_tree->SetBranchAddress("gen_muon_eta", &gen_muon_eta);
 	event_tree->SetBranchAddress("gen_muon_pt", &gen_muon_pt);
 	event_tree->SetBranchAddress("gen_muon_rDelta", &gen_muon_rDelta);
 	event_tree->SetBranchAddress("gen_muon_ptDeltaRel", &gen_muon_ptDeltaRel);
+	event_tree->SetBranchAddress("gen_muon_p4", &gen_muon_p4);
 
 	event_tree->SetBranchAddress("gen_phot_pt", &gen_phot_pt);
 	event_tree->SetBranchAddress("gen_phot_eta", &gen_phot_eta);
@@ -519,12 +596,27 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	event_tree->SetBranchAddress("chi_daughterConv_position", &chi_daughterConv_position);
 	event_tree->SetBranchAddress("chi_dzPhotToDimuonVtx", &chi_dzPhotToDimuonVtx);
 	event_tree->SetBranchAddress("chi_dxyPhotToDimuonVtx", &chi_dxyPhotToDimuonVtx);
+	event_tree->SetBranchAddress("chi_kinematicRefitFlag", &chi_kinematicRefitFlag);
+	event_tree->SetBranchAddress("chi_refit_origChicPosition", &chi_refit_origChicPosition);
+	event_tree->SetBranchAddress("chi_refit_vprob", &chi_refit_vprob);
+	event_tree->SetBranchAddress("chi_refit_ctauPV", &chi_refit_ctauPV);
+	event_tree->SetBranchAddress("chi_refit_ctauErrPV", &chi_refit_ctauErrPV);
+	event_tree->SetBranchAddress("chi_refit_ctauPV3D", &chi_refit_ctauPV3D);
+	event_tree->SetBranchAddress("chi_refit_pvtxFromPVwithMuons_x", &chi_refit_pvtxFromPVwithMuons_x);
+	event_tree->SetBranchAddress("chi_refit_pvtxFromPVwithMuons_y", &chi_refit_pvtxFromPVwithMuons_y);
+	event_tree->SetBranchAddress("chi_refit_pvtxFromPVwithMuons_z", &chi_refit_pvtxFromPVwithMuons_z);
+
+
+
+	///////////////////////////////////
+	////////  S  T  A  R  T  //////////
+	////////////////////////////////////
 
 
 	Long64_t nentries = event_tree->GetEntries();
 	cout << "n entries: "<<nentries << endl;
 	//if (nentries > 5000) { nentries = 5000; }
-
+	int counter = 0;
 
 	for (Long64_t i = 0; i < nentries; i++) {
 
@@ -540,6 +632,35 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 			weird_decay_counter++;
 			continue;
 		}
+
+
+
+
+		// Look at J/psi
+		LVJpsi = (TLorentzVector*)gen_Jpsi_p4->At(0);
+		LVmuon1 = (TLorentzVector*)gen_muon_p4->At(0);
+		LVmuon2 = (TLorentzVector*)gen_muon_p4->At(1);
+		h_gen_Jpsi_photon_n->Fill(gen_Jpsi_photon_n->at(0));
+		for (int i_jpsi_phot = 0; i_jpsi_phot < gen_Jpsi_photon_n->at(0); i_jpsi_phot++)
+		{
+			h_gen_Jpsi_photon_pt->Fill(gen_Jpsi_photon_pt->at(0));
+		}
+		h_gen_Jpsi_mass_GEN->Fill(LVJpsi->M());
+		double mass_Jpsi_muOnly = (*LVmuon1 + *LVmuon2).M();
+		h_gen_Jpsi_mass_GENMuonOnly->Fill(mass_Jpsi_muOnly);
+		h_gen_Jpsi_mass_GENMuonOnlyWide->Fill(mass_Jpsi_muOnly);
+		if (mass_Jpsi_muOnly < 2.9) { counter++; };
+		TLorentzVector LV_aux = (*LVmuon1 + *LVmuon2);
+		for (int i_jpsi_phot2 = 0; i_jpsi_phot2 < gen_Jpsi_photon_n->at(0); i_jpsi_phot2++)
+		{
+		//if (gen_Jpsi_photon_n->at(0) > 0) {
+		//	LVJpsi_phot = (TLorentzVector*)gen_Jpsi_photon_p4->At(0);
+		//	cout << LVJpsi_phot->Pt();
+		//}
+			LV_aux += *((TLorentzVector*)gen_Jpsi_photon_p4->At(0));
+		}
+		h_gen_Jpsi_mass_GENMuonPhoton->Fill(LV_aux.M());
+		h_gen_Jpsi_mass_GENMuonPhotonWide->Fill(LV_aux.M());
 
 		//GEN muons // 2 per event
 		for (Long64_t j = 0; j < 2; j++)
@@ -610,25 +731,51 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 
 		}
 
-		////   N-1 EFFICIENCIES
-		//double eta1 = gen_muon_eta->at(0);
-		//double pt1 = gen_muon_pt->at(0);
-		//double eta2 = gen_muon_eta->at(1);
-		//double pt2 = gen_muon_pt->at(1);
-		//double eta_phot = gen_phot_eta->at(0);
-		//double pt_phot = gen_phot_pt->at(0);
-		//// acceptance and selection for muons, etc.
-		//if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true)
-		//{
 
-		//	for (int sel = 1; sel < 16; sel++)
-		//	{
-		//		PhotSelectionNMinusOne(int photPos, int selToSkip)
-		//	}
-		//}
+		//////////////
+		// chic 
+		/////////////////
+
+		double eta1 = gen_muon_eta->at(0);
+		double pt1 = gen_muon_pt->at(0);
+		double eta2 = gen_muon_eta->at(1);
+		double pt2 = gen_muon_pt->at(1);
+		double eta_phot = gen_phot_eta->at(0);
+		double pt_phot = gen_phot_pt->at(0);
+		double eta_Jpsi = gen_Jpsi_eta->at(0);
+		double pt_Jpsi = gen_Jpsi_pt->at(0);
+		double eta_chi = gen_chic_eta->at(0);
+		double pt_chi = gen_chic_pt->at(0);
+
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true && DimuonAcceptance(eta_Jpsi, pt_Jpsi)) //do only if everything in acceptance
+		{
+			if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && PhotSelectionPassMCLoose(0) == true && DimuonSelectionPassMC(0))
+			{
+				h_dimuon_vtxProb->Fill(dimuon_vtxProb->at(gen_Jpsi_matchPosition->at(0)));
+
+				int chicMatchPos = gen_chic_matchPosition->at(0);
+				if (chicMatchPos > -0.5) {
+					h_chic_Refit_Flag->Fill(chi_kinematicRefitFlag->at(chicMatchPos));
+					h_chic_Refit_vtxProb->Fill(chi_refit_vprob->at(chicMatchPos));
+					if (dimuon_vtxProb->at(gen_Jpsi_matchPosition->at(0)) > 0.01) { h_chic_Refit_vtxProbAfterSel->Fill(chi_refit_vprob->at(chicMatchPos)); }
+					if(chi_kinematicRefitFlag->at(chicMatchPos) > 0.5 && chi_kinematicRefitFlag->at(chicMatchPos)<3.5) //refit actually fine
+					{
+						h_chic_Refit_vtxProbZoom->Fill(chi_refit_vprob->at(chicMatchPos));
+						if (dimuon_vtxProb->at(gen_Jpsi_matchPosition->at(0)) > 0.01) { h_chic_Refit_vtxProbAfterSelZoom->Fill(chi_refit_vprob->at(chicMatchPos)); }
+						h_chic_Refit_vtxProb2D->Fill(dimuon_vtxProb->at(gen_Jpsi_matchPosition->at(0)), chi_refit_vprob->at(chicMatchPos));
+						h_chic_Refit_ctau->Fill(chi_refit_ctauPV->at(chicMatchPos));
+						h_chic_Refit_ctau3D->Fill(chi_refit_ctauPV3D->at(chicMatchPos));
+					}
+					h_chic_Diff->Fill(chi_refit_pvtxFromPVwithMuons_x->at(chicMatchPos) - pvtx_x->at(0));
+					//event_tree->SetBranchAddress("chi_refit_pvtxFromPVwithMuons_x", &chi_refit_pvtxFromPVwithMuons_x);
+					//event_tree->SetBranchAddress("chi_refit_ctauPV", &chi_refit_ctauPV);
+					//event_tree->SetBranchAddress("chi_refit_ctauErrPV", &chi_refit_ctauErrPV);
+					//event_tree->SetBranchAddress("chi_refit_ctauPV3D", &chi_refit_ctauPV3D);
+				}
+			}
 
 
-
+		}
 
 
 
@@ -708,6 +855,7 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 
 	cout << "weird decays: " << weird_decay_counter << "  out of  " << nentries << endl;
 
+	cout << "Counter: " << counter << endl;
 
 	
 	//TCanvas* can1 = new TCanvas("can1", "plot", 1200, 800);
@@ -733,7 +881,15 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	h_muonMatch_isSoft->Write();
 	h_muonMatch_trackerLayers->Write();
 
+	// Jpsi
 
+	h_gen_Jpsi_photon_n->Write();
+	h_gen_Jpsi_photon_pt->Write();
+	h_gen_Jpsi_mass_GEN->Write();
+	h_gen_Jpsi_mass_GENMuonOnly->Write();
+	h_gen_Jpsi_mass_GENMuonOnlyWide->Write();
+	h_gen_Jpsi_mass_GENMuonPhoton->Write();
+	h_gen_Jpsi_mass_GENMuonPhotonWide->Write();
 
 	//conv
 
@@ -770,6 +926,17 @@ int VariablesDistributions(const char* fileInMC = "Chi_c_pPb8TeV_MC5_v2.root", c
 	h_gen_conv_nMatches->Write();
 	h_gen_conv_rDelta->Write();
 	h_gen_conv_ptDeltaRel->Write();
+
+	h_dimuon_vtxProb->Write();
+	h_chic_Refit_Flag->Write();
+	h_chic_Refit_vtxProb->Write();
+	h_chic_Refit_vtxProbAfterSel->Write();
+	h_chic_Refit_vtxProbZoom->Write();
+	h_chic_Refit_vtxProbAfterSelZoom->Write();
+	h_chic_Refit_vtxProb2D->Write();
+	h_chic_Refit_ctau->Write();
+	h_chic_Refit_ctau3D->Write();
+	h_chic_Diff->Write();
 
 
 	fout->Close();

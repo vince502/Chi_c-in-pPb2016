@@ -1,7 +1,10 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_MC.root'
-inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
+outFileName = 'Chi_c_pPb8TeV_MC_EposChi.root'
+inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_30/src/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO.root' 
+#inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_30/src/EPOStest_RECO.root' 
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_7.root' #v7 MC
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_2.root' #v5 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/MCTestFile_v4.root' #v4 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'

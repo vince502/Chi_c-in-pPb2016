@@ -342,6 +342,11 @@ private:
 	std::vector <double> chi_refit_vprob;
 	std::vector <double> chi_refit_ctauPV;
 	std::vector <double> chi_refit_ctauErrPV;
+	std::vector <double> chi_refit_ctauPV3D;
+	std::vector <double> chi_refit_pvtxFromPVwithMuons_x;
+	std::vector <double> chi_refit_pvtxFromPVwithMuons_y;
+	std::vector <double> chi_refit_pvtxFromPVwithMuons_z;
+
 
 	//MC
 	TLorentzVector MC_chic_p4;
@@ -351,7 +356,6 @@ private:
 	TLorentzVector gen_muonP_p4;
 	TLorentzVector gen_muonM_p4;
 	edm::EDGetTokenT<reco::GenParticleCollection> genCands_;
-	edm::EDGetTokenT<pat::PackedGenParticleCollection> packCands_;
 
 	// static data member definitions
 	//

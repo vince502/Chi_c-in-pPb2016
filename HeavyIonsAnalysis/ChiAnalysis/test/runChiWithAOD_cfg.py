@@ -1,6 +1,6 @@
 # To be run on AOD, done by Ota Kukral
 #
-outFileName = 'Chi_c_pPb8TeV_testNew13.root'
+outFileName = 'Chi_c_pPb8TeV_RW4test2.root'
 inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
 
@@ -19,8 +19,8 @@ from Configuration.AlCa.GlobalTag_condDBv2 import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_v19', '')
 
 
-process.MessageLogger.cerr.FwkReport.reportEvery = 10000
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(100000))
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))
@@ -85,13 +85,13 @@ appendL1MatchingAlgo(process)
 # cuts on muons
 process.ChiSelectedMuons = cms.EDFilter('PATMuonSelector',
    src = cms.InputTag('patMuonsWithTrigger'),
-   cut = cms.string('muonID(\"TMOneStationTight\")'
-                    ' && abs(innerTrack.dxy) < 0.3'
-                    ' && abs(innerTrack.dz)  < 20.'
-                    ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
-                    ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
-                    ' && innerTrack.quality(\"highPurity\")'
-                    ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 1.0))'
+   cut = cms.string(''#'muonID(\"TMOneStationTight\")'
+                   # ' && abs(innerTrack.dxy) < 0.3'
+                   # ' && abs(innerTrack.dz)  < 20.'
+                  #  ' && innerTrack.hitPattern.trackerLayersWithMeasurement > 5'
+                   # ' && innerTrack.hitPattern.pixelLayersWithMeasurement > 0'
+                   # ' && innerTrack.quality(\"highPurity\")'
+                   # ' && ((abs(eta) <= 0.9 && pt > 2.5) || (0.9 < abs(eta) <= 2.4 && pt > 1.0))'
    ),
    filter = cms.bool(False)
 )

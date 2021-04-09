@@ -30,7 +30,7 @@
 
 #include "DataFormats/PatCandidates/interface/PATObject.h"
 #include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
-#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+//#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
@@ -55,7 +55,7 @@
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/TransientTrackKinematicParticle.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
-
+#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
 
 
 
@@ -71,7 +71,6 @@
 //#include "DataFormats/HeavyIonEvent/interface/Centrality.h"
 
 #include <boost/foreach.hpp>
-
 
 
 //constructor
@@ -249,6 +248,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	
 	// MC general
 	if (flag_doMC) {
+		event_tree->Branch("gen_isGoodChicDecay", &gen_isGoodChicDecay);
 		event_tree->Branch("gen_pdgId", &gen_pdgId);
 
 		event_tree->Branch("gen_chic_pt", &gen_chic_pt);
@@ -293,7 +293,6 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 	//chi
 
-	event_tree->Branch("gen_isGoodChicDecay", &gen_isGoodChicDecay);
 	event_tree->Branch("chi_p4", "TClonesArray", &chi_p4, 32000, 0);
 	event_tree->Branch("chi_eta", &chi_eta);
 	event_tree->Branch("chi_pt", &chi_pt);
@@ -304,10 +303,14 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("chiStored", "std::vector <pat::CompositeCandidate>", &chiStored);
 	event_tree->Branch("chi_kinematicRefitFlag", &chi_kinematicRefitFlag);
 	event_tree->Branch("chi_refit_origChicPosition", &chi_refit_origChicPosition);
-	event_tree->Branch("chi_refit_vprob", &chi_refit_vprob);
 	event_tree->Branch("chi_refitStored", "std::vector <pat::CompositeCandidate>", &chi_refitStored);
+	event_tree->Branch("chi_refit_vprob", &chi_refit_vprob);
 	event_tree->Branch("chi_refit_ctauPV", &chi_refit_ctauPV);
 	event_tree->Branch("chi_refit_ctauErrPV", &chi_refit_ctauErrPV);
+	event_tree->Branch("chi_refit_ctauPV3D", &chi_refit_ctauPV3D);
+	event_tree->Branch("chi_refit_pvtxFromPVwithMuons_x", &chi_refit_pvtxFromPVwithMuons_x);
+	event_tree->Branch("chi_refit_pvtxFromPVwithMuons_y", &chi_refit_pvtxFromPVwithMuons_y);
+	event_tree->Branch("chi_refit_pvtxFromPVwithMuons_z", &chi_refit_pvtxFromPVwithMuons_z);
 
 }
 
@@ -474,7 +477,6 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					edm::ESHandle<TransientTrackBuilder> theB;
 					iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
 
-
 					reco::TrackRef JpsiTk[2] = { (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon1")))->innerTrack(), (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon2")))->innerTrack() };
 
 					const reco::Track conv_tk1 = *(photCand->tracks().at(0));
@@ -486,9 +488,11 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					//convTracks.push_back(conv_tk1);
 					//convTracks.push_back(conv_tk2);
 					const reco::Vertex thePrimaryV = *(dimuonCand->userData<reco::Vertex>("PVwithmuons"));
-					//const reco::Vertex& pvtx = primaryVertices_handle->at(0);
-					//if (abs(thePrimaryV.x() - pvtx.x()) > 0.01) { cout << "primaryV x   " << thePrimaryV.x() << "    " << pvtx.x() << endl; } //check if it is always 0th vertex
-
+					const reco::Vertex& pvtx = primaryVertices_handle->at(0);
+					if (abs(thePrimaryV.x() - pvtx.x()) > 0.01) { cout << "primaryV x   " << thePrimaryV.x() << "    " << pvtx.x() << endl; } //check if it is always 0th vertex
+					chi_refit_pvtxFromPVwithMuons_x.push_back(thePrimaryV.x());
+					chi_refit_pvtxFromPVwithMuons_y.push_back(thePrimaryV.y());
+					chi_refit_pvtxFromPVwithMuons_z.push_back(thePrimaryV.z());
 
 					//cout << "dimuon  " << dimuonCand->userInt("muonPosition1") << endl;
 					//cout << "dimuon  " << dimuonCand->userInt("muonPosition2") << endl;
@@ -602,6 +606,17 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 								chi_refit_ctauPV.push_back(ctauPV);
 								chi_refit_ctauErrPV.push_back(ctauErrPV);
+
+								// same but 3D
+								vtx.SetXYZ(ChiVtxX_fit, ChiVtxY_fit, ChiVtxZ_fit);
+								pvtx.SetXYZ(thePrimaryV.position().x(), thePrimaryV.position().y(), thePrimaryV.position().z());
+								TVector3 pperp3D(ChiPx_fit, ChiPy_fit, ChiPz_fit);
+								TVector3 vdiff3D = vtx - pvtx;
+								cosAlpha = vdiff.Dot(pperp) / (vdiff.Perp() * pperp.Perp());
+								VertexDistance3D vdistXYZ;
+								distXY = vdistXYZ.distance(myVertex, thePrimaryV);
+								ctauPV = distXY.value() * cosAlpha * ChiM_fit / pperp.Perp();
+								chi_refit_ctauPV3D.push_back(ctauPV);
 							}
 							else refitStatusFlag += 16;
 						}
@@ -623,6 +638,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				chi_refit_vprob.push_back(-1);
 				chi_refit_ctauPV.push_back(-100);
 				chi_refit_ctauErrPV.push_back(-100);
+				chi_refit_ctauPV3D.push_back(-100);
 			}
 			chi_kinematicRefitFlag.push_back(refitStatusFlag);
 
@@ -980,7 +996,10 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				// it is the chic
 				bool isGoodMCchic = true; //we have some weird decays, skip those
 				int nDaughters = genParticle.numberOfDaughters();
-				if (nDaughters != 2) { cout << "weird gen decay, number of daughters is: " << nDaughters << "  in event number : " << eventNumber << endl; isGoodMCchic = false; } //all of them should be J/psi + gamma
+				if (nDaughters != 2) { //all of them should be J/psi + gamma
+					//cout << "weird gen decay, number of daughters is: " << nDaughters << "  in event number : " << eventNumber << endl;
+					isGoodMCchic = false; 
+				} 
 				for (int j = 0; j < nDaughters; j++) {
 					const reco::Candidate& gen_chiDaughter = *genParticle.daughter(j);
 					int dauId = gen_chiDaughter.pdgId();
@@ -1314,6 +1333,11 @@ void ChiRootupler::Clear()
 	chi_refit_vprob.clear();
 	chi_refit_ctauPV.clear();
 	chi_refit_ctauErrPV.clear();
+	chi_refit_ctauPV3D.clear();
+	chi_refit_pvtxFromPVwithMuons_x.clear();
+	chi_refit_pvtxFromPVwithMuons_y.clear();
+	chi_refit_pvtxFromPVwithMuons_z.clear();
+
 }
 
 
