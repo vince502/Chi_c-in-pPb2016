@@ -1,5 +1,5 @@
-#ifndef __ChiRootupler_h_
-#define __ChiRootupler_h_
+#ifndef ChiRootupler_h
+#define ChiRootupler_h
 
   // Declaration of ChiRootupler
   // Description: Saves the muon, dimuon and chi candidate information
@@ -132,7 +132,7 @@ private:
 	double jpsi_mass = 3.097;
 
 	// constants for events and PV
-	const double cPVMatching_cutoff = 0.2; //If dimuon is within 2mm of PV[0], leave it. Based on dimuon.z - PV.z resolution. Has effect for peripheral events
+	const double cPVMatching_cutoff = 0.0; //If dimuon is within 2mm of PV[0], leave it. Based on dimuon.z - PV.z resolution. Has effect for peripheral events //Changed to 0 (no cut-off)
 
 
 	// constants for muon cuts
@@ -144,7 +144,7 @@ private:
 	const double jpsi_maxDPtRel = 0.5;
 
 	// constants for conversion cuts
-	const double conv_TkVtxCompSigmaCut = 50.0;
+	const double conv_TkVtxCompSigmaCut = 5.0;
 	const double conv_maxDeltaR = 0.2;
 	const double conv_maxDPtRel = 1;
 
@@ -215,6 +215,7 @@ private:
 	std::vector <double> dimuon_pt;
 	std::vector <double> dimuon_charge; 
 	TClonesArray* dimuon_vtx; //TVector3
+	std::vector <int>  dimuon_pvtx_indexFromOniaMuMu;
     std::vector <int>  dimuon_pvtx_index;
 	std::vector <double> dimuon_dz_dimuonvtx_pvtx;
 	std::vector <double> dimuon_vtxProb;
@@ -348,14 +349,6 @@ private:
 	std::vector <double> chi_refit_pvtxFromPVwithMuons_z;
 
 
-	//MC
-	TLorentzVector MC_chic_p4;
-	Int_t chic_pdgId;
-	TLorentzVector gen_jpsi_p4;
-	TLorentzVector gen_photon_p4;
-	TLorentzVector gen_muonP_p4;
-	TLorentzVector gen_muonM_p4;
-	edm::EDGetTokenT<reco::GenParticleCollection> genCands_;
 
 	// static data member definitions
 	//

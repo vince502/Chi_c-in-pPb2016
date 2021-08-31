@@ -164,13 +164,14 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 		event_tree->Branch("patMuon", "std::vector <pat::Muon>", &patMuonStored);
 	}
 
-	// dimuon - TBU
+	// dimuon
 
 	event_tree->Branch("dimuon_p4", "TClonesArray", &dimuon_p4, 32000, 0);
 	event_tree->Branch("dimuon_eta", &dimuon_eta);
 	event_tree->Branch("dimuon_pt", &dimuon_pt);
 	event_tree->Branch("dimuon_charge", &dimuon_charge);
 	event_tree->Branch("dimuon_vtx", "TClonesArray", &dimuon_vtx, 32000, 0);
+	event_tree->Branch("dimuon_pvtx_indexFromOniaMuMu", &dimuon_pvtx_indexFromOniaMuMu);
 	event_tree->Branch("dimuon_pvtx_index", &dimuon_pvtx_index);
 	event_tree->Branch("dimuon_dz_dimuonvtx_pvtx", &dimuon_dz_dimuonvtx_pvtx);
 	event_tree->Branch("dimuon_vtxProb", &dimuon_vtxProb);
@@ -444,7 +445,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		// loop on conversion candidates, make chi cand
 		for (reco::ConversionCollection::const_iterator photCand = conversion_handle->begin(); photCand != conversion_handle->end(); ++photCand) {
 
-			if (ConvSelection(*photCand) == false) { continue; } //pre-select photons here
+			if (ConvSelection(*photCand) == false) { continue; } //pre-select photons here (only pT>0.2 and |eta|<2.5)
 
 			chi_cand = makeChiCandidate(*dimuonCand, *photCand);
 
@@ -666,7 +667,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	}
 	else cout << "Problem with PV handle" << endl;
 
-	int pvtx_index = 0; // 0: top primary vertex. Set in dimuon loop to vertex that is "closest" in z to dimuon vertex (with a cut-off, see ChiRootupler::SelectVertex)
+	int pvtx_index = 0; // 0: top primary vertex. Set in dimuon loop to vertex that is "closest" in z to dimuon vertex  (with optional cut-off, see ChiRootupler::SelectVertex) //changed to match vertex from HiOnia2MuMuPAT (mostly same version of the closest in dz)
 
 	////////////////////////
 	////  D I M U O N   ///
@@ -694,8 +695,10 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			TVector3 dimuon_vtx_aux;
 			dimuon_vtx_aux.SetXYZ(dimuon_recovtx->x(), dimuon_recovtx->y(), dimuon_recovtx->z());
 			new ((*dimuon_vtx)[i]) TVector3(dimuon_vtx_aux);
+			dimuon_pvtx_indexFromOniaMuMu.push_back(dimuon.userInt("PVposition"));//PVposition as got from the HIOnia2MuMuPAT
 			pvtx_index = SelectVertex(primaryVertices_handle, dimuon_recovtx->z());
 			dimuon_pvtx_index.push_back(pvtx_index);
+			pvtx_index = dimuon.userInt("PVposition"); //use the one selected by HiOnia2MuMuPAT
 			dimuon_dz_dimuonvtx_pvtx.push_back(dimuon_recovtx->z() - (*primaryVertices_handle.product())[pvtx_index].z());
 			dimuon_vtxProb.push_back(dimuon.userFloat("vProb"));
 
@@ -906,7 +909,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			//if (candPhoton.distOfMinimumApproach() > -10 && candPhoton.distOfMinimumApproach() < 10) { conv_minDistanceOfApproach = candPhoton.distOfMinimumApproach(); }
 			//else conv_minDistanceOfApproach = 0;
 
-			//MC for conversions
+			//MC for conversions // for testing, normally useless information
 			if (flag_doMC)
 			{
 				if (genParticles_handle.isValid()) {
@@ -1218,6 +1221,7 @@ void ChiRootupler::Clear()
 	dimuon_pt.clear();
 	dimuon_charge.clear(); 
 	dimuon_vtx->Clear();
+	dimuon_pvtx_indexFromOniaMuMu.clear();
 	dimuon_pvtx_index.clear();
 	dimuon_dz_dimuonvtx_pvtx.clear();
 	dimuon_vtxProb.clear();
@@ -1358,6 +1362,7 @@ int ChiRootupler::SelectVertex(edm::Handle<std::vector<reco::Vertex> >& priVtxs,
 		}
 		float deltaZ = fabs(zPos - pvtx.position().z());
 		if (deltaZ < minDz) {
+			//std::cout << "deltaZ my code  " << deltaZ << " and the z pos "<< pvtx.position().z() << std::endl;
 			minDz = deltaZ;
 			bestIdx = i;
 		}
