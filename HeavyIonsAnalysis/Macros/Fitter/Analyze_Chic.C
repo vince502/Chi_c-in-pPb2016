@@ -100,6 +100,7 @@ double bins_pT[] = {6, 9, 12, 18, 30};
 int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
 
 double bins_y[] = {-2.4, -1.6, -1.0, 0, 1.0, 1.6, 2.4 };
+//double bins_y[] = { -2.4, -1.6, -1.0, 1.0, 1.6, 2.4 };
 int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
 
 double bins_nTrk[] = { 0, 50, 100, 150, 200, 300, 400 };
@@ -242,28 +243,48 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 
 
 
-bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fits in the differential bins to get stuck in a weird state when they stop converge properly
+bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to prevent the fits in the differential bins to get stuck in a weird state when they stop converge properly
 {
-	file_log << Ws.var("mean1Jpsi")->getError() << endl;
-	file_log << Ws.var("sigma1Jpsi")->getError() << endl;
+	if (isJpsi == true) {
+		file_log << Ws.var("mean1Jpsi")->getError() << endl;
+		file_log << Ws.var("sigma1Jpsi")->getError() << endl;
 
-	Ws.var("mean1Jpsi")->removeError();
-	Ws.var("sigma1Jpsi")->removeError();
-	Ws.var("alphaJpsi")->removeError();
-	Ws.var("nJpsi")->removeError();
-	//Ws.var("a1Jpsi")->removeError();
-	Ws.var("e_1Jpsi")->removeError();
-	Ws.var("nsigJpsi")->removeError();
-	Ws.var("nbkgJpsi")->removeError();
+		Ws.var("mean1Jpsi")->removeError();
+		Ws.var("sigma1Jpsi")->removeError();
+		Ws.var("alphaJpsi")->removeError();
+		Ws.var("nJpsi")->removeError();
+		//Ws.var("a1Jpsi")->removeError();
+		Ws.var("e_1Jpsi")->removeError();
+		Ws.var("nsigJpsi")->removeError();
+		Ws.var("nbkgJpsi")->removeError();
 
-	Ws.var("mean1Jpsi")->setVal(3.097);
-	Ws.var("sigma1Jpsi")->setVal(0.03);
-	Ws.var("alphaJpsi")->setVal(1.85);
-	Ws.var("nJpsi")->setVal(1.7);
-	//Ws.var("a1Jpsi")->setVal(-0.05);
-	Ws.var("e_1Jpsi")->setVal(-0.2);
-	Ws.var("nsigJpsi")->setVal(5000);
-	Ws.var("nbkgJpsi")->setVal(2000);
+		Ws.var("mean1Jpsi")->setVal(3.097);
+		Ws.var("sigma1Jpsi")->setVal(0.03);
+		Ws.var("alphaJpsi")->setVal(1.85);
+		Ws.var("nJpsi")->setVal(1.7);
+		//Ws.var("a1Jpsi")->setVal(-0.05);
+		Ws.var("e_1Jpsi")->setVal(-0.2);
+		Ws.var("nsigJpsi")->setVal(5000);
+		Ws.var("nbkgJpsi")->setVal(2000);
+
+	}
+	else
+	{
+		Ws.var("c2toc1")->removeError();
+		Ws.var("sigma1")->removeError();
+		Ws.var("a1")->removeError();
+		Ws.var("nsig")->removeError();
+		Ws.var("nbkg")->removeError();
+
+		Ws.var("c2toc1")->setVal(0.4);
+		Ws.var("sigma1")->setVal(0.005);
+		Ws.var("a1")->setVal(0);
+		Ws.var("nsig")->setVal(50);
+		Ws.var("nbkg")->setVal(2000);
+	}
+
+
+
 
 	return true;
 }
@@ -343,10 +364,11 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		cout << TstrCut << endl;
 		string strCut = TstrCut.Data();
 		RooDataSet* rdsDataBin;
-		if (isJpsi == false) { rdsDataBin = (RooDataSet*)Ws.data("rdsNominal")->reduce(strCut.c_str()); }
-		else {
+		if (isJpsi == false) { rdsDataBin = (RooDataSet*)Ws.data("rdsNominal")->reduce(strCut.c_str()); 
+			RefreshModel(Ws, myPdfName, false);
+		}else {
 			rdsDataBin = (RooDataSet*)Ws.data("rdsNominalJpsi")->reduce(strCut.c_str()); 
-			RefreshModel(Ws, myPdfName);
+			RefreshModel(Ws, myPdfName, true);
 		}
 
 		rdsDataBin->plotOn(massframeBin);
@@ -436,8 +458,9 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 
 ////////////////////////////////////
 
-//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-PbpRW3.root", const char* fileOut = "Chi_c_output_RW3_test5.root", const char* fileRds = "rds_save.root", bool isMC = false, const char* fileCorrection = "Chi_c_WeightsMC8_pPb.root")
-void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW4.root", const char* fileOut = "Chi_c_output_RW4_testCutTight.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTight.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW4.root", const char* fileOut = "Chi_c_output_RW5_ComparisonAlberto2M.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_CompOneRun_RW6b.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285718.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW4.root", const char* fileOut = "Chi_c_output_RW4_testCutTightRefitAlberto.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTightRefitAlberto.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 {
 	//gStyle->SetOptStat(1111);
@@ -534,6 +557,15 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 
 		// Various
 	TH1D* hntracks_inEvent = new TH1D("hntracks_inEvent", "", 400, 0, 400);
+	TH1D* hconv_deltaEta = new TH1D("conv_deltaEta", "", 1000, 0, 1);
+	TH2D* hconv_deltapT_Eta = new TH2D("conv_deltapT_Eta", "", 200, 0, 0.02, 200, 0, 0.2);
+	TH1D* hconv_m = new TH1D("conv_m", "", 1000, 0, 0.5);
+
+
+
+
+
+
 
 	TFile* f1 = new TFile(fileIn, "READ");
 
@@ -579,6 +611,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 
 	if (flagGenerateRds == true) {
 
+
+		file_log << "index runNumber  eventNumber  (chiCandPerEvent-ignore)  rap_chi  pT_chi  Mass(mchic - mJpsi +3.097) muon1_eta muon1_pt  muon2_eta muon2_pt (conv position) conv_eta conv_pt " << endl;
 		//TMVA 
 		#ifdef UsesTMVA
 
@@ -619,10 +653,11 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 
 		int weird_decay_counter = 0;
 		long nchicCounter = 0, nchicCounterPass = 0, nchicCounterPassMass = 0, muon1ptCounter = 0, muon2ptCounter = 0;
+		long nConvCounter = 0, nConvSplitCounter = 0, nConvCounterPeak = 0, nConvSplitCounterPeak = 0;
 		bool passDimSel = false;
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
-		//if (nentries > 100000) { nentries = 50000; }
+		if (nentries > 2000000) { nentries = 2000000; }
 		cout << nentries << endl;
 		for (Long64_t i = 0; i < nentries; i++)
 		{
@@ -638,6 +673,12 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 				}
 			}
 
+
+			if (eventNumber != 180043931 && eventNumber != 62726391 && eventNumber != 2372749 && eventNumber != 92140595 && eventNumber != 144554927 && eventNumber != 80353502 && eventNumber != 128861276 && eventNumber != 103338128)
+			{
+				continue;
+			}
+
 			int nRefitNumber=-1; //needed for RW4 only, fix to non-ideal storing of info
 
 			//if (isMC == true && (gen_pdgId->at(0) != PythCode_chic1)) { continue; } // only chic1
@@ -648,6 +689,51 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 			///////////////////////
 			hntracks_inEvent->Fill(ntracks_inEvent);
 			//cout << ntracks_inEvent << endl;
+
+			// check the conversions - if they are many identical ones
+			int nConv = conv_eta->size();
+			if (nConv > 1) {
+				//cout << "nConv: " << nConv << endl;
+				for (int iconv = 0; iconv < nConv; iconv++)
+				{
+					//cout << conv_eta->at(iconv) << endl;
+					for (int iconv2 = 0; iconv2 < iconv; iconv2++)
+					{
+						double deltaEta = abs(conv_eta->at(iconv) - conv_eta->at(iconv2));
+						hconv_deltaEta->Fill(deltaEta);
+						double deltapT = abs(conv_pt->at(iconv) - conv_pt->at(iconv2));
+						hconv_deltapT_Eta->Fill(deltaEta, deltapT);
+
+						//if (conv_vertexPositionRho->at(iconv) < 10 && conv_vertexPositionRho->at(iconv2) < 10) {
+						//}
+
+							nConvCounter++;
+							TVector3* TVconv1 = (TVector3*)conv_vtx->At(iconv);
+							TVector3* TVconv2 = (TVector3*)conv_vtx->At(iconv2);
+							double convVtx_deltaX = abs(TVconv1->X() - TVconv2->X());
+							double convVtx_deltaY = abs(TVconv1->Y() - TVconv2->Y());
+							double convVtx_deltaZ = abs(TVconv1->Z() - TVconv2->Z());
+
+							if (deltaEta < 0.02 && deltapT < 0.2 && convVtx_deltaX<2.0 && convVtx_deltaY < 2.0 && convVtx_deltaZ < 2.0) {
+								TLorentzVector* LVconv1 = (TLorentzVector*)conv_p4->At(iconv);
+								TLorentzVector* LVconv2 = (TLorentzVector*)conv_p4->At(iconv2);
+								TLorentzVector LVconvTot = *LVconv1;
+								LVconvTot += *LVconv2;
+								hconv_m->Fill(LVconvTot.M());
+								nConvSplitCounter++;
+							}
+						
+					}
+				}
+
+			}
+
+
+
+
+
+
+
 
 			///////////////////////
 			/////   C H I C ///////
@@ -664,8 +750,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 				// muon cuts
 				int muon1Pos = dimuon_muon1_position->at(dimuonPos);
 				int muon2Pos = dimuon_muon2_position->at(dimuonPos);
-				if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
-				if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
+				if (MuonAcceptanceTight(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
+				if (MuonAcceptanceTight(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
 				if (MuonSelectionPass(muon1Pos) == false) continue;
 				if (MuonSelectionPass(muon2Pos) == false) continue;
 				// photon
@@ -700,6 +786,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 
 
 				if (PhotSelectionPassTight(convPos) == false) continue;
+				passDimSel = passDimSelTight;
 
 				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
 				// Get Lorentz V
@@ -710,25 +797,30 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 				double pT_chi = chi_pt->at(iChi);
 				double rap_chi = LVchic->Rapidity();
 				double m_chi = LVchic->M();
+				double refit_vProb=0;
+				/////////
+				//refit
+				if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
+					nRefitNumber++; //needed for RW4 only, fix to non-ideal storing of info
+					nRefitNumber = iChi; //overwrite previous line
 
-				///////////
-				////refit
-				//if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
-				//	nRefitNumber++; //needed for RW4 only, fix to non-ideal storing of info
-				//	//cout << chi_refit_vprob->at(nRefitNumber) << endl;
-				//	//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
-				//	//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
-				//	m_chi = chi_refitStored->at(nRefitNumber).mass();//use refit mass
-				//}
-				//else continue;//skip those that don't have it
-
-				//////////
+					//cout << chi_refit_vprob->at(nRefitNumber) << endl;
+					//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
+					//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
+					m_chi = chi_refitStored->at(nRefitNumber).mass();//use refit mass
+				    //refit_vProb = chi_refit_vprob->at(nRefitNumber);
+					refit_vProb = chi_refit_vprob->at(iChi);
+				}
+				else continue;//skip those that don't have it
+				if (refit_vProb < 0.01) continue;
+				////////
 							   
 
 				double dimuonM = LVdimuon->M();
 				double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass
 
-				if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
+				//if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
+				if (passDimSel == true && dimuonM > 2.9 && dimuonM<3.3 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
 
 
 				//////// Rotational bkg   /////
@@ -776,7 +868,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 				}
 
 
-				if (dimuonM<2.95 || dimuonM>3.2) continue; //require narrow dimuon mass
+				//if (dimuonM<2.95 || dimuonM>3.2) continue; //require narrow dimuon mass
+				if (dimuonM<2.90 || dimuonM>3.3) continue; //require narrow dimuon mass
 
 				if (passDimSel == true) {
 					hchic_M->Fill(m_chi); // just raw M
@@ -813,6 +906,99 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 						}
 
 						rdsNominal->add(*cols, rvweight->getVal());
+
+						///////////////////
+						// crosschecks
+						/////////////////
+						
+						//TVector3* TVconv1 = (TVector3*)conv_vtx->At(convPos);
+						//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
+
+						int nRefitNumber2 = -1;
+
+						// check the conversions - if they are many identical ones
+						for (int iChi2 = 0; iChi2 < iChi; iChi2++)
+						{
+							int dimuonPos2 = chi_daughterJpsi_position->at(iChi2);
+							double passDimSel2 = DimuonSelectionPass(dimuonPos2);
+							double passDimSelTight2 = DimuonSelectionPassTight(dimuonPos2, ((TLorentzVector*)dimuon_p4->At(dimuonPos2))->Rapidity());
+							// muon cuts
+							int muon1Pos2 = dimuon_muon1_position->at(dimuonPos2);
+							int muon2Pos2 = dimuon_muon2_position->at(dimuonPos2);
+							if (MuonAcceptanceTight(muon_eta->at(muon1Pos2), muon_pt->at(muon1Pos2)) == false) continue;
+							if (MuonAcceptanceTight(muon_eta->at(muon2Pos2), muon_pt->at(muon2Pos2)) == false) continue;
+							if (MuonSelectionPass(muon1Pos2) == false) continue;
+							if (MuonSelectionPass(muon2Pos2) == false) continue;
+							// photon
+							int convPos2 = chi_daughterConv_position->at(iChi2);
+							if (PhotAcceptance(conv_eta->at(convPos2), conv_pt->at(convPos2)) == false) continue;
+							if (PhotSelectionPassTight(convPos2) == false) continue;
+							passDimSel2 = passDimSelTight2;
+
+							TLorentzVector* LVchic2 = (TLorentzVector*)chi_p4->At(iChi2);
+							TLorentzVector* LVdimuon2 = (TLorentzVector*)dimuon_p4->At(dimuonPos2);
+
+							double pT_chi2 = chi_pt->at(iChi2);
+							double rap_chi2 = LVchic2->Rapidity();
+							double m_chi2 = LVchic2->M();
+							double refit_vProb2 = 0;
+							/////////
+							//refit
+							if (chi_kinematicRefitFlag->at(iChi2) == 1 || chi_kinematicRefitFlag->at(iChi2) == 3) { //good refits
+								nRefitNumber2++; //needed for RW4 only, fix to non-ideal storing of info
+								nRefitNumber2 = iChi2; //overwrite previous line
+
+								//cout << chi_refit_vprob->at(nRefitNumber) << endl;
+								//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
+								//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
+								m_chi2 = chi_refitStored->at(nRefitNumber2).mass();//use refit mass
+								//refit_vProb = chi_refit_vprob->at(nRefitNumber);
+								refit_vProb2 = chi_refit_vprob->at(iChi2);
+							}
+							else continue;//skip those that don't have it
+							if (refit_vProb2 < 0.01) continue;
+							////////
+
+
+							double dimuonM2 = LVdimuon2->M();
+							double Mdiff2 = m_chi2 - dimuonM2 + 3.097;// Assume J/psi mass
+							if (passDimSel2 == true && dimuonM2 > 2.9 && dimuonM2<3.3 && Mdiff2 > mass_window_l && Mdiff < mass_window_h)
+
+							{
+									double deltaEta = abs(conv_eta->at(iChi) - conv_eta->at(iChi2));
+									double deltapT = abs(conv_pt->at(iChi) - conv_pt->at(iChi2));
+
+
+									nConvCounterPeak++;
+									TVector3* TVconv1 = (TVector3*)conv_vtx->At(iChi);
+									TVector3* TVconv2 = (TVector3*)conv_vtx->At(iChi2);
+									double convVtx_deltaX = abs(TVconv1->X() - TVconv2->X());
+									double convVtx_deltaY = abs(TVconv1->Y() - TVconv2->Y());
+									double convVtx_deltaZ = abs(TVconv1->Z() - TVconv2->Z());
+
+									if (deltaEta < 0.02 && deltapT < 0.2 && convVtx_deltaX < 2.0 && convVtx_deltaY < 2.0 && convVtx_deltaZ < 2.0) {
+										//TLorentzVector* LVconv1 = (TLorentzVector*)conv_p4->At(iChi);
+										//TLorentzVector* LVconv2 = (TLorentzVector*)conv_p4->At(iChi2);
+										//TLorentzVector LVconvTot = *LVconv1;
+										//LVconvTot += *LVconv2;
+										//hconv_m->Fill(LVconvTot.M());
+										nConvSplitCounterPeak++;
+										file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
+										file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi2 << " " << pT_chi2 << " " << Mdiff2 << " m1 " << muon_eta->at(muon1Pos2) << " " << muon_pt->at(muon1Pos2) << " m2 " << muon_eta->at(muon2Pos2) << " " << muon_pt->at(muon2Pos2) << " conv " << convPos2 << " " << conv_eta->at(convPos2) << " " << conv_pt->at(convPos2) << " " << conv_vertexPositionRho->at(convPos2) << " " << TVconv2->X() << " " << TVconv2->Y() << " " << TVconv2->Z() << endl << endl;
+
+									}
+
+								
+							}
+
+						}
+
+
+
+
+
+
+
 
 
 					}
@@ -885,6 +1071,10 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 		cout << "Processed " << nchicCounter << " chic candidates, " << nchicCounterPass << " passed the selections, that is " << ((double)nchicCounterPass / (double)nchicCounter * 100) << " percent" << endl;
 		cout << "Processed " << nchicCounter << " chic candidates, " << nchicCounterPassMass << " passed the selections and mass window requirement, that is " << ((double)nchicCounterPassMass / (double)nchicCounter * 100) << " percent" << endl;
 		cout << "weird decays: " << weird_decay_counter << "  out of  " << nentries << endl;
+		cout << endl;
+		cout << "Nconversions: " << nConvCounter << "  of which " << nConvSplitCounter << " was split, that is " << ((double)nConvSplitCounter / (double)nConvCounter * 100) << " %." <<endl;
+		cout << "Nconversions from the candidates: " << nConvCounterPeak << "  of which " << nConvSplitCounterPeak << " was split, that is " << ((double)nConvSplitCounterPeak / (double)nConvCounterPeak * 100) << " %.  Or " << ((double)nConvSplitCounterPeak / (double)nchicCounterPassMass * 100) << " % of total chic" << endl << endl;
+		cout << endl;
 
 		// Save rds
 		TFile* DBFile = new TFile(fileRds, "RECREATE");
@@ -1265,6 +1455,9 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const c
 	hchic_M_rotGamma->Write();
 	hchic_M_SB->Write();
 	hntracks_inEvent->Write();
+	hconv_deltaEta->Write();
+	hconv_deltapT_Eta->Write();
+	hconv_m->Write();
 	hphoton_MVA_response->Write();
 
 	if (flagRunFits == true)

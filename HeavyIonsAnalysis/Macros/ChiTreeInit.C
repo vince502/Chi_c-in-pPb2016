@@ -233,8 +233,8 @@ bool MuonAcceptanceTight(double eta, double pt)
 
 bool PhotAcceptance(double eta, double pt)
 {
-	if (fabs(eta) > 2.5) return false; //2.5
-	if (pt < 0.2) return false; // 0.2
+	//if (fabs(eta) > 2.5) return false; //2.5
+	if (pt < 0.5) return false; // 0.2
 	return true;
 }
 
@@ -262,7 +262,7 @@ bool DimuonSelectionPassTight(int dimuonPos, double rap)  //uses variables loade
 	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
 	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
 	if (fabs(rap) > 1.0) return false;
-	//if (dimuon_pt->at(dimuonPos) > 9.0) return false;
+	if (dimuon_pt->at(dimuonPos) > 25.0) return false;
 	if (dimuon_pt->at(dimuonPos) < 6) return false;
 	return true;
 }
