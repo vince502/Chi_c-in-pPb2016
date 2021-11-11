@@ -1,7 +1,8 @@
 # To be run on AOD, done by Ota Kukral
 #
-outFileName = 'Chi_c_pPb8TeV_RW4test2.root'
-inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root'
+outFileName = 'Chi_c_pPb8TeV_RW6test.root'
+#inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root' # /store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root
+inFileNames = 'file:/eos/cms/store/group/phys_heavyions/okukral/Chi_c/20E62AB9-66B7-E611-A839-02163E011E52.root' # /store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/505/00000/02B86BE8-5EAF-E611-A122-02163E012762.root
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
 
 import FWCore.ParameterSet.Config as cms
@@ -20,7 +21,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '80X_dataRun2_v19', '')
 
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1000))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 
 process.source = cms.Source("PoolSource",fileNames = cms.untracked.vstring(inFileNames))
 process.TFileService = cms.Service("TFileService",fileName = cms.string(outFileName))
@@ -108,8 +109,9 @@ process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon")
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
 process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25 && pt>5.0")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(False)
+process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
-
+process.HiOnia2MuMuPAT.resolvePileUpAmbiguity = cms.bool(True)
 
 
 ## PHOTONS

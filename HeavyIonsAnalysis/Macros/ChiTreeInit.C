@@ -231,7 +231,6 @@ bool MuonAcceptance(double eta, double pt)
 }
 bool MuonAcceptanceTight(double eta, double pt)
 {
-	return true;
 	if (fabs(eta) > 2.4) return false;  //2.4
 	if (fabs(eta) < 0.3 && pt < 3.4) return false;
 	if (fabs(eta) < 2.4 && pt < 3.3) return false;
@@ -240,7 +239,7 @@ bool MuonAcceptanceTight(double eta, double pt)
 
 bool PhotAcceptance(double eta, double pt)
 {
-	//if (fabs(eta) > 2.5) return false; //2.5
+	if (fabs(eta) > 2.4) return false; //2.5
 	if (pt < 0.5) return false; // 0.2
 	return true;
 }
