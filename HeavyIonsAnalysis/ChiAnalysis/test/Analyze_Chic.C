@@ -46,6 +46,9 @@
 #include "RooSimultaneous.h"
 
 
+//#include "../ChiTreeInit.C"
+
+
 using namespace std;
 using namespace RooFit;
 
@@ -78,7 +81,7 @@ const double mass_windowFitJpsi_h = 4.5;
 const string mass_windowFitJpsi = "rvmassJpsi>2.0 && rvmassJpsi<4.5";
 
 double bins_pT[] = { 6,8,10,18,30 };
-
+int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
 
 
 
@@ -349,12 +352,17 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 
 //void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_pPb8TeV_MC5_v2.root", const char* fileOut = "Chi_c_output_MC_test.root", const char* fileRds = "rds_saveMC.root", bool doMC = false)
 //void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-PbpRW3.root", const char* fileOut = "Chi_c_output_RW3_test.root", const char* fileRds = "rds_save.root", bool doMC = false)
-//void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8TeV-PbpRW3.root", const char* fileOut = "Chi_c_output_RW3_test2.root", const char* fileRds = "rds_save.root", bool doMC = false)
-void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8TeV-bothDirRW3.root", const char* fileOut = "Chi_c_output_RW3_testFull.root", const char* fileRds = "rds_save.root", bool doMC = false)
+void Analyze_Chic(bool flagGenerateRds = false, const char* fileIn = "Chi_c_pPb8TeV-PbpRW3.root", const char* fileOut = "Chi_c_output_RW3_test3.root", const char* fileRds = "rds_save.root", bool doMC = false, const char* fileCorrection = "Chi_c_distributionsMC7.root")
+//void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8TeV-bothDirRW3.root", const char* fileOut = "Chi_c_output_RW3_testFull.root", const char* fileRds = "rds_save.root", bool doMC = false)
 //void Analyze_Chic(const char* fileIn = "Chi_c_pPb8TeV_MCv5.root", const char* fileOut = "Chi_c_output_MCv5_test1.root", const bool doMC = false)
 {
 	gStyle->SetOptStat(1111);
 	//gStyle->SetOptStat(0);
+
+
+	TH1D* hSignal_pT = new TH1D("hSignal_pT", "", nbins_pT, bins_pT);
+	TH1D* hSignalJpsi_pT = new TH1D("hSignalJpsi_pT", "", nbins_pT, bins_pT);
+	TH1D* hSignalRatio_pT = new TH1D("hSignalRatio_pT", "", nbins_pT, bins_pT);
 
 	TH1D* hSignal = new TH1D("hSignal", "", 200, 3, 5);
 	TH1D* hSignal_SS = new TH1D("hSignal_SS", "", 200, 3, 5);
@@ -423,6 +431,7 @@ void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8T
 		//break;
 	}
 
+	//LoadChiBranches(event_tree, false);
 	event_tree->SetBranchAddress("nPrimVertices", &nPrimVertices);
 	event_tree->SetBranchAddress("ntracks_inEvent", &ntracks_inEvent);
 
@@ -537,7 +546,7 @@ void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8T
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
 		cout << nentries << endl;
-		//if (nentries > 100000) { nentries = 100000; }
+		if (nentries > 1000) { nentries = 1000; }
 		for (Long64_t i = 0; i < nentries; i++)
 		{
 
@@ -560,27 +569,28 @@ void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8T
 			for (int iChi = 0; iChi < chi_p4->GetEntriesFast(); iChi++)
 			{
 				++nchicCounter;
-
+				cout << "in" << endl;
 				// check Acceptance and Cuts
 				int dimuonPos = chi_daughterJpsi_position->at(iChi);
 				//if (DimuonSelectionPass(dimuonPos) == false) continue;
 				passDimSel = DimuonSelectionPass(dimuonPos);
 				passDimSelTight = DimuonSelectionPassTight(dimuonPos, ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity());
-
+				cout << "in" << endl;
 				// muon cuts
 				int muon1Pos = dimuon_muon1_position->at(dimuonPos);
 				int muon2Pos = dimuon_muon2_position->at(dimuonPos);
+				cout << "in" << endl;
 				if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
 				if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
+				cout << "in" << endl;
 				if (MuonSelectionPass(muon1Pos) == false) continue;
 				if (MuonSelectionPass(muon2Pos) == false) continue;
-
+				cout << "in" << endl;
 				// photon
 				int convPos = chi_daughterConv_position->at(iChi);
 				if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) continue;
 				if (PhotSelectionPass(convPos) == false) continue;
 				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
-
 				// Get Lorentz V
 				LVchic = (TLorentzVector*)chi_p4->At(iChi);
 				LVdimuon = (TLorentzVector*)dimuon_p4->At(dimuonPos);
@@ -665,7 +675,7 @@ void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8T
 				}
 				if (dimuon_charge->at(dimuonPos) != 0) { hSignal_SS->Fill(Mdiff); }
 
-
+				cout << "i2n" << endl;
 
 			} // end of chic loop
 
@@ -754,160 +764,196 @@ void Analyze_Chic(bool flagGenerateRds = true, const char* fileIn = "Chi_c_pPb8T
 	///////////////////////////////////////////
 
 
-	//cout << "nEntries: " << rdsNominal->numEntries()<<endl;
-	//rdsNominal = (RooDataSet*)rdsNominal->reduce(mass_windowFit.c_str());
-	////RooDataSet* dataOS = (RooDataSet*)myWs.data("rdsNominal")->reduce("pt>20");
-	////RooDataSet* dataOS2 = (RooDataSet*)myWs.data("rdsNominal")->reduce("pt<5");
+	cout << "nEntries: " << rdsNominal->numEntries()<<endl;
+	rdsNominal = (RooDataSet*)rdsNominal->reduce(mass_windowFit.c_str());
+	//RooDataSet* dataOS = (RooDataSet*)myWs.data("rdsNominal")->reduce("pt>20");
+	//RooDataSet* dataOS2 = (RooDataSet*)myWs.data("rdsNominal")->reduce("pt<5");
 
-	//RooPlot *massframe = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins );
-	//massframe->SetTitle("mass");
-	//rdsNominal->plotOn(massframe);
-	////dataOS->plotOn(massframe);
-	////dataOS2->plotOn(massframe);
-	//
-	//string myPdfName = "nominalPdf";
-	//CreateModelPdf(myWs, myPdfName);
+	RooPlot *massframe = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins );
+	massframe->SetTitle("mass");
+	rdsNominal->plotOn(massframe);
+	//dataOS->plotOn(massframe);
+	//dataOS2->plotOn(massframe);
+	
+	string myPdfName = "nominalPdf";
+	CreateModelPdf(myWs, myPdfName);
 
-	//
-	//RooFitResult* fitResult = myWs.pdf(myPdfName.c_str())->fitTo(*myWs.data("rdsNominal"), Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
+	
+	RooFitResult* fitResult = myWs.pdf(myPdfName.c_str())->fitTo(*myWs.data("rdsNominal"), Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
 	//fitResult->Print("v");
-	//myWs.import(*fitResult, TString::Format("fitResult_%s", myPdfName.c_str()));
+	myWs.import(*fitResult, TString::Format("fitResult_%s", myPdfName.c_str()));
 
 
-	//myWs.pdf(myPdfName.c_str())->plotOn(massframe);
-	//myWs.pdf(myPdfName.c_str())->paramOn(massframe, Layout(0.55));
-	//myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("background"), LineStyle(kDashed));
-	//myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
-	//myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
-	//cout << endl << endl << "HERE" << endl << endl;
+	myWs.pdf(myPdfName.c_str())->plotOn(massframe);
+	myWs.pdf(myPdfName.c_str())->paramOn(massframe, Layout(0.55));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("background"), LineStyle(kDashed));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframe, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
+	cout << endl << endl << "HERE" << endl << endl;
+	
+	fitResult->floatParsFinal().Print("s");
+	cout << endl << endl << endl;
+
+	myWs.var("nsig")->Print();
+	//fitResult->PrintArgs();
+
+	TCanvas *cTest = new TCanvas("cTest", "cTest", 1000, 480);
+	gPad->SetLeftMargin(0.15);
+	massframe->GetYaxis()->SetTitleOffset(1.6);
+	massframe->Draw();
 
 
-
-	//TCanvas *cTest = new TCanvas("cTest", "cTest", 1000, 480);
-	//gPad->SetLeftMargin(0.15);
-	//massframe->GetYaxis()->SetTitleOffset(1.6);
-	//massframe->Draw();
+	cTest->SaveAs("CanvasCTest_RW3.png");
 
 
-	//cTest->SaveAs("CanvasCTest_RW3.png");
+	// pT fitting
+
+	for (int i = 0; i < (sizeof(bins_pT) / sizeof(*bins_pT)-1); i++) {
+		RooPlot *massframeBin = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins);
+		massframeBin->SetTitle("mass");
+		cout << bins_pT[i] << endl;
+		TString TstrCut = TString::Format("rvpt > %f", bins_pT[i]) + " && " + TString::Format("rvpt < %f", bins_pT[i + 1]) + " && rvrap>-1 && rvrap <1";
+		cout << TstrCut << endl;
+		string strCut = TstrCut.Data();
+		RooDataSet* rdsDataBin = (RooDataSet*)myWs.data("rdsNominal")->reduce(strCut.c_str());
+		rdsDataBin->plotOn(massframeBin);
+
+		//myWs.var("rvpt")->setMin(6);
+		//myWs.var("rvpt")->setMax(8);
+
+		//fitting
+		//string myPdfNameBin = TString::Format("nominalPdf_%i",i);
+		//string myPdfNameBin = "nominalPdf";
+	//cout << endl << endl << endl << myPdfNameBin << endl << endl;
+	//CreateModelPdf(myWs, myPdfNameBin);
+
+	RooFitResult* fitResultBin = myWs.pdf(myPdfName.c_str())->fitTo(*rdsDataBin);// , Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
+	//fitResultBin->Print("v");
+	//myWs.import(*fitResultBin, TString::Format("fitResult_%s", myPdfNameBin.c_str()));
 
 
-	//// pT fitting
-
-	//for (int i = 0; i < (sizeof(bins_pT) / sizeof(*bins_pT)-1); i++) {
-	//	RooPlot *massframeBin = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins);
-	//	massframeBin->SetTitle("mass");
-	//	cout << bins_pT[i] << endl;
-	//	string strCut = TString::Format("rvpt > %f", (double)bins_pT[i]) + TString::Format(" && rvpt < %f", bins_pT[i + 1])) + "&& rvrap>-1 && rvrap <1";
-	//	cout << strCut << endl;
-	//	RooDataSet* rdsDataBin = (RooDataSet*)myWs.data("rdsNominal")->reduce(strCut.c_str());
-	//	rdsDataBin->plotOn(massframeBin);
-
-	//	//myWs.var("rvpt")->setMin(6);
-	//	//myWs.var("rvpt")->setMax(8);
-
-	//	//fitting
-	//	//string myPdfNameBin = TString::Format("nominalPdf_%i",i);
-	//	//string myPdfNameBin = "nominalPdf";
-	//	//cout << endl << endl << endl << myPdfNameBin << endl << endl;
-	//	//CreateModelPdf(myWs, myPdfNameBin);
-
-	//	RooFitResult* fitResultBin = myWs.pdf(myPdfName.c_str())->fitTo(*rdsDataBin);// , Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
-	//	//fitResultBin->Print("v");
-	//	//myWs.import(*fitResultBin, TString::Format("fitResult_%s", myPdfNameBin.c_str()));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin);
+	myWs.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
+	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
 
 
-	//	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin);
-	//	myWs.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
-	//	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
-	//	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
-	//	myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
+	massframeBin->Draw();
+	cTest->SaveAs(Form("CanvasCTest_RW3_pT_%i.png",i));
+
+	//myWs.Delete("nominalPdf");
+}
 
 
-	//	massframeBin->Draw();
-	//	cTest->SaveAs(Form("CanvasCTest_RW3_pT_%i.png",i));
+// J/psi fit
 
-	//	//myWs.Delete("nominalPdf");
-	//}
+rdsNominalJpsi = (RooDataSet*)rdsNominalJpsi->reduce(mass_windowFitJpsi.c_str());
+RooPlot *massframeJpsi = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
+massframeJpsi->SetTitle("massJpsi");
+rdsNominalJpsi->plotOn(massframeJpsi);
 
+string myPdfNameJpsi = "nominalPdfJpsi";
+CreateModelPdf(myWs, myPdfNameJpsi);
 
-	//// J/psi fit
-
-	//rdsNominalJpsi = (RooDataSet*)rdsNominalJpsi->reduce(mass_windowFitJpsi.c_str());
-	//RooPlot *massframeJpsi = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
-	//massframeJpsi->SetTitle("massJpsi");
-	//rdsNominalJpsi->plotOn(massframeJpsi);
-
-	//string myPdfNameJpsi = "nominalPdfJpsi";
-	//CreateModelPdf(myWs, myPdfNameJpsi);
-
-	//RooFitResult* fitResultJpsi = myWs.pdf(myPdfNameJpsi.c_str())->fitTo(*myWs.data("rdsNominalJpsi"), Extended(true), SumW2Error(true), Range(mass_windowFitJpsi_l, mass_windowFitJpsi_h), NumCPU(1), Save(true));
-	//fitResultJpsi->Print("v");
-	//myWs.import(*fitResultJpsi, TString::Format("fitResultJpsi_%s", myPdfNameJpsi.c_str()));
+RooFitResult* fitResultJpsi = myWs.pdf(myPdfNameJpsi.c_str())->fitTo(*myWs.data("rdsNominalJpsi"), Extended(true), SumW2Error(true), Range(mass_windowFitJpsi_l, mass_windowFitJpsi_h), NumCPU(1), Save(true));
+fitResultJpsi->Print("v");
+myWs.import(*fitResultJpsi, TString::Format("fitResultJpsi_%s", myPdfNameJpsi.c_str()));
 
 
-	//myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi);
-	//myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsi, Layout(0.55));
-	//myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("backgroundJpsi"), LineStyle(kDashed));
-	//myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
-	//myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
-	//cout << endl << endl << "HEREJpsi" << endl << endl;
-
-
-
-	//TCanvas *cTestJpsi = new TCanvas("cTestJpsi", "cTestJpsi", 1000, 480);
-	//gPad->SetLeftMargin(0.15);
-	//massframeJpsi->GetYaxis()->SetTitleOffset(1.6);
-	//massframeJpsi->Draw();
-
-
-	//cTestJpsi->SaveAs("CanvasCTest_RW3_Jpsi.png");
-	//
-
-	//// pT fitting
-
-	//for (int i = 0; i < (sizeof(bins_pT) / sizeof(*bins_pT) - 1); i++) {
-	//	RooPlot *massframeJpsiBin = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
-	//	massframeJpsiBin->SetTitle("massJpsi");
-	//	cout << bins_pT[i] << endl;
-	//	string strCut = TString::Format("rvptJpsi > %f", (double)bins_pT[i]) + " && " + TString::Format("rvptJpsi < %f", bins_pT[i + 1]) + "&& rvrapJpsi>-1 && rvrapJpsi <1";
-	//	cout << strCut << endl;
-	//	RooDataSet* rdsDataJpsiBin = (RooDataSet*)myWs.data("rdsNominalJpsi")->reduce(strCut.c_str());
-	//	rdsDataJpsiBin->plotOn(massframeJpsiBin);
-
-	//	//myWs.var("rvpt")->setMin(6);
-	//	//myWs.var("rvpt")->setMax(8);
-
-	//	////fitting
-	//	//string myPdfNameJpsiBin = TString::Format("nominalPdf_%i",i);
-	//	//string myPdfNameJpsiBin = "nominalPdf";
-	//	//cout << endl << endl << endl << myPdfNameJpsiBin << endl << endl;
-	//	//CreateModelPdf(myWs, myPdfNameJpsiBin);
-
-	//	RooFitResult* fitResultJpsiBin = myWs.pdf(myPdfNameJpsi.c_str())->fitTo(*rdsDataJpsiBin);// , Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
-	//	//fitResultJpsiBin->Print("v");
-	//	//myWs.import(*fitResultJpsiBin, TString::Format("fitResultJpsi_%s", myPdfNameJpsiBin.c_str()));
-
-
-	//	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin);
-	//	myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsiBin, Layout(0.55));
-	//	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("backgroundJpsi"), LineStyle(kDashed));
-	//	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
-	//	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
-
-
-	//	massframeJpsiBin->Draw();
-	//	cTestJpsi->SaveAs(Form("CanvasCTest_RW3_Jpsi_pT_%i.png", i));
-
-	//}
-
-	//
+myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi);
+myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsi, Layout(0.55));
+myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("backgroundJpsi"), LineStyle(kDashed));
+myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
+myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
+cout << endl << endl << "HEREJpsi" << endl << endl;
 
 
 
+TCanvas *cTestJpsi = new TCanvas("cTestJpsi", "cTestJpsi", 1000, 480);
+gPad->SetLeftMargin(0.15);
+massframeJpsi->GetYaxis()->SetTitleOffset(1.6);
+massframeJpsi->Draw();
+
+
+cTestJpsi->SaveAs("CanvasCTest_RW3_Jpsi.png");
+
+
+// pT fitting
+
+for (int i = 0; i < (sizeof(bins_pT) / sizeof(*bins_pT) - 1); i++) {
+	RooPlot *massframeJpsiBin = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
+	massframeJpsiBin->SetTitle("massJpsi");
+	cout << bins_pT[i] << endl;
+	TString TstrCut = TString::Format("rvptJpsi > %f", bins_pT[i]) + " && " + TString::Format("rvptJpsi < %f", bins_pT[i + 1]) + "&& rvrapJpsi>-1 && rvrapJpsi <1";
+	cout << TstrCut << endl;
+	string strCut = TstrCut.Data();
+	RooDataSet* rdsDataJpsiBin = (RooDataSet*)myWs.data("rdsNominalJpsi")->reduce(strCut.c_str());
+	rdsDataJpsiBin->plotOn(massframeJpsiBin);
+
+	//myWs.var("rvpt")->setMin(6);
+	//myWs.var("rvpt")->setMax(8);
+
+	////fitting
+	//string myPdfNameJpsiBin = TString::Format("nominalPdf_%i",i);
+	//string myPdfNameJpsiBin = "nominalPdf";
+	//cout << endl << endl << endl << myPdfNameJpsiBin << endl << endl;
+	//CreateModelPdf(myWs, myPdfNameJpsiBin);
+
+	RooFitResult* fitResultJpsiBin = myWs.pdf(myPdfNameJpsi.c_str())->fitTo(*rdsDataJpsiBin);// , Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
+	//fitResultJpsiBin->Print("v");
+	//myWs.import(*fitResultJpsiBin, TString::Format("fitResultJpsi_%s", myPdfNameJpsiBin.c_str()));
+
+
+	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin);
+	myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsiBin, Layout(0.55));
+	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("backgroundJpsi"), LineStyle(kDashed));
+	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
+	myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
+
+
+	massframeJpsiBin->Draw();
+	cTestJpsi->SaveAs(Form("CanvasCTest_RW3_Jpsi_pT_%i.png", i));
+
+}
 
 
 
+	hSignal_pT->SetBinContent(1, 2);
+	hSignal_pT->SetBinError(1, 2);
+	hSignalJpsi_pT->SetBinContent(1, 2);
+
+	hSignal_pT->SetBinContent(2, 2);
+	hSignal_pT->SetBinError(2, 2);
+	hSignalJpsi_pT->SetBinContent(2, 2);
+
+	hSignal_pT->SetBinContent(3, 2);
+	hSignal_pT->SetBinError(3, 2);
+	hSignalJpsi_pT->SetBinContent(3, 2);
+
+	hSignal_pT->SetBinContent(4, 2);
+	hSignal_pT->SetBinError(4, 2);
+	hSignalJpsi_pT->SetBinContent(4, 2);
+
+	hSignalRatio_pT->Divide(hSignal_pT, hSignalJpsi_pT, 1, 1);
+
+	TFile* fCor = new TFile(fileCorrection, "READ");
+
+	TH1D* hCor = (TH1D*)fCor->Get("h_chiEfficiency1D_Q_ratRel");
+	for (int i = 1; i < (hCor->GetNbinsX() + 1); i++)
+		{
+		cout << hCor->GetBinContent(i) << endl;
+
+		hSignalRatio_pT->SetBinContent(i, hSignalRatio_pT->GetBinContent(i)/hCor->GetBinContent(i));
+		hSignalRatio_pT->SetBinError(i, hSignalRatio_pT->GetBinError(i)/hCor->GetBinContent(i));
+	}
+
+	TCanvas* can4 = new TCanvas("can4", "plot", 800, 600);
+	hSignalRatio_pT->Draw();
+	hSignalRatio_pT->GetYaxis()->SetTitle("(Chic_1+Chic_2) / Jpsi");
+	hSignalRatio_pT->GetYaxis()->SetTitleOffset(1.3);
+	hSignalRatio_pT->GetXaxis()->SetTitle("pT");
+	can4->SaveAs("RatioChicJpsi.png");
 
 
 	///////////////////////////// COMPLEMENT

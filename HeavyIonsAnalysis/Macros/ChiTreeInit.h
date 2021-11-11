@@ -86,6 +86,7 @@ std::vector <double>* dimuon_eta = 0;
 std::vector <double>* dimuon_pt = 0;
 std::vector <double>* dimuon_charge = 0;
 TClonesArray* dimuon_vtx = new TClonesArray("TVector3", 100); //TVector3
+std::vector <int>*  dimuon_pvtx_indexFromOniaMuMu = 0;
 std::vector <int>*  dimuon_pvtx_index = 0;
 std::vector <double>* dimuon_dz_dimuonvtx_pvtx = 0;
 std::vector <double>* dimuon_vtxProb = 0;
@@ -99,6 +100,11 @@ std::vector <double>* dimuon_ctpvError = 0;
 
 //conversion info
 
+std::vector <int>* conv_duplicityStatus = 0; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
+std::vector <double>* conv_splitDR = 0;
+std::vector <double>* conv_splitDpT = 0;
+std::vector <int>* conv_tk1ValidHits = 0;
+std::vector <int>* conv_tk2ValidHits = 0;
 std::vector <bool>* convQuality_isHighPurity = 0;
 std::vector <bool>* convQuality_isGeneralTracksOnly = 0;
 TClonesArray* conv_vtx = new TClonesArray("TVector3", 100); //TVector3

@@ -1,7 +1,8 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
-outFileName = 'Chi_c_pPb8TeV_MC_EposChi.root'
-inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_30/src/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO.root' 
+outFileName = 'Chi_c_pPb8TeV_MC.root'
+#inFileNames = '/store/himc/pPb816Summer16DR/ZZ_PbP-EmbEPOS_8p16_Pythia8/AODSIM/PbPEmb_80X_mcRun2_pA_v4-v1/60000/3A305B07-17F1-E711-8B05-001E677926C0.root'
+inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_36/src/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_Pbp_RECO.root' 
 #inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_30/src/EPOStest_RECO.root' 
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_7.root' #v7 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
@@ -139,6 +140,7 @@ process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && abs(daughter('m
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(True)
 process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
+process.HiOnia2MuMuPAT.resolvePileUpAmbiguity = cms.bool(True)
 
 # PHOTONS
 

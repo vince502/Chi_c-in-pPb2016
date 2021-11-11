@@ -181,6 +181,8 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					TVector3 pxyz(jpsi.px(), jpsi.py(), jpsi.pz());
 					AlgebraicVector3 vpxyz(pxyz.x(), pxyz.y(), pxyz.z());
 
+					int iPVPosition_userOut = 0; //O: saving the information as what vertex got picked
+
 					if (resolveAmbiguity_) {
 						float minDz = 999999.;
 
@@ -193,17 +195,25 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 								GlobalVector(bs.dxdz(), bs.dydz(), 1.), TrackCharge(0), &(*magneticField)));
 						float extrapZ = -9E20;
 						if (status) extrapZ = ttmd.points().first.z();
+						//cout << "extrapZ  " << extrapZ << endl;
 
 						for (VertexCollection::const_iterator itv = priVtxs->begin(), itvend = priVtxs->end(); itv != itvend; ++itv) {
 							// only consider good vertices
-							if (itv->isFake() || fabs(itv->position().z()) > 25 || itv->position().Rho() > 2 || itv->tracksSize() < 2) continue;
+							if (itv->isFake() || fabs(itv->position().z()) > 50 || itv->position().Rho() > 2 || itv->tracksSize() < 2) continue;
 							float deltaZ = fabs(extrapZ - itv->position().z());
 							if (deltaZ < minDz) {
+								//cout << "dz dimuon  " << deltaZ << endl;
+								//cout << "z PV vertex  " << itv->position().z() << endl;
 								minDz = deltaZ;
 								thePrimaryV = Vertex(*itv);
+								iPVPosition_userOut = std::distance(priVtxs->begin(), itv);
 							}
 						}
 					}//if resolve ambiguity
+
+					//O: Added matching information
+					userInt["PVposition"] = iPVPosition_userOut; //index of the
+
 
 					Vertex theOriginalPV = thePrimaryV;
 					muonLess.clear();
@@ -334,7 +344,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 						userVertex["PVwithmuons"] = theOriginalPV;
 					}
 					else {
-						userVertex["PVwithmuons"] = thePrimaryV;
+						userVertex["PVwithmuons"] = thePrimaryV; //O: is the same as theOriginalPV
 					}
 
 					// lifetime using PV
@@ -415,6 +425,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 					}
 				}
 				else {
+					userInt["PVposition"] = -1;
 					userFloat["vNChi2"] = -1;
 					userFloat["vProb"] = -1;
 					userFloat["vertexWeight"] = -100;
@@ -450,6 +461,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 				}
 			}
 			else {
+				userInt["PVposition"] = -1;
 				userFloat["vNChi2"] = -1;
 				userFloat["vProb"] = -1;
 				userFloat["vertexWeight"] = -100;

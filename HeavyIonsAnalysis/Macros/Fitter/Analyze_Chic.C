@@ -83,11 +83,16 @@ const double k_mass_c2 = 3.5562;
 //const double mass_windowFit_h = 3.75;
 //const string mass_windowFit = "rvmass>3.35 && rvmass<3.75";
 const int nMassBins = 160;
-const double mass_window_l = 3.25;
-const double mass_window_h = 4.05;
-const double mass_windowFit_l = 3.25;
-const double mass_windowFit_h = 4.05;
-const string mass_windowFit = "rvmass>3.25 && rvmass<4.05";
+//const double mass_window_l = 3.25;
+//const double mass_window_h = 4.05;
+//const double mass_windowFit_l = 3.25;
+//const double mass_windowFit_h = 4.05;
+//const string mass_windowFit = "rvmass>3.25 && rvmass<4.05";
+const double mass_window_l = 3.35;
+const double mass_window_h = 3.75;
+const double mass_windowFit_l = 3.35;
+const double mass_windowFit_h = 3.75;
+const string mass_windowFit = "rvmass>3.35 && rvmass<3.75";
 
 const int nMassBinsJpsi = 150;
 const double mass_windowJpsi_l = 2.5;
@@ -227,7 +232,34 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 		Ws.factory("SUM::nominalPdfJpsi(nsigJpsi[5000,0,2000000]*signalJpsi, nbkgJpsi[2000,0,1000000]*backgroundJpsi)");
 	}
 
+	if (pdfName.compare("SignalAlternatePdf") == 0)
+	{
+		Ws.factory("RooHypatia2::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], lambda[1.85, -50, 50], zeta[1.7, 0.2, 50], beta[0, -1, 1], aSig1[0.05, 0, 5], nSig1[2, 0.2, 50], aSig2[50], nSig2[1])");
+		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+		Ws.factory("RooHypatia2::chic2(rvmass, mean2, sigma2, lambda, zeta, beta, aSig1, nSig1, aSig2, nSig2)");
+		Ws.factory("SUM::signal(c2toc1[0.4,0.1,1.]*chic2, chic1)");
+		//Ws.factory("Exponential::expbkg(rvmass,e_1[-0.2,-0.5,0])");
+		//Ws.factory("Uniform::one(rvmass)");
+		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
+		//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
+		Ws.factory("RooChebychev::background(rvmass, a1[0,-10,10])");
 
+		if (bConstrainedFit == true) {
+
+			Ws.var("alpha")->setConstant(true);
+			Ws.var("n")->setConstant(true);
+			Ws.var("sigmaRatio")->setConstant(true);
+			Ws.var("sigma1")->setConstant(true);
+			Ws.var("mean1")->setConstant(true);
+		}
+		//Ws.var("mean1")->setConstant(true);
+		//Ws.var("mean2")->setConstant(true);
+		//Ws.var("erf_offset")->setConstant(true);
+		//Ws.var("erf_sigma")->setConstant(true);
+		//Ws.factory("")
+		Ws.factory("SUM::nominalPdf(nsig[50,0,10000000]*signal, nbkg[2000,0,10000000]*background)");
+	}
 
 	//Ws.pdf(pdfName.c_str())->setNormRange(mass_windowFit_l, mass_windowFit_h);
 	//RooRealVar nsig("nsig", "nsig", 500, 0., 100000.);
@@ -459,9 +491,10 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 ////////////////////////////////////
 
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW4.root", const char* fileOut = "Chi_c_output_RW5_ComparisonAlberto2M.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
-void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_CompOneRun_RW6b.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285718.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_pPb8TeV-Comp285993.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285993.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW4.root", const char* fileOut = "Chi_c_output_RW4_testCutTightRefitAlberto.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTightRefitAlberto.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-pPb.root", const char* fileOut = "Chi_c_output_MC9_test.root", const char* fileRds = "rds_MC9_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraintsMC8.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 {
 	//gStyle->SetOptStat(1111);
 	//gStyle->SetOptStat(0);
@@ -612,7 +645,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	if (flagGenerateRds == true) {
 
 
-		file_log << "index runNumber  eventNumber  (chiCandPerEvent-ignore)  rap_chi  pT_chi  Mass(mchic - mJpsi +3.097) muon1_eta muon1_pt  muon2_eta muon2_pt (conv position) conv_eta conv_pt " << endl;
+		file_log << "index runNumber  eventNumber  (chiCandPerEvent-ignore)  rap_chi  pT_chi  Mass (refit) muon1_eta muon1_pt  muon2_eta muon2_pt muon1_pass muon2_pass (conv position) conv_eta conv_pt vProb Conversion cuts: convHP  convGT  conv_rho  convSig1  convSig2  conv_IHits  conv_vProb  convDOF1  convDOF2  convChi1  convChi2  convDOA ctau/ctauErr ctau3D ctauErr vertexNumber Conv_duplicity_status" << endl;
 		//TMVA 
 		#ifdef UsesTMVA
 
@@ -657,7 +690,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		bool passDimSel = false;
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
-		if (nentries > 2000000) { nentries = 2000000; }
+		//if (nentries > 2000000) { nentries = 2000000; }
 		cout << nentries << endl;
 		for (Long64_t i = 0; i < nentries; i++)
 		{
@@ -674,10 +707,24 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 			}
 
 
-			if (eventNumber != 180043931 && eventNumber != 62726391 && eventNumber != 2372749 && eventNumber != 92140595 && eventNumber != 144554927 && eventNumber != 80353502 && eventNumber != 128861276 && eventNumber != 103338128)
-			{
-				continue;
-			}
+			//if (eventNumber != 48238571 && eventNumber != 74654836 && eventNumber != 89061868 && eventNumber != 111341251 && eventNumber != 135511131 && eventNumber != 193414386 && eventNumber != 200463426 && eventNumber != 207568844 && eventNumber != 243205575 && eventNumber != 245541325 && eventNumber != 265212240 && eventNumber != 281268252 && eventNumber != 311651992 && eventNumber != 354877155)
+			//{
+			//	continue;
+			//}
+
+			//if (eventNumber != 133844931 && eventNumber != 151279060 && eventNumber != 162311906 && eventNumber != 257213091 && eventNumber != 318190409 && eventNumber != 394206637 && eventNumber != 429359381 && eventNumber != 465120365 && eventNumber != 577807280 && eventNumber != 636714640
+			//	&& eventNumber != 746014846 && eventNumber != 814022615 && eventNumber != 850480869 && eventNumber != 876322914 && eventNumber != 968101008 && eventNumber != 971165520 && eventNumber != 971165520 && eventNumber != 1003571541 && eventNumber != 1151151397 && eventNumber != 1276702379
+			//	&& eventNumber != 1325198519 && eventNumber != 1353888814 && eventNumber != 1355256189)
+			//{
+			//	continue;
+			//}
+
+			//if (eventNumber != 133844931 && eventNumber != 151279060 && eventNumber != 257213091 && eventNumber != 318190409 && eventNumber != 394206637 && eventNumber != 429359381 && eventNumber != 465120365 && eventNumber != 577807280 && eventNumber != 636714640
+			//	&& eventNumber != 746014846 && eventNumber != 814022615 && eventNumber != 876322914 && eventNumber != 968101008 && eventNumber != 971165520 && eventNumber != 971165520 && eventNumber != 1003571541 && eventNumber != 1151151397 && eventNumber != 1276702379
+			//	&& eventNumber != 1325198519 && eventNumber != 1353888814 && eventNumber != 1355256189)
+			//{
+			//	continue;
+			//}
 
 			int nRefitNumber=-1; //needed for RW4 only, fix to non-ideal storing of info
 
@@ -750,13 +797,13 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 				// muon cuts
 				int muon1Pos = dimuon_muon1_position->at(dimuonPos);
 				int muon2Pos = dimuon_muon2_position->at(dimuonPos);
-				if (MuonAcceptanceTight(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
-				if (MuonAcceptanceTight(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
-				if (MuonSelectionPass(muon1Pos) == false) continue;
-				if (MuonSelectionPass(muon2Pos) == false) continue;
+				//if (MuonAcceptanceTight(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
+				//if (MuonAcceptanceTight(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
+				//if (MuonSelectionPass(muon1Pos) == false) continue;
+				//if (MuonSelectionPass(muon2Pos) == false) continue;
 				// photon
 				int convPos = chi_daughterConv_position->at(iChi);
-				if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) continue;
+				//if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) continue;
 				
 				//cuts or MVA for photons
 				#ifdef UsesTMVA
@@ -786,6 +833,32 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 
 				if (PhotSelectionPassTight(convPos) == false) continue;
+				if (conv_duplicityStatus->at(convPos) != 0 && conv_duplicityStatus->at(convPos) != 1) continue;
+
+				bool convHP = true, convGT = true, conv_rho = true, convSig1 = true, convSig2 = true, conv_IHits = true, conv_vProb = true, convDOF1 = true, convDOF2 = true, convChi1 = true, convChi2 = true, convDOA = true;
+
+				if (convQuality_isHighPurity->at(convPos) != 1) convHP = false;
+				if (convQuality_isGeneralTracksOnly->at(convPos) != 1) convGT = false;
+				if (conv_vertexPositionRho->at(convPos) <= 1.5) conv_rho = false;
+				if (conv_sigmaTkVtx1->at(convPos) > 5) {
+					convSig1 = false;// cout << "Event " << eventNumber << " and sigma1: " << conv_sigmaTkVtx1->at(convPos) << endl;
+				}
+				if (conv_sigmaTkVtx2->at(convPos) > 5) {convSig2 = false;// cout << "Event " << eventNumber << " and sigma2: " << conv_sigmaTkVtx2->at(convPos) << endl;
+				}
+				//if (conv_tkVtxCompatibilityOK->at(convPos) != 1) convHP = false;
+				if (conv_compatibleInnerHitsOK->at(convPos) != 1) conv_IHits = false;
+				if (conv_vertexChi2Prob->at(convPos) <= 0.0005) conv_vProb = false;
+				//if (fabs(conv_zOfPriVtx->at(convPos)) >= 20) convHP = false;
+				//if (fabs(conv_dzToClosestPriVtx->at(convPos)) >= 10) convHP = false;
+				if (conv_tk1NumOfDOF->at(convPos) < 2.5) { convDOF1 = false;// cout << "Event " << eventNumber << " and DOF1: " << conv_tk1NumOfDOF->at(convPos) << endl;
+				}
+				if (conv_tk2NumOfDOF->at(convPos) < 2.5) { convDOF2 = false;// cout << "Event " << eventNumber << " and DOF2: " << conv_tk2NumOfDOF->at(convPos) << endl;
+				}
+				if (conv_track1Chi2->at(convPos) >= 10) convChi1 = false;
+				if (conv_track2Chi2->at(convPos) >= 10) convChi2 = false;
+				if (conv_minDistanceOfApproach->at(convPos) <= -0.25 || conv_minDistanceOfApproach->at(convPos) >= 1.00) convDOA = false;
+
+
 				passDimSel = passDimSelTight;
 
 				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
@@ -797,7 +870,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 				double pT_chi = chi_pt->at(iChi);
 				double rap_chi = LVchic->Rapidity();
 				double m_chi = LVchic->M();
-				double refit_vProb=0;
+				double refit_vProb=0, ctauPV=0, ctauPVError=0, ctauSig=0, ctauPV3D=0;
 				/////////
 				//refit
 				if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
@@ -808,16 +881,21 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 					//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
 					//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
 					m_chi = chi_refitStored->at(nRefitNumber).mass();//use refit mass
+					ctauPV = chi_refit_ctauPV->at(nRefitNumber);
+					ctauPVError = chi_refit_ctauErrPV->at(nRefitNumber);
+					ctauSig = ctauPV / ctauPVError;
+					ctauPV3D = chi_refit_ctauPV3D->at(nRefitNumber);
 				    //refit_vProb = chi_refit_vprob->at(nRefitNumber);
 					refit_vProb = chi_refit_vprob->at(iChi);
 				}
 				else continue;//skip those that don't have it
-				if (refit_vProb < 0.01) continue;
+				//if (refit_vProb < 0.01) continue;
+				//if (ctauSig > 3 || ctauSig < -3) continue;
 				////////
 							   
 
 				double dimuonM = LVdimuon->M();
-				double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass
+				double Mdiff = m_chi;// -dimuonM + 3.097;// Assume J/psi mass
 
 				//if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
 				if (passDimSel == true && dimuonM > 2.9 && dimuonM<3.3 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
@@ -911,8 +989,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 						// crosschecks
 						/////////////////
 						
-						//TVector3* TVconv1 = (TVector3*)conv_vtx->At(convPos);
-						//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
+						TVector3* TVconv1 = (TVector3*)conv_vtx->At(convPos);
+						file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " Muon Pass:" << MuonSelectionPass(muon1Pos) << MuonSelectionPass(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " Refit_v prob: " << refit_vProb << " Conversion cut values: "<< convHP <<  convGT <<  conv_rho <<  convSig1 <<  convSig2 <<  conv_IHits <<  conv_vProb <<  convDOF1 <<  convDOF2 <<  convChi1 <<  convChi2 <<  convDOA << " ctau/ctauErr: " << ctauSig<< " "<< ctauPV3D << " " << ctauPVError<< " PVindex: " << dimuon_pvtx_index->at(dimuonPos) << " " << dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos)<< " ConvDuplicity: " << conv_duplicityStatus->at(convPos) << endl;
 
 						int nRefitNumber2 = -1;
 
@@ -961,7 +1039,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 
 							double dimuonM2 = LVdimuon2->M();
-							double Mdiff2 = m_chi2 - dimuonM2 + 3.097;// Assume J/psi mass
+							double Mdiff2 = m_chi2;// -dimuonM2 + 3.097;// Assume J/psi mass
 							if (passDimSel2 == true && dimuonM2 > 2.9 && dimuonM2<3.3 && Mdiff2 > mass_window_l && Mdiff < mass_window_h)
 
 							{
@@ -983,8 +1061,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 										//LVconvTot += *LVconv2;
 										//hconv_m->Fill(LVconvTot.M());
 										nConvSplitCounterPeak++;
-										file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
-										file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi2 << " " << pT_chi2 << " " << Mdiff2 << " m1 " << muon_eta->at(muon1Pos2) << " " << muon_pt->at(muon1Pos2) << " m2 " << muon_eta->at(muon2Pos2) << " " << muon_pt->at(muon2Pos2) << " conv " << convPos2 << " " << conv_eta->at(convPos2) << " " << conv_pt->at(convPos2) << " " << conv_vertexPositionRho->at(convPos2) << " " << TVconv2->X() << " " << TVconv2->Y() << " " << TVconv2->Z() << endl << endl;
+										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
+										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi2 << " " << pT_chi2 << " " << Mdiff2 << " m1 " << muon_eta->at(muon1Pos2) << " " << muon_pt->at(muon1Pos2) << " m2 " << muon_eta->at(muon2Pos2) << " " << muon_pt->at(muon2Pos2) << " conv " << convPos2 << " " << conv_eta->at(convPos2) << " " << conv_pt->at(convPos2) << " " << conv_vertexPositionRho->at(convPos2) << " " << TVconv2->X() << " " << TVconv2->Y() << " " << TVconv2->Z() << endl << endl;
 
 									}
 

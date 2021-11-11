@@ -13,8 +13,6 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/Math/interface/LorentzVector.h"
-#include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
-#include "DataFormats/PatCandidates/interface/UserData.h"
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
@@ -80,6 +78,7 @@ private:
 	static bool lt_comparator(std::pair<double, short> a, std::pair<double, short> b); // comparator for checking conversions
 	bool Conv_checkTkVtxCompatibility(const reco::Conversion& conv, const reco::VertexCollection&  priVtxs, double sigmaTkVtxComp_, bool& Flag_Best_Out, bool& Flag_SecondBestA_Out, bool& Flag_SecondBestB_Out, double& sigmaMinValue1Out, double& sigmaMinValue2Out);
 	bool Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB);
+	int Conv_checkDuplicity(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut);
 	//photon MC
 	bool Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel);
 	bool ConvSelection(const reco::Conversion& conv);
@@ -147,6 +146,9 @@ private:
 	const double conv_TkVtxCompSigmaCut = 5.0;
 	const double conv_maxDeltaR = 0.2;
 	const double conv_maxDPtRel = 1;
+
+	const double conv_duplicateMaxDeltapT = 0.1; //what to consider a split track for purposes of removing those conversions (otherwise there are almost identical conversions in the selection)
+	const double conv_duplicateMaxDeltaR = 0.05;
 
 	std::string triggerName = "HLT_PAL1DoubleMuOpen_v1";
 	std::string triggerFilter = "hltL1fL1sDoubleMuOpenBptxANDL1Filtered0";
@@ -229,6 +231,11 @@ private:
 
 	//conversion info
 
+	std::vector <int> conv_duplicityStatus; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
+	std::vector <double> conv_splitDR;
+	std::vector <double> conv_splitDpT;
+	std::vector <int> conv_tk1ValidHits;
+	std::vector <int> conv_tk2ValidHits;
 	std::vector <bool> convQuality_isHighPurity;
 	std::vector <bool> convQuality_isGeneralTracksOnly;
 	TClonesArray* conv_vtx; //TVector3

@@ -189,6 +189,11 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 
 	// conversions
+	event_tree->Branch("conv_duplicityStatus", &conv_duplicityStatus);
+	event_tree->Branch("conv_splitDR", &conv_splitDR);
+	event_tree->Branch("conv_splitDpT", &conv_splitDpT);
+	event_tree->Branch("conv_tk1ValidHits", &conv_tk1ValidHits);
+	event_tree->Branch("conv_tk2ValidHits", &conv_tk2ValidHits);
 	event_tree->Branch("convQuality_isHighPurity", &convQuality_isHighPurity);
 	event_tree->Branch("convQuality_isGeneralTracksOnly", &convQuality_isGeneralTracksOnly);
 	event_tree->Branch("conv_vtx", "TClonesArray", &conv_vtx, 32000, 0);
@@ -427,8 +432,11 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	if (dimuonPerEvent == 0 && flag_doMC == false) //don't save events without J/psi in them, unless MC
 	{
+		//if (eventNumber != 180043931 && eventNumber != 62726391 && eventNumber != 2372749 && eventNumber != 92140595 && eventNumber != 144554927 && eventNumber != 80353502 && eventNumber != 128861276 && eventNumber != 103338128)//test, save these events
+		//{
 		Clear();
 		return;
+		//}
 	}
 
 	//////////////////////
@@ -471,7 +479,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			int refitStatusFlag = 0;
 			bool refitGoodFitFlag = false;
 			if (flag_doKinematicRefit) {
-				if ((dimuonCand->daughter("muon1")->isTrackerMuon()|| dimuonCand->daughter("muon1")->isGlobalMuon()) && (dimuonCand->daughter("muon2")->isTrackerMuon() || dimuonCand->daughter("muon2")->isGlobalMuon())) //if not, it doesn't have inner track, no way to refit anything
+				if ((dimuonCand->daughter("muon1")->isTrackerMuon() || dimuonCand->daughter("muon1")->isGlobalMuon()) && (dimuonCand->daughter("muon2")->isTrackerMuon() || dimuonCand->daughter("muon2")->isGlobalMuon())) //if not, it doesn't have inner track, no way to refit anything
 				{
 					//cout << "in kinematic refit  " << n_chic<<endl;
 					refitStatusFlag += 1;
@@ -489,8 +497,6 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					//convTracks.push_back(conv_tk1);
 					//convTracks.push_back(conv_tk2);
 					const reco::Vertex thePrimaryV = *(dimuonCand->userData<reco::Vertex>("PVwithmuons"));
-					const reco::Vertex& pvtx = primaryVertices_handle->at(0);
-					if (abs(thePrimaryV.x() - pvtx.x()) > 0.01) { cout << "primaryV x   " << thePrimaryV.x() << "    " << pvtx.x() << endl; } //check if it is always 0th vertex
 					chi_refit_pvtxFromPVwithMuons_x.push_back(thePrimaryV.x());
 					chi_refit_pvtxFromPVwithMuons_y.push_back(thePrimaryV.y());
 					chi_refit_pvtxFromPVwithMuons_z.push_back(thePrimaryV.z());
@@ -577,12 +583,12 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 									(double)(ChiDecayVertex->degreesOfFreedom()));
 
 								reco::CompositeCandidate recoChiRefit(0, math::XYZTLorentzVector(ChiPx_fit, ChiPy_fit, ChiPz_fit,
-									sqrt(ChiM_fit*ChiM_fit + ChiPx_fit * ChiPx_fit + ChiPy_fit * ChiPy_fit + ChiPz_fit * ChiPz_fit)), 
-									math::XYZPoint(ChiVtxX_fit,	ChiVtxY_fit, ChiVtxZ_fit), PythCode_chic1); //code is for pythyia, chosen without meaning
+									sqrt(ChiM_fit*ChiM_fit + ChiPx_fit * ChiPx_fit + ChiPy_fit * ChiPy_fit + ChiPz_fit * ChiPz_fit)),
+									math::XYZPoint(ChiVtxX_fit, ChiVtxY_fit, ChiVtxZ_fit), PythCode_chic1); //code is for pythia, chosen without meaning
 
-								chi_refit_origChicPosition.push_back(n_chic-1); //stores position of the chic candidate for the refit (there will be gaps if refit fails)
+								chi_refit_origChicPosition.push_back(n_chic - 1); //stores position of the chic candidate for the refit (there will be gaps if refit fails) // Since RW5 no longer the case, useless now, should be 1:1 correspondence
 								pat::CompositeCandidate patChiRefit(recoChiRefit);
-								chi_refitStored.push_back(patChiRefit);								
+								chi_refitStored.push_back(patChiRefit);
 								chi_refit_vprob.push_back(ChiVtxP_fit);
 
 								// lifetime using PV
@@ -630,19 +636,28 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				}
 				else
 				{
-				refitStatusFlag = -1;
+					refitStatusFlag = -1;
+					chi_refit_pvtxFromPVwithMuons_x.push_back(-10);
+					chi_refit_pvtxFromPVwithMuons_y.push_back(-10);
+					chi_refit_pvtxFromPVwithMuons_z.push_back(-10);
 				}
-			}
 
-			if (refitGoodFitFlag == false) //fill some default value for direct looking at the branches
-			{
-				chi_refit_vprob.push_back(-1);
-				chi_refit_ctauPV.push_back(-100);
-				chi_refit_ctauErrPV.push_back(-100);
-				chi_refit_ctauPV3D.push_back(-100);
-			}
-			chi_kinematicRefitFlag.push_back(refitStatusFlag);
 
+				if (refitGoodFitFlag == false) //fill some default value
+				{
+					chi_refit_vprob.push_back(-1);
+					chi_refit_ctauPV.push_back(-100);
+					chi_refit_ctauErrPV.push_back(-100);
+					chi_refit_ctauPV3D.push_back(-100);
+					reco::CompositeCandidate recoChiRefit(0, math::XYZTLorentzVector(0, 0, 0, 0),
+						math::XYZPoint(0, 0, 0), PythCode_chic1); //code is for pythia, chosen without meaning
+					chi_refit_origChicPosition.push_back(n_chic - 1); //stores position of the chic candidate for the refit (there will be gaps if refit fails) // Since RW5 no longer the case, useless now, should be 1:1 correspondence
+					pat::CompositeCandidate patChiRefit(recoChiRefit);
+					chi_refitStored.push_back(patChiRefit);
+
+				}
+				chi_kinematicRefitFlag.push_back(refitStatusFlag);
+			}
 		}
 
 	}
@@ -836,6 +851,10 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			conv_eta.push_back(conv_p4_aux.Eta());
 			conv_pt.push_back(conv_p4_aux.Pt());
 
+			double conv_DupldROut, conv_DuplpTOut;
+			conv_duplicityStatus.push_back(Conv_checkDuplicity(candPhoton, i, conversion_handle, conv_DupldROut, conv_DuplpTOut));
+			conv_splitDR.push_back(conv_DupldROut);
+			conv_splitDpT.push_back(conv_DuplpTOut);
 			convQuality_isHighPurity.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(8))); //8 is high purity, see reco::Conversion Class Reference
 			convQuality_isGeneralTracksOnly.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(0))); //0 is general tracks only, see reco::Conversion Class Reference
 			const reco::Vertex conv_recovtx = candPhoton.conversionVertex();
@@ -863,10 +882,16 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				const edm::RefToBase<reco::Track> conv_tk1 = candPhoton.tracks().at(0);
 				const edm::RefToBase<reco::Track> conv_tk2 = candPhoton.tracks().at(1);
 
+				conv_tk1ValidHits.push_back(conv_tk1->numberOfValidHits());
+				conv_tk2ValidHits.push_back(conv_tk2->numberOfValidHits());
+
 				reco::HitPattern hitPatA = conv_tk1->hitPattern();
 				reco::HitPattern hitPatB = conv_tk2->hitPattern();
-				conv_hitPat1.push_back(hitPatA);
-				conv_hitPat2.push_back(hitPatB);
+				if (flag_saveExtraThings)
+				{
+					conv_hitPat1.push_back(hitPatA);
+					conv_hitPat2.push_back(hitPatB);
+				}
 				conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
 
 
@@ -1232,6 +1257,11 @@ void ChiRootupler::Clear()
 	dimuon_ctpvError.clear();
 
 	//conv
+	conv_duplicityStatus.clear();
+	conv_splitDR.clear();
+	conv_splitDpT.clear();
+	conv_tk1ValidHits.clear();
+	conv_tk2ValidHits.clear();
 	convQuality_isHighPurity.clear();
 	convQuality_isGeneralTracksOnly.clear();
 	conv_vtx->Clear();
@@ -1441,37 +1471,163 @@ bool ChiRootupler::Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA
 	return false;
 }
 
-//bool OniaPhotonConversionProducer::HighpuritySubset(const reco::Conversion& conv, const reco::VertexCollection& priVtxs) {	// select high purity conversions same way as OniaPhotonConversionProducer:
-//	// vertex chi2 cut
-//	if (ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof())< _vertexChi2ProbCut) return false;
-//
-//	// d0 cut
-//	// Find closest primary vertex
-//	int closest_pv_index = 0;
-//	int i = 0;
-//	BOOST_FOREACH(const reco::Vertex& vtx, priVtxs) {
-//		if (conv.zOfPrimaryVertexFromTracks(vtx.position()) < conv.zOfPrimaryVertexFromTracks(priVtxs[closest_pv_index].position())) closest_pv_index = i;
-//		i++;
-//	}
-//	// Now check impact parameter wtr with the just found closest primary vertex
-//	BOOST_FOREACH(const edm::RefToBase<reco::Track> tk, conv.tracks()) if (-tk->dxy(priVtxs[closest_pv_index].position())*tk->charge() / tk->dxyError()<0) return false;
-//
-//	// chi2 of single tracks
-//	BOOST_FOREACH(const edm::RefToBase<reco::Track> tk, conv.tracks()) if (tk->normalizedChi2() > _trackchi2Cut) return false;
-//
-//	// dof for each track  
-//	BOOST_FOREACH(const edm::RefToBase<reco::Track> tk, conv.tracks()) if (tk->ndof()< TkMinNumOfDOF_) return false;
-//
-//	// distance of approach cut
-//	if (conv.distOfMinimumApproach() < _minDistanceOfApproachMinCut || conv.distOfMinimumApproach() > _minDistanceOfApproachMaxCut) return false;
-//
-//	return true;
-//}
 
 bool ChiRootupler::Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel)
 {
 	return reco::deltaR(reco_conv, gen_phot) < maxDeltaR && ((reco_conv.pt() - gen_phot.pt()) / (gen_phot.pt()+ 1E-9)) < maxDPtRel;
 }
+
+int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut)
+{
+	bool bOneCommonTrack = false;
+	bool bSplitTrack = false;
+	dROut = -0.02;
+	dpTOut = -0.02;
+
+	if (conv.tracks().size() == 2) {
+		const edm::RefToBase<reco::Track> conv_tk1 = conv.tracks().at(0);
+		const edm::RefToBase<reco::Track> conv_tk2 = conv.tracks().at(1);
+	
+
+		for (uint i = 0; i < conversion_handle->size(); i++) {
+			if ((int)i == convPos) { //don't compare to itself
+				continue;
+			}
+			const reco::Conversion& convCompare = conversion_handle->at(i);
+
+			if (convCompare.tracks().size() == 2) { //if not, this conversion will be thrown out later (with return 3) and thus removed even if it were duplicate
+				for (uint iTr = 0; iTr < 2; iTr++) {
+					const edm::RefToBase<reco::Track> convComp_tk = convCompare.tracks().at(iTr);
+					if (conv_tk1 == convComp_tk) { // if the first is the same
+						bOneCommonTrack = true;
+						// check the other one, if it is real or split
+						if (ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) > ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof()))
+						{
+							continue; //in this case our conversion has better prob, so we'll just use it unless we come across yet better
+						}
+						uint iTrOther = (iTr + 1) % 2;
+						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+						double convDR = reco::deltaR(*conv_tk2, *convComp_tkOther);
+						if (dROut < 0)//first one with better prob
+						{
+							dROut = convDR;
+							dpTOut = std::abs(conv_tk2->pt() - convComp_tkOther->pt());
+							bSplitTrack = true;
+						}
+						else { //if it isn't first, store the one that is closest in dR
+							if (convDR < dROut)
+							{
+								dROut = convDR;
+								dpTOut = std::abs(conv_tk2->pt() - convComp_tkOther->pt());
+							}
+						}
+						//std::cout << convDR << std::endl;
+						//std::cout << sqrt((conv_tk2->phi() - convComp_tkOther->phi())*(conv_tk2->phi() - convComp_tkOther->phi()) + (conv_tk2->eta() - convComp_tkOther->eta())*(conv_tk2->eta() - convComp_tkOther->eta())) << std::endl;
+						//if (std::abs(conv_tk2->pt() - convComp_tkOther->pt()) < conv_duplicateMaxDeltapT && convDR < conv_duplicateMaxDeltaR)
+						//{
+						//	bSplitTrack = true;
+						//	std::cout << "SPLIT" << std::endl;
+						//	std::cout << "Nhits track 1: " << convComp_tkOther->numberOfValidHits() << " Nlost " << convComp_tkOther->numberOfLostHits() << std::endl;
+						//	std::cout << "Nhits track 2: " << conv_tk2->numberOfValidHits() << " Nlost " << conv_tk2->numberOfLostHits() << std::endl;
+						//	std::cout << "Reference point 1: " << convComp_tkOther->referencePoint().X() << std::endl;
+						//	std::cout << "Reference point 2: " << conv_tk2->referencePoint().X() << std::endl;
+						//	std::cout << "Conversion rho: " << conv.conversionVertex().position().rho() << std::endl;
+						//}
+						//else {
+						//	std::cout << "Nhits track 1: " << convComp_tkOther->numberOfValidHits() << " Nlost " << convComp_tkOther->numberOfLostHits() << std::endl;
+						//	std::cout << "Nhits track 2: " << conv_tk2->numberOfValidHits() << " Nlost " << conv_tk2->numberOfLostHits() << std::endl;
+						//	std::cout << "Reference point 1: " << convComp_tkOther->referencePoint().X() << std::endl;
+						//	std::cout << "Reference point 2: " << conv_tk2->referencePoint().X() << std::endl;
+						//}
+					}
+					else if (conv_tk2 == convComp_tk) { // if the second is the same //could be written neater, left for now
+						bOneCommonTrack = true;
+						if (ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) > ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof()))
+						{
+							continue; //in this case our conversion has better prob, so we'll just use it unless we come across yet better
+						}
+						// check the other one, if it is real or split
+						uint iTrOther = (iTr + 1) % 2;
+						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+						double convDR = reco::deltaR(*conv_tk1, *convComp_tkOther);
+						//double convDR = sqrt((conv_tk1->phi() - convComp_tkOther->phi())*(conv_tk1->phi() - convComp_tkOther->phi()) + (conv_tk1->eta() - convComp_tkOther->eta())*(conv_tk1->eta() - convComp_tkOther->eta()));
+						//if (std::abs(conv_tk1->pt() - convComp_tkOther->pt()) < conv_duplicateMaxDeltapT && convDR < conv_duplicateMaxDeltaR)
+						//{
+						//	bSplitTrack = true;
+						//}
+
+						if (dROut < 0)//first one with better prob
+						{
+							dROut = convDR;
+							dpTOut = std::abs(conv_tk1->pt() - convComp_tkOther->pt());
+							bSplitTrack = true;
+						}
+						else { //if it isn't first, store the one that is closest in dR
+							if (convDR < dROut)
+							{
+								dROut = convDR;
+								dpTOut = std::abs(conv_tk1->pt() - convComp_tkOther->pt());
+							}
+						}
+					}
+					//else
+					//{
+					//	//
+					//}
+				}
+
+			}
+
+		}
+	}
+	else return 3;
+	if (bSplitTrack == true) return 2;
+	if (bOneCommonTrack == true) return 1;
+	return 0;
+}
+
+
+	//		int iter1 = 0;
+	//	// Cycle over all the elements of the collection and compare to all the following, 
+	//	// if two elements have at least one track in common delete the element with the lower chi2
+	//	while (iter1 < (((int)c.size()) - 1)) {
+	//		int iter2 = iter1 + 1;
+	//		while (iter2 < (int)c.size()) if (ConversionEqualByTrack(c[iter1], c[iter2])) {
+	//			c.erase(c.begin() + iter2);
+	//			duplicates++;
+	//		}
+	//		else {
+	//			iter2++;	// Increment index only if this element is no duplicate. 
+	//				// If it is duplicate check again the same index since the vector rearranged elements index after erasing
+	//		}
+	//		iter1++;
+	//	}
+	//}
+	//bool ConversionEqualByTrack(const reco::Conversion& c1, const reco::Conversion& c2) {
+	//	bool atLeastOneInCommon = false;
+	//	BOOST_FOREACH(const edm::RefToBase<reco::Track> tk1, c1.tracks()) {
+	//		BOOST_FOREACH(const edm::RefToBase<reco::Track> tk2, c2.tracks()) {
+	//			if (tk1 == tk2) {
+	//				atLeastOneInCommon = true;
+	//				break;
+	//			}
+	//		}
+	//	}
+	//	return atLeastOneInCommon;
+	//}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

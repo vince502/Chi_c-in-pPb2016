@@ -3,7 +3,7 @@ from CRABClient.UserUtilities import config, getUsernameFromCRIC
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC7'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC9'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False
@@ -23,7 +23,9 @@ config.section_("Data")
 # config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v4-61416874db099c53202c8cb2d81ec4a3/USER' #v4
 #config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v5-61416874db099c53202c8cb2d81ec4a3/USER' #v5
 #config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v6-61416874db099c53202c8cb2d81ec4a3/USER' #v6
-config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v7-61416874db099c53202c8cb2d81ec4a3/USER' #v7
+#config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v7-61416874db099c53202c8cb2d81ec4a3/USER' #v7
+#config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v8-61416874db099c53202c8cb2d81ec4a3/USER' #v8
+config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v9-4e07c3c67d0ff0e1e9aecbbcb6a514fc/USER' #v9
 config.Data.inputDBS = 'phys03'
 config.Data.unitsPerJob   = 5 #10 #3 was suggested by dryrun, but turned out to be too small
 config.Data.totalUnits   = -1

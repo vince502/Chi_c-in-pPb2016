@@ -75,7 +75,9 @@ int LoadChiBranches(TTree* tree, bool isMC) {
 	tree->SetBranchAddress("dimuon_pt", &dimuon_pt);
 	tree->SetBranchAddress("dimuon_charge", &dimuon_charge);
 	tree->SetBranchAddress("dimuon_vtx", &dimuon_vtx); //TVector3
+	tree->SetBranchAddress("dimuon_pvtx_indexFromOniaMuMu", &dimuon_pvtx_indexFromOniaMuMu);
 	tree->SetBranchAddress("dimuon_pvtx_index", &dimuon_pvtx_index);
+
 	tree->SetBranchAddress("dimuon_dz_dimuonvtx_pvtx", &dimuon_dz_dimuonvtx_pvtx);
 	tree->SetBranchAddress("dimuon_vtxProb", &dimuon_vtxProb);
 	//tree->SetBranchAddress("dimuonStored", &dimuonStored);
@@ -88,6 +90,11 @@ int LoadChiBranches(TTree* tree, bool isMC) {
 
 	//conversion info
 
+	tree->SetBranchAddress("conv_duplicityStatus", &conv_duplicityStatus);
+	tree->SetBranchAddress("conv_splitDR", &conv_splitDR);
+	tree->SetBranchAddress("conv_splitDpT", &conv_splitDpT);
+	tree->SetBranchAddress("conv_tk1ValidHits", &conv_tk1ValidHits);
+	tree->SetBranchAddress("conv_tk2ValidHits", &conv_tk2ValidHits);
 	tree->SetBranchAddress("convQuality_isHighPurity", &convQuality_isHighPurity);
 	tree->SetBranchAddress("convQuality_isGeneralTracksOnly", &convQuality_isGeneralTracksOnly);
 	tree->SetBranchAddress("conv_vtx", &conv_vtx); //TVector3
@@ -286,6 +293,7 @@ bool MuonSelectionPassMC(int muonPos)  //uses variables loaded in main function
 
 bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main function //nominal by Alberto and Jhovanny (8.2021)
 {
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
 	if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -308,6 +316,7 @@ bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main functi
 
 bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main function
 {
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -330,6 +339,7 @@ bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main funct
 
 bool PhotSelectionPassLoose(int photPos)  //uses variables loaded in main function
 {
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -362,16 +372,64 @@ bool PhotSelectionPassMC(int photPos)  //uses variables loaded in main function
 	return PhotSelectionPass(matchPosition);
 }
 
-//bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main function
-//{
-//	int matchPosition = gen_conv_matchPosition->at(photPos);
-//	if (matchPosition < -0.5) return false; //not matched
-//	if (convQuality_isGeneralTracksOnly->at(matchPosition) != 1) return false;
-//	return true;
-//}
+bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main function
+{
+	int matchPosition = gen_conv_matchPosition->at(photPos);
+	if (matchPosition < -0.5) return false; //not matched
+	if (convQuality_isGeneralTracksOnly->at(matchPosition) != 1) return false;
+	return true;
+}
 
 bool ChiSelectionPassMC(int chiPos)  //uses variables loaded in main function
 {
+	return true;
+}
+
+bool ChiPassAllCuts(int chiPos)
+{
+	int dimuonPos = chi_daughterJpsi_position->at(chiPos);
+	//if (DimuonSelectionPass(dimuonPos) == false) return false;
+	if (DimuonSelectionPassTight(dimuonPos, ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity()) == false) return false;
+
+	// muon cuts
+	int muon1Pos = dimuon_muon1_position->at(dimuonPos);
+	int muon2Pos = dimuon_muon2_position->at(dimuonPos);
+	if (MuonAcceptanceTight(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) return false;
+	if (MuonAcceptanceTight(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) return false;
+	if (MuonSelectionPass(muon1Pos) == false) return false;
+	if (MuonSelectionPass(muon2Pos) == false) return false;
+	// photon
+	int convPos = chi_daughterConv_position->at(chiPos);
+	if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) return false;
+
+//	//cuts or MVA for photons   //NO TMVA FOR NOW
+//#ifdef UsesTMVA
+//	convQuality_isHighPurityValue = convQuality_isHighPurity->at(convPos);
+//	convQuality_isGeneralTracksOnlyValue = convQuality_isGeneralTracksOnly->at(convPos);
+//	conv_vertexPositionRhoValue = conv_vertexPositionRho->at(convPos);
+//	conv_sigmaTkVtx1Value = conv_sigmaTkVtx1->at(convPos);
+//	conv_sigmaTkVtx2Value = conv_sigmaTkVtx2->at(convPos);
+//	conv_tkVtxCompatibilityOKValue = conv_tkVtxCompatibilityOK->at(convPos);
+//	conv_compatibleInnerHitsOKValue = conv_compatibleInnerHitsOK->at(convPos);
+//	conv_vertexChi2ProbValue = conv_vertexChi2Prob->at(convPos);
+//	conv_dzToClosestPriVtxValue = conv_dzToClosestPriVtx->at(convPos);
+//	conv_dxyPriVtxTimesCharge_Tr1Value = conv_dxyPriVtxTimesCharge_Tr1->at(convPos);
+//	conv_dxyPriVtxTimesCharge_Tr2Value = conv_dxyPriVtxTimesCharge_Tr2->at(convPos);
+//	conv_tk1NumOfDOFValue = conv_tk1NumOfDOF->at(convPos);
+//	conv_tk2NumOfDOFValue = conv_tk2NumOfDOF->at(convPos);
+//	conv_minDistanceOfApproachValue = conv_minDistanceOfApproach->at(convPos);
+//	conv_etaValue = conv_eta->at(convPos);
+//	conv_ptValue = conv_pt->at(convPos);
+//
+//
+//	double photMVA = TMWAreader->EvaluateMVA("BDT");
+//	hphoton_MVA_response->Fill(photMVA);
+//	//cout << "Values MVA: HP: " << convQuality_isHighPurityValue << "   TracksOnly: " << convQuality_isGeneralTracksOnlyValue << "    Vprob: " << conv_vertexChi2ProbValue << "    and the response: "<< photMVA << endl;
+//	//if (photMVA < -0.2) continue;
+//#endif
+//
+
+	if (PhotSelectionPassTight(convPos) == false) return false;
 	return true;
 }
 
