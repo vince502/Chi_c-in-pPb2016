@@ -264,6 +264,7 @@ bool DimuonAcceptanceLoose(double rap, double pt)
 {
 	if (fabs(rap) > 2.4) return false; 
 	if (pt < 6.5) return false;
+	if (pt > 30.0) return false;
 	return true;
 }
 bool DimuonAcceptanceTight(double rap, double pt)
