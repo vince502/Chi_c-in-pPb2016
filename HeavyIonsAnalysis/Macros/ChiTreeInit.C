@@ -218,9 +218,9 @@ int LoadChiBranches(TTree* tree, bool isMC) {
 	return 0;
 }
 
+//muon  - acceptance
 
-
-bool MuonAcceptance(double eta, double pt)
+bool MuonAcceptanceLoose(double eta, double pt)
 {
 	if (fabs(eta) > 2.4) return false;  //2.4
 	if (fabs(eta) < 0.3 && pt < 3.4) return false;
@@ -237,41 +237,10 @@ bool MuonAcceptanceTight(double eta, double pt)
 	return true;
 }
 
-bool PhotAcceptance(double eta, double pt)
-{
-	if (fabs(eta) > 2.4) return false; //2.5
-	if (pt < 0.5) return false; // 0.2
-	return true;
+bool MuonAcceptance(double eta, double pt) {
+	return MuonAcceptanceLoose(eta, pt);
 }
-
-bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main function
-{
-	if (dimuon_charge->at(dimuonPos) != 0) return false;
-	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
-	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
-	if (dimuon_pt->at(dimuonPos) < 6) return false;
-	return true;
-}
-bool DimuonSelectionPassMC(int dimuonPos)  //uses variables loaded in main function
-{
-	int matchPosition = gen_Jpsi_matchPosition->at(dimuonPos);
-	if (matchPosition < -0.5) return false; //not matched
-	if (dimuon_charge->at(matchPosition) != 0) return false;
-	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
-	if (dimuon_vtxProb->at(matchPosition) < 0.01) return false;
-	return true;
-}
-
-bool DimuonSelectionPassTight(int dimuonPos, double rap)  //uses variables loaded in main function
-{
-	if (dimuon_charge->at(dimuonPos) != 0) return false;
-	//if (dimuon_ctpv->at(dimuonPos) > 10 || dimuon_ctpv->at(dimuonPos) < -10) continue;
-	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
-	if (fabs(rap) > 1.0) return false;
-	if (dimuon_pt->at(dimuonPos) > 25.0) return false;
-	if (dimuon_pt->at(dimuonPos) < 6) return false;
-	return true;
-}
+// muon selection
 
 bool MuonSelectionPass(int muonPos)  //uses variables loaded in main function
 {
@@ -289,10 +258,81 @@ bool MuonSelectionPassMC(int muonPos)  //uses variables loaded in main function
 	return true;
 }
 
+// dimuon - acceptance
 
-bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main function //nominal by Alberto and Jhovanny (8.2021)
+bool DimuonAcceptanceLoose(double rap, double pt)
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
+	if (fabs(rap) > 2.4) return false; 
+	if (pt < 6.5) return false;
+	return true;
+}
+bool DimuonAcceptanceTight(double rap, double pt)
+{
+	if (fabs(rap) > 1.0) return false;  //2.4
+	if (pt < 6.5) return false;
+	if (pt > 25) return false;
+	return true;
+}
+
+bool DimuonAcceptance(double rap, double pt) {
+	return DimuonAcceptanceLoose(rap, pt);
+}
+
+
+
+// dimuon
+
+bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
+{
+	if (dimuon_charge->at(dimuonPos) != 0) return false;
+	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
+}
+
+bool DimuonSelectionPassTight(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
+{
+	if (dimuon_charge->at(dimuonPos) != 0) return false;
+	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptanceTight(rap, dimuon_pt->at(dimuonPos));
+}
+
+bool DimuonSelectionPassMC(int dimuonPos)
+{
+	int matchPosition = gen_Jpsi_matchPosition->at(dimuonPos);
+	if (matchPosition < -0.5) return false; //not matched
+	return DimuonSelectionPass(matchPosition);
+}
+
+bool DimuonSelectionPassNoCharge(int dimuonPos)  //to allow selecting same sign bkg (but no sign cut directly)
+{
+	//if (dimuon_charge->at(dimuonPos) != 0) return false;
+	//if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
+}
+
+// conversion
+
+bool PhotAcceptance(double eta, double pt)
+{
+	if (fabs(eta) > 2.4) return false; //2.5
+	if (pt < 0.5) return false; // 0.2
+	return true;
+}
+
+
+
+bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main function //nominal by Alberto and Jhovanny (8.2021) (with updated conversion removal)
+{
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -315,7 +355,7 @@ bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main functi
 
 bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main function
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -338,7 +378,7 @@ bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main funct
 
 bool PhotSelectionPassLoose(int photPos)  //uses variables loaded in main function
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1) return false;
+	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -379,27 +419,34 @@ bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main func
 	return true;
 }
 
+
+
+
+// chic
+
 bool ChiSelectionPassMC(int chiPos)  //uses variables loaded in main function
 {
-	return true;
+	return true; //TBD
 }
 
 bool ChiPassAllCuts(int chiPos)
 {
 	int dimuonPos = chi_daughterJpsi_position->at(chiPos);
-	//if (DimuonSelectionPass(dimuonPos) == false) return false;
-	if (DimuonSelectionPassTight(dimuonPos, ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity()) == false) return false;
+	if (DimuonSelectionPass(dimuonPos) == false) return false;
 
 	// muon cuts
 	int muon1Pos = dimuon_muon1_position->at(dimuonPos);
 	int muon2Pos = dimuon_muon2_position->at(dimuonPos);
-	if (MuonAcceptanceTight(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) return false;
-	if (MuonAcceptanceTight(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) return false;
+	if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) return false;
+	if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) return false;
 	if (MuonSelectionPass(muon1Pos) == false) return false;
 	if (MuonSelectionPass(muon2Pos) == false) return false;
 	// photon
 	int convPos = chi_daughterConv_position->at(chiPos);
 	if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) return false;
+
+	if (PhotSelectionPass(convPos) == false) return false;
+	return true;
 
 //	//cuts or MVA for photons   //NO TMVA FOR NOW
 //#ifdef UsesTMVA
@@ -428,8 +475,7 @@ bool ChiPassAllCuts(int chiPos)
 //#endif
 //
 
-	if (PhotSelectionPassTight(convPos) == false) return false;
-	return true;
+
 }
 
 

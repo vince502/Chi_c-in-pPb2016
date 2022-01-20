@@ -192,6 +192,9 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("conv_duplicityStatus", &conv_duplicityStatus);
 	event_tree->Branch("conv_splitDR", &conv_splitDR);
 	event_tree->Branch("conv_splitDpT", &conv_splitDpT);
+	event_tree->Branch("conv_duplicityStatus_AV", &conv_duplicityStatus_AV);
+	event_tree->Branch("conv_splitDR_AV", &conv_splitDR_AV);
+	event_tree->Branch("conv_splitDpT_AV", &conv_splitDpT_AV);
 	event_tree->Branch("conv_tk1ValidHits", &conv_tk1ValidHits);
 	event_tree->Branch("conv_tk2ValidHits", &conv_tk2ValidHits);
 	event_tree->Branch("convQuality_isHighPurity", &convQuality_isHighPurity);
@@ -366,7 +369,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	//general info
 	runNumber = iEvent.id().run();
 	eventNumber = iEvent.id().event();
-
+	//if (eventNumber!= 379320270)
+	//{return; }
 	///////////////////////////
 	/////////  TRIGGER   /////
 	//////////////////////////
@@ -855,6 +859,10 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			conv_duplicityStatus.push_back(Conv_checkDuplicity(candPhoton, i, conversion_handle, conv_DupldROut, conv_DuplpTOut));
 			conv_splitDR.push_back(conv_DupldROut);
 			conv_splitDpT.push_back(conv_DuplpTOut);
+			conv_duplicityStatus_AV.push_back(Conv_checkDuplicityAlbertoVersion(candPhoton, i, conversion_handle, conv_DupldROut, conv_DuplpTOut));
+			conv_splitDR_AV.push_back(conv_DupldROut);
+			conv_splitDpT_AV.push_back(conv_DuplpTOut);
+
 			convQuality_isHighPurity.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(8))); //8 is high purity, see reco::Conversion Class Reference
 			convQuality_isGeneralTracksOnly.push_back(candPhoton.quality((reco::Conversion::ConversionQuality)(0))); //0 is general tracks only, see reco::Conversion Class Reference
 			const reco::Vertex conv_recovtx = candPhoton.conversionVertex();
@@ -1260,6 +1268,9 @@ void ChiRootupler::Clear()
 	conv_duplicityStatus.clear();
 	conv_splitDR.clear();
 	conv_splitDpT.clear();
+	conv_duplicityStatus_AV.clear();
+	conv_splitDR_AV.clear();
+	conv_splitDpT_AV.clear();
 	conv_tk1ValidHits.clear();
 	conv_tk2ValidHits.clear();
 	convQuality_isHighPurity.clear();
@@ -1477,7 +1488,140 @@ bool ChiRootupler::Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, con
 	return reco::deltaR(reco_conv, gen_phot) < maxDeltaR && ((reco_conv.pt() - gen_phot.pt()) / (gen_phot.pt()+ 1E-9)) < maxDPtRel;
 }
 
-int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut)
+int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut) //uses const double conv_duplicateMaxDeltapT = 0.1 and const double conv_duplicateMaxDeltaR = 0.05;
+{
+	bool bOneCommonTrack = false;  // if conversion has a common track with another conversion from the conversion collection - then it is checked further
+	bool bSplitToRemove = false;  // if conversion is split and is to be removed
+	bool bSplitToKeep = false;   // it conversion is split, but this one is to be kept (we remove the other)
+	dROut = -0.02;  //read out value - the closest dr to another conversion - for testing, can be ignored or removed
+	dpTOut = -0.02;  //read out value - difference of pt for the closest conversion (in dR) - for testing, can be ignored or removed
+
+	if (conv.tracks().size() == 2) {
+		const edm::RefToBase<reco::Track> conv_tk1 = conv.tracks().at(0);
+		const edm::RefToBase<reco::Track> conv_tk2 = conv.tracks().at(1);
+	
+
+		for (uint i = 0; i < conversion_handle->size(); i++) {
+			if ((int)i == convPos) { //don't compare to itself
+				continue;
+			}
+			const reco::Conversion& convCompare = conversion_handle->at(i);
+			if (convCompare.quality((reco::Conversion::ConversionQuality)(0)) == false) { // consider only conversions with general tracks
+				continue;
+			}
+			if (convCompare.tracks().size() == 2) { //if not, this conversion will be thrown out later (with return 3) and thus removed even if it were duplicate
+				for (uint iTr = 0; iTr < 2; iTr++) {
+					const edm::RefToBase<reco::Track> convComp_tk = convCompare.tracks().at(iTr);
+					if (conv_tk1 == convComp_tk) { // if the first is the same
+						bOneCommonTrack = true;
+						// check the other track, if it is real or split
+						uint iTrOther = (iTr + 1) % 2;
+						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+						double convDR = reco::deltaR(*conv_tk2, *convComp_tkOther);
+						double convDpT = std::abs(conv_tk2->pt() - convComp_tkOther->pt());
+
+						if (convDR < conv_duplicateMaxDeltaR && convDpT < conv_duplicateMaxDeltapT) //smaller than the cut-off, these are the split ones
+						{
+							if (conv_tk2->numberOfValidHits() < convComp_tkOther->numberOfValidHits()) //throw away the one with less hits
+							{
+								bSplitToRemove = true;
+							}
+							else if (conv_tk2->numberOfValidHits() == convComp_tkOther->numberOfValidHits() && ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) < ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof())) //real number tie-breaker
+							{
+								bSplitToRemove = true;
+							}
+							else
+							{
+								bSplitToKeep = true;
+							}
+
+						}
+
+						//store the dr and dpt relevant values - testing only
+						if (dROut < 0)//first one with better prob
+						{
+							dROut = convDR;
+							dpTOut = convDpT;
+						}
+						else { //if it isn't first, store the one that is closest in dR
+							if (convDR < dROut)
+							{
+								dROut = convDR;
+								dpTOut = convDpT;
+							}
+						}
+						if (bSplitToRemove == true)
+						{
+							break; //it is to be removed, no need to go through the rest (and it prevents messing up the dROut and dpTOut)
+						}
+
+					}
+					else if (conv_tk2 == convComp_tk) { // if the second is the same //could be written neater, left for now
+						bOneCommonTrack = true;
+						// check the other track, if it is real or split
+						uint iTrOther = (iTr + 1) % 2;
+						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+						double convDR = reco::deltaR(*conv_tk1, *convComp_tkOther);
+						double convDpT = std::abs(conv_tk1->pt() - convComp_tkOther->pt());
+
+						if (convDR < conv_duplicateMaxDeltaR && convDpT < conv_duplicateMaxDeltapT) //smaller than the cut-off, these are the split ones
+						{
+							if (conv_tk1->numberOfValidHits() < convComp_tkOther->numberOfValidHits()) //throw away the one with less hits
+							{
+								bSplitToRemove = true;
+
+							}
+							else if (conv_tk1->numberOfValidHits() == convComp_tkOther->numberOfValidHits() && ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) < ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof())) //real number tie-breaker
+							{
+								bSplitToRemove = true;
+
+							}
+							else {
+								bSplitToKeep = true;
+							}
+						}
+
+						//store the dr and dpt relevant values - testing only
+						if (dROut < 0)//first one with better prob
+						{
+							dROut = convDR;
+							dpTOut = convDpT;
+						}
+						else { //if it isn't first, store the one that is closest in dR
+							if (convDR < dROut)
+							{
+								dROut = convDR;
+								dpTOut = convDpT;
+							}
+						}
+						if (bSplitToRemove == true)
+						{
+							break; //it is to be removed, no need to go through the rest (and it prevents messing up the dROut and dpTOut)
+						}
+					}
+
+				}
+
+			}
+
+			if (bSplitToRemove == true)
+			{
+				break; //it is to be removed, no need to go through the rest (and it prevents messing up the dROut and dpTOut)
+			}
+		}
+	}
+	else return 3;
+	if (bSplitToRemove == true) {
+		//if (bSplitToKeep == true) std::cout << "Edge case conversion, probably multiple split track. Removed" << eventNumber << std::endl; //O: Happens if the conversion is "doubly split" - each leg is split
+		return 4;
+	}
+	if (bSplitToKeep == true) return 2;
+	if (bOneCommonTrack == true) return 1;
+	return 0;
+}
+
+
+int ChiRootupler::Conv_checkDuplicityAlbertoVersion(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut)
 {
 	bool bOneCommonTrack = false;
 	bool bSplitTrack = false;
@@ -1487,7 +1631,7 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 	if (conv.tracks().size() == 2) {
 		const edm::RefToBase<reco::Track> conv_tk1 = conv.tracks().at(0);
 		const edm::RefToBase<reco::Track> conv_tk2 = conv.tracks().at(1);
-	
+
 
 		for (uint i = 0; i < conversion_handle->size(); i++) {
 			if ((int)i == convPos) { //don't compare to itself
@@ -1504,6 +1648,9 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 						if (ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) > ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof()))
 						{
 							continue; //in this case our conversion has better prob, so we'll just use it unless we come across yet better
+						}
+						if (convCompare.quality((reco::Conversion::ConversionQuality)(8)) == false || convCompare.quality((reco::Conversion::ConversionQuality)(0)) == false || convCompare.conversionVertex().position().rho() < 1.5) {// make same preselection as Alberto, ignoring matches to the conversions that they preselect for
+							continue;
 						}
 						uint iTrOther = (iTr + 1) % 2;
 						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
@@ -1545,6 +1692,9 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 						if (ChiSquaredProbability(conv.conversionVertex().chi2(), conv.conversionVertex().ndof()) > ChiSquaredProbability(convCompare.conversionVertex().chi2(), convCompare.conversionVertex().ndof()))
 						{
 							continue; //in this case our conversion has better prob, so we'll just use it unless we come across yet better
+						}
+						if (convCompare.quality((reco::Conversion::ConversionQuality)(8)) == false || convCompare.quality((reco::Conversion::ConversionQuality)(0)) == false || convCompare.conversionVertex().position().rho() < 1.5) {// make same preselection as Alberto, ignoring matches to the conversions that they preselect for
+							continue;
 						}
 						// check the other one, if it is real or split
 						uint iTrOther = (iTr + 1) % 2;

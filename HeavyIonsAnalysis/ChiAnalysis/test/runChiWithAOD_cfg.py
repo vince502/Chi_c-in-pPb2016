@@ -2,7 +2,7 @@
 #
 outFileName = 'Chi_c_pPb8TeV_RW6test.root'
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root' # /store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/549/00000/0249A3C5-A2B1-E611-8E3E-FA163ED701FA.root
-inFileNames = 'file:/eos/cms/store/group/phys_heavyions/okukral/Chi_c/20E62AB9-66B7-E611-A839-02163E011E52.root' # /store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/505/00000/02B86BE8-5EAF-E611-A122-02163E012762.root
+inFileNames = 'file:/eos/cms/store/group/phys_heavyions/okukral/Chi_c/02E370D0-98B2-E611-A33B-02163E01378E.root' # /store/hidata/PARun2016C/PADoubleMuon/AOD/PromptReco-v1/000/285/505/00000/02B86BE8-5EAF-E611-A122-02163E012762.root
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
 
 import FWCore.ParameterSet.Config as cms

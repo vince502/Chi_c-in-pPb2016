@@ -79,6 +79,7 @@ private:
 	bool Conv_checkTkVtxCompatibility(const reco::Conversion& conv, const reco::VertexCollection&  priVtxs, double sigmaTkVtxComp_, bool& Flag_Best_Out, bool& Flag_SecondBestA_Out, bool& Flag_SecondBestB_Out, double& sigmaMinValue1Out, double& sigmaMinValue2Out);
 	bool Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB);
 	int Conv_checkDuplicity(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut);
+	int Conv_checkDuplicityAlbertoVersion(const reco::Conversion& conv, int convPos, edm::Handle < std::vector <reco::Conversion>>& conversion_handle, double& dROut, double& dpTOut);
 	//photon MC
 	bool Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel);
 	bool ConvSelection(const reco::Conversion& conv);
@@ -231,9 +232,12 @@ private:
 
 	//conversion info
 
-	std::vector <int> conv_duplicityStatus; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
+	std::vector <int> conv_duplicityStatus; // 0: is not duplicate to any, 1: shares a track, but isn't split 2: shares a track, and is split, but is kept, 3: doesn't have 2 tracks, 4: shares the track, is split, and is removed
 	std::vector <double> conv_splitDR;
 	std::vector <double> conv_splitDpT;
+	std::vector <int> conv_duplicityStatus_AV; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
+	std::vector <double> conv_splitDR_AV;
+	std::vector <double> conv_splitDpT_AV;
 	std::vector <int> conv_tk1ValidHits;
 	std::vector <int> conv_tk2ValidHits;
 	std::vector <bool> convQuality_isHighPurity;

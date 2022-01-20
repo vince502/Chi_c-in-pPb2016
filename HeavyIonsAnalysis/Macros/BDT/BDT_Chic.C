@@ -34,6 +34,7 @@
 #include "../tdrstyle.C"
 #include "../CMS_lumi.C"
 #include "../ChiTreeInit.C"
+#include "../ChiFitterInit.h"
 
 #include "TMVA/Factory.h"
 #include "TMVA/DataLoader.h"
@@ -43,7 +44,7 @@
 
 using namespace std;
 using namespace RooFit;
-
+/*
 const int PythCode_chic0 = 10441; //Pythia codes
 const int PythCode_chic1 = 20443;
 const int PythCode_chic2 = 445;
@@ -61,7 +62,7 @@ int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
 
 double bins_nTrk[] = { 0, 50, 100, 150, 200, 300, 400 };
 int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
-
+*/
 
 TLorentzVector* LVchic, *LVdimuon, *LVconv, *LVmuon1, *LVmuon2;
 TLorentzVector* LVchic_rot, *LVchic_rotGamma, *LVdimuon_rot, *LVconv_rot, *LVmuon1_rot, *LVmuon2_rot;
@@ -121,16 +122,16 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 
 	//counters
 	int weird_decay_counter = 0;
-	long nchicCounter = 0, nchicCounterPass = 0, nchicCounterPassMass = 0;
-	long signalEff_den = 0, signalEff_numLoose = 0, signalEff_numTight = 0;
-	long bkgEff_den = 0, bkgEff_numLoose = 0, bkgEff_numTight = 0;
+	long nchicCounter = 0, nchicCounterPass = 0, nchicCounterPassMass = 0, nchicCounterPassNoChargeMass = 0;
+	long signalEff_den = 0, signalEff_numLoose = 0, signalEff_numMedium = 0, signalEff_numTight = 0;
+	long bkgEff_den = 0, bkgEff_numLoose = 0, bkgEff_numMedium = 0, bkgEff_numTight = 0;
 
 	file_cutWorkingPoints.open("Log_cutBasedWorkingPoints.txt", ios::app);
 	file_cutWorkingPoints << endl << endl << "N E W   R U N " << endl << endl;
 
 
+	bool passDimSelNoCharge = false;
 	bool passDimSel = false;
-	bool passDimSelTight = false;
 
 	//create the output tree
 
@@ -174,7 +175,8 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 
 
 	Long64_t nentries = event_tree->GetEntries();
-	//if (nentries > 200000) { nentries = 200000; }
+	if (nentries > 10000000) { nentries = 10000000; }
+	if (isSignal && nentries > 1000000) { nentries = 1000000; }
 	cout << nentries << endl;
 	for (Long64_t i = 0; i < nentries; i++)
 	{
@@ -197,6 +199,7 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 			++nchicCounter;
 			// check Acceptance and Cuts
 			int dimuonPos = chi_daughterJpsi_position->at(iChi);
+			passDimSelNoCharge = DimuonSelectionPassNoCharge(dimuonPos);
 			passDimSel = DimuonSelectionPass(dimuonPos);
 			// muon cuts
 			int muon1Pos = dimuon_muon1_position->at(dimuonPos);
@@ -209,7 +212,7 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 			int convPos = chi_daughterConv_position->at(iChi);
 			if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) continue;
 			//if (PhotSelectionPass(convPos) == false) continue;
-			if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
+			if (passDimSelNoCharge == true) { ++nchicCounterPass; } // SelectionsPassed
 			// Get Lorentz V
 			LVchic = (TLorentzVector*)chi_p4->At(iChi);
 			LVdimuon = (TLorentzVector*)dimuon_p4->At(dimuonPos);
@@ -221,7 +224,10 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 			double dimuonM = LVdimuon->M();
 			double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass
 
-			if (passDimSel == true && dimuonM > 2.95 && dimuonM < 3.2) ++nchicCounterPassMass;
+			if (passDimSelNoCharge == true && dimuonM > mass_cutoffJpsi_l && dimuonM < mass_cutoffJpsi_h) ++nchicCounterPassNoChargeMass;
+			if (passDimSel == true && dimuonM > mass_cutoffJpsi_l && dimuonM < mass_cutoffJpsi_h) ++nchicCounterPassMass;
+
+			//if (passDimSelNoCharge == true && passDimSel == false) cout << dimuon_charge->at(dimuonPos) << "  vprob  " << dimuon_vtxProb->at(dimuonPos) << endl;
 
 			// Obtain yields
 
@@ -231,19 +237,19 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 
 			//// Rotational bkg
 			//if (LVdimuon_rot->M() > 2.95 && LVdimuon_rot->M() < 3.2) {
-			//	if (passDimSel == true) {
+			//	if (passDimSelNoCharge == true) {
 			//		hchic_M_rot->Fill(LVchic_rot->M());
 			//		hSignal_rot->Fill(LVchic_rot->M() - LVdimuon_rot->M() + 3.097);
 			//	}
 			//}
 			//// Side-band
-			//if (((dimuonM > 2.5 && dimuonM < 2.75) || (dimuonM > 3.4 && dimuonM < 3.7)) && passDimSel == true) {
+			//if (((dimuonM > 2.5 && dimuonM < 2.75) || (dimuonM > 3.4 && dimuonM < 3.7)) && passDimSelNoCharge == true) {
 			//	hchic_M_SB->Fill(m_chi);
 			//	hSignal_SB->Fill(m_chi - dimuonM + 3.097);
 			//}
 
 
-			if (dimuonM<2.95 || dimuonM>3.2) continue; //require narrow dimuon mass
+			if (dimuonM < mass_cutoffJpsi_l || dimuonM > mass_cutoffJpsi_h) continue; //require narrow dimuon mass
 
 
 			if (isSignal==true && passDimSel == true) {
@@ -287,8 +293,11 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 
 				event_treeOut->Fill();
 				signalEff_den++;
-				if (PhotSelectionPass(convPos) == true) {
+				if (PhotSelectionPassLoose(convPos) == true) {
 					signalEff_numLoose++;
+				}
+				if (PhotSelectionPassMedium(convPos) == true) {
+					signalEff_numMedium++;
 				}
 				if (PhotSelectionPassTight(convPos) == true) {
 					signalEff_numTight++;
@@ -296,7 +305,7 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 				
 			}
 
-			if (isSignal == false && dimuon_charge->at(dimuonPos) != 0 && dimuon_pt->at(dimuonPos)>6) {
+			if (isSignal == false && passDimSelNoCharge == true && dimuon_charge->at(dimuonPos) != 0) {
 				//bkg
 				convQuality_isHighPurityOut = convQuality_isHighPurity->at(convPos);
 				convQuality_isGeneralTracksOnlyOut = convQuality_isGeneralTracksOnly->at(convPos);
@@ -337,8 +346,11 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 				event_treeOut->Fill();
 
 				bkgEff_den++;
-				if (PhotSelectionPass(convPos) == true) {
+				if (PhotSelectionPassLoose(convPos) == true) {
 					bkgEff_numLoose++;
+				}
+				if (PhotSelectionPassMedium(convPos) == true) {
+					bkgEff_numMedium++;
 				}
 				if (PhotSelectionPassTight(convPos) == true) {
 					bkgEff_numTight++;
@@ -353,19 +365,24 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 	} //end of event loop
 
 	cout << "Processed " << nchicCounter << " chic candidates, " << nchicCounterPass << " passed the selections, that is " << ((double)nchicCounterPass / (double)nchicCounter * 100) << " percent" << endl;
+	cout << "Processed " << nchicCounter << " chic candidates, " << nchicCounterPassNoChargeMass << " passed the selections and mass window requirement without charge, that is " << ((double)nchicCounterPassNoChargeMass / (double)nchicCounter * 100) << " percent" << endl;
 	cout << "Processed " << nchicCounter << " chic candidates, " << nchicCounterPassMass << " passed the selections and mass window requirement, that is " << ((double)nchicCounterPassMass / (double)nchicCounter * 100) << " percent" << endl;
 
 	cout << endl << "Cut based selections: " << endl;
 	if (isSignal) {
 		cout << "Loose selection - signal eff: " << (double)signalEff_numLoose / (double)signalEff_den * 100 << "% (" << signalEff_numLoose << ")/(" << signalEff_den << ")" << endl; 
+		cout << "Medium selection - signal eff: " << (double)signalEff_numMedium / (double)signalEff_den * 100 << "% (" << signalEff_numMedium << ")/(" << signalEff_den << ")" << endl;
 		cout << "Tight selection - signal eff: " << (double)signalEff_numTight / (double)signalEff_den * 100 << "% (" << signalEff_numTight << ")/(" << signalEff_den << ")" << endl;
 		file_cutWorkingPoints << "Loose selection - signal eff: " << (double)signalEff_numLoose / (double)signalEff_den * 100 << "% (" << signalEff_numLoose << ")/(" << signalEff_den << ")" << endl;
+		file_cutWorkingPoints << "Medium selection - signal eff: " << (double)signalEff_numMedium / (double)signalEff_den * 100 << "% (" << signalEff_numMedium << ")/(" << signalEff_den << ")" << endl;
 		file_cutWorkingPoints << "Tight selection - signal eff: " << (double)signalEff_numTight / (double)signalEff_den * 100 << "% (" << signalEff_numTight << ")/(" << signalEff_den << ")" << endl;
 	}
 	else {
 		cout << "Loose selection - bkg rejection: " << (1.0 - (double)bkgEff_numLoose / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numLoose << ")/(" << bkgEff_den << "))" << endl;
+		cout << "Medium selection - bkg rejection: " << (1.0 - (double)bkgEff_numMedium / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numMedium << ")/(" << bkgEff_den << "))" << endl;
 		cout << "Tight selection - bkg rejection: " << (1.0 - (double)bkgEff_numTight / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numTight << ")/(" << bkgEff_den << "))" << endl;
 		file_cutWorkingPoints << "Loose selection - bkg rejection: " << (1.0 - (double)bkgEff_numLoose / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numLoose << ")/(" << bkgEff_den << "))" << endl;
+		file_cutWorkingPoints << "Medium selection - bkg rejection: " << (1.0 - (double)bkgEff_numMedium / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numMedium << ")/(" << bkgEff_den << "))" << endl;
 		file_cutWorkingPoints << "Tight selection - bkg rejection: " << (1.0 - (double)bkgEff_numTight / (double)bkgEff_den) * 100 << "% (1-(" << bkgEff_numTight << ")/(" << bkgEff_den << "))" << endl;
 	}
 
@@ -386,7 +403,7 @@ void GenerateSample(bool isSignal, const char* fileIn, const char* fileOut, bool
 ////////////////////////////////////
 
 
-void BDT_Chic(bool flagGenerateSBsamples = false, const char* fileSig = "BDT_Signal_test.root", const char* fileBkg = "BDT_Background_test.root", const char* fileInSigTree = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileInBkgTree = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW3.root", const char* fileOut = "BDT_OutputWeight.root")
+void BDT_Chic(bool flagGenerateSBsamples = false, const char* fileSig = "BDT_Signal_v2.root", const char* fileBkg = "BDT_Background_v2.root", const char* fileInSigTree = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-bothDir.root", const char* fileInBkgTree = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW7.root", const char* fileOut = "BDT_OutputWeight_v2.root")
 {
 	//gStyle->SetOptStat(1111);
 	//gStyle->SetOptStat(0);
@@ -529,8 +546,8 @@ void BDT_Chic(bool flagGenerateSBsamples = false, const char* fileSig = "BDT_Sig
 
 	dataloader->PrepareTrainingAndTestTree("", "SplitMode=random:!V");
 
-	factory->BookMethod(dataloader, TMVA::Types::kCuts, "Cuts",
-		"!H:!V:FitMethod=MC:EffSel:SampleSize=200000:VarProp=FSmart");
+	//factory->BookMethod(dataloader, TMVA::Types::kCuts, "Cuts",
+	//	"!H:!V:FitMethod=MC:EffSel:SampleSize=200000:VarProp=FSmart");
 
 	//// Likelihood ("naive Bayes estimator")
 	//factory->BookMethod(dataloader, TMVA::Types::kLikelihood, "Likelihood",

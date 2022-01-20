@@ -27,24 +27,26 @@
 #include "../../Macros/tdrstyle.C"
 #include "../../Macros/CMS_lumi.C"
 #include "../../Macros/ChiTreeInit.C"
+#include "../../Macros/ChiFitterInit.h"
 
 
 using namespace std;
 
-const int PythCode_chic0 = 10441; //Pythia codes
-const int PythCode_chic1 = 20443;
-const int PythCode_chic2 = 445;
-double binsChiEffpT[] = {0.0, 6.0, 8.0, 10.0, 15.0, 20.0, 30.0};
-//double binsChiEffpT[] = { 0.0, 0.8, 1.6, 2.4, 3.6, 6.0, 8.0, 10.0, 20.0 };
+//const int PythCode_chic0 = 10441; //Pythia codes
+//const int PythCode_chic1 = 20443;
+//const int PythCode_chic2 = 445;
+double binsChiEffpT[] = {6.5, 8.0, 10.0, 15.0, 20.0, 25.0};
+//double binsChiEffpT[] = { 0.0, 6.0, 8.0, 10.0, 15.0, 20.0, 30.0 };
 int  nbinsChiEffpT = sizeof(binsChiEffpT) / sizeof(double) - 1;
 double binsConvEffpT[] = { 0.0, 0.1, 0.5, 1.0, 1.5, 2.5, 5.0};
 int  nbinsConvEffpT = sizeof(binsConvEffpT) / sizeof(double) - 1;
 int weird_decay_counter = 0;
 
-double bins_Q_pT[] = { 6, 9, 12, 18, 30 };
+//double bins_Q_pT[] = { 6, 9, 12, 18, 30 };
+double bins_Q_pT[] = { 6.5, 9, 12, 16, 22, 30 };
 int  nbins_Q_pT = sizeof(bins_Q_pT) / sizeof(double) - 1;
 
-double bins_Q_y[] = { -2.4, -1.6, -1.2, 0, 1.2, 1.6, 2.4 };
+double bins_Q_y[] = { -2.4, -1.6, -1.0, 0, 1.0, 1.6, 2.4 };
 int  nbins_Q_y = sizeof(bins_Q_y) / sizeof(double) - 1;
 
 //double binsWeightChi_pT[] = { 6.0, 8.0, 10.0, 12.0, 16.0, 24.0, 30.0 };
@@ -52,12 +54,12 @@ int  nbins_Q_y = sizeof(bins_Q_y) / sizeof(double) - 1;
 //double binsWeightChi_absy[] = { 0.0, 0.4, 0.8, 1.2, 1.6, 2.1, 2.4 };
 //int  nbinsWeightChi_absy = sizeof(binsWeightChi_absy) / sizeof(double) - 1;
 
-double binsWeightChi_pT[] = { 6.0, 9.0, 12.0, 18.0, 30.0 };
+double binsWeightChi_pT[] = { 6.5, 9, 12, 16, 22, 30 };
 int  nbinsWeightChi_pT = sizeof(binsWeightChi_pT) / sizeof(double) - 1;
-double binsWeightChi_absy[] = { 0.0, 1.0, 1.8, 2.4 };
+double binsWeightChi_absy[] = { 0.0, 1.0, 1.6, 2.4 };
 int  nbinsWeightChi_absy = sizeof(binsWeightChi_absy) / sizeof(double) - 1;
 
-double binsWeightChi_nTrk[] = { 0, 50, 100, 150, 200, 400 };
+double binsWeightChi_nTrk[] = { 0, 50, 100, 150, 250, 400 };
 int  nbinsWeightChi_nTrk = sizeof(binsWeightChi_nTrk) / sizeof(double) - 1;
 
 
@@ -66,55 +68,6 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 {
 	gStyle->SetOptStat(1111);
 	gROOT->ProcessLine("#include <vector>");
-
-	//TH1D* h_muon_ptRel1 = new TH1D("h_muon_ptRel1", "deltaPtRel from matching", 100, 0.0, 0.5);
-	//TH1D* h_muon_ptRel2 = new TH1D("h_muon_ptRel2", "deltaPtRel by hand", 100, 0.0, 0.5);
-
-	//TH1I* h_muonMatch_isGlobal = new TH1I("h_muonMatch_isGlobal", "h_muonMatch_isGlobal", 2, 0, 2);
-	//TH1I* h_muonMatch_isTracker = new TH1I("h_muonMatch_isTracker", "h_muonMatch_isTracker", 2, 0, 2);
-	//TH1I* h_muonMatch_isSoft = new TH1I("h_muonMatch_isSoft", "h_muonMatch_isSoft", 2, 0, 2);
-	//TH1I* h_muonMatch_trackerLayers = new TH1I("h_muonMatch_trackerLayers", "Tracker layers with measurement", 20, 0, 20);
-
-	//TH1I* h_gen_muon_matchPosition = new TH1I("h_gen_muon_matchPosition", "h_gen_muon_matchPosition", 10, 0, 10);
-	//TH1I* h_gen_muon_nMatches = new TH1I("h_gen_muon_nMatches", "h_gen_muon_nMatches", 10, 0, 10);
-	//TH1D* h_gen_muon_rDelta = new TH1D("h_gen_muon_rDelta", "h_gen_muon_rDelta", 100, 0, 0.5);
-
-
-	////conversions
-	//TH1I* h_convQuality_isHighPurity = new TH1I("h_convQuality_isHighPurity", "h_convQuality_isHighPurity", 2, 0, 2);
-	//TH1I* h_convQuality_isGeneralTracksOnly = new TH1I("h_convQuality_isGeneralTracksOnly", "h_convQuality_isGeneralTracksOnly", 2, 0, 2);
-	//TH1D* h_conv_vertexPositionRho = new TH1D("h_conv_vertexPositionRho", "h_conv_vertexPositionRho", 200, 0, 100);
-	//TH1D* h_conv_sigmaTkVtx1 = new TH1D("h_conv_sigmaTkVtx1", "h_conv_sigmaTkVtx1", 200, 0, 100);
-	//TH1D* h_conv_sigmaTkVtx2 = new TH1D("h_conv_sigmaTkVtx2", "h_conv_sigmaTkVtx2", 200, 0, 100);
-	//TH1I* h_conv_tkVtxCompatibilityOK = new TH1I("h_conv_tkVtxCompatibilityOK", "h_conv_tkVtxCompatibilityOK", 2, 0, 2);
-
-	//TH1I* h_conv_compatibleInnerHitsOK = new TH1I("h_conv_compatibleInnerHitsOK", "h_conv_compatibleInnerHitsOK", 3, -1, 2); //-1: less than 2 tracks, 0: not compatible, 1: yes
-	//TH1D* h_conv_vertexChi2Prob = new TH1D("h_conv_vertexChi2Prob", "h_conv_vertexChi2Prob", 200, 0, 1);
-	//TH1D* h_conv_zOfPriVtx = new TH1D("h_conv_zOfPriVtx", "h_conv_zOfPriVtx", 240, -60, 60);
-	//TH1D* h_conv_zOfPriVtxFromTracks = new TH1D("h_conv_zOfPriVtxFromTracks", "h_conv_zOfPriVtxFromTracks", 240, -60, 60);
-	//TH1D* h_conv_dzToClosestPriVtx = new TH1D("h_conv_dzToClosestPriVtx", "h_conv_dzToClosestPriVtx", 240, -60, 60);
-	//TH1D* h_conv_dxyPriVtx_Tr1 = new TH1D("h_conv_dxyPriVtx_Tr1", "h_conv_dxyPriVtx_Tr1", 400, -100, 100);
-	//TH1D* h_conv_dxyPriVtx_Tr2 = new TH1D("h_conv_dxyPriVtx_Tr2", "h_conv_dxyPriVtx_Tr2", 400, -100, 100);
-	//TH1D* h_conv_dxyPriVtxTimesCharge_Tr1 = new TH1D("h_conv_dxyPriVtxTimesCharge_Tr1", "h_conv_dxyPriVtxTimesCharge_Tr1", 400, -100, 100);
-	//TH1D* h_conv_dxyPriVtxTimesCharge_Tr2 = new TH1D("h_conv_dxyPriVtxTimesCharge_Tr2", "h_conv_dxyPriVtxTimesCharge_Tr2", 400, -100, 100);
-	//TH1D* h_conv_dxyError_Tr1 = new TH1D("h_conv_dxyError_Tr1", "h_conv_dxyError_Tr1", 200, 0, 10);
-	//TH1D* h_conv_dxyError_Tr2 = new TH1D("h_conv_dxyError_Tr2", "h_conv_dxyError_Tr2", 200, 0, 10);
-
-	//TH1I* h_conv_tk1NumOfDOF = new TH1I("h_conv_tk1NumOfDOF", "h_conv_tk1NumOfDOF", 70, 0, 70);
-	//TH1I* h_conv_tk2NumOfDOF = new TH1I("h_conv_tk2NumOfDOF", "h_conv_tk2NumOfDOF", 70, 0, 70);
-	//TH1D* h_conv_track1Chi2 = new TH1D("h_conv_track1Chi2", "h_conv_track1Chi2", 400, 0, 40);
-	//TH1D* h_conv_track2Chi2 = new TH1D("h_conv_track2Chi2", "h_conv_track2Chi2", 400, 0, 40);
-	//TH1D* h_conv_minDistanceOfApproach = new TH1D("h_conv_minDistanceOfApproach", "h_conv_minDistanceOfApproach", 400, -2, 2);
-	//TH1D* h_conv_eta = new TH1D("h_conv_eta", "h_conv_eta", 200, -5, 5);
-	//TH1D* h_conv_pt = new TH1D("h_conv_pt", "h_conv_pt", 600, 0, 30);
-
-	//TH1D* h_gen_phot_pt = new TH1D("h_gen_phot_pt", "h_gen_phot_pt", 600, 0, 30);
-	//TH1D* h_gen_phot_eta = new TH1D("h_gen_phot_eta", "h_gen_phot_eta", 200, -5, 5);
-	//TH1I* h_gen_conv_matchPosition = new TH1I("h_gen_conv_matchPosition", "h_gen_conv_matchPosition", 10, 0, 10);
-	//TH1I* h_gen_conv_nMatches = new TH1I("h_gen_conv_nMatches", "h_gen_conv_nMatches", 10, 0, 10);
-	//TH1D* h_gen_conv_rDelta = new TH1D("h_gen_conv_rDelta", "h_gen_conv_rDelta", 100, 0, 0.5);
-	//TH1D* h_gen_conv_ptDeltaRel = new TH1D("h_gen_conv_ptDeltaRel", "h_gen_conv_ptDeltaRel", 200, -1, 1);
-
 
 
 	// ACCEPTANCE
@@ -179,11 +132,23 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 	TH1D* h_chiEfficiency1D_Q_y_rat = new TH1D("h_chiEfficiency1D_Q_y_rat", "h_chiEfficiency1D_Q_y_rat; y", nbins_Q_y, bins_Q_y);
 	TH1D* h_chiEfficiency1D_Q_y_ratRel = new TH1D("h_chiEfficiency1D_Q_y_ratRel", "h_chiEfficiency1D_Q_y_ratRel; y", nbins_Q_y, bins_Q_y);
 
+	// ratio of conversion eff //in bins of chic y
+	TH1D* h_photEfficiency_y_relative_den = new TH1D("h_photEfficiency_y_relative_den", "h_photEfficiency_y_relative_den; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_num_loose = new TH1D("h_photEfficiency_y_relative_num_loose", "h_photEfficiency_y_relative_num_loose; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_rat_loose = new TH1D("h_photEfficiency_y_relative_rat_loose", "h_photEfficiency_y_relative_rat_loose; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_num_medium = new TH1D("h_photEfficiency_y_relative_num_medium", "h_photEfficiency_y_relative_num_medium; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_rat_medium = new TH1D("h_photEfficiency_y_relative_rat_medium", "h_photEfficiency_y_relative_rat_medium; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_num_tight = new TH1D("h_photEfficiency_y_relative_num_tight", "h_photEfficiency_y_relative_num_tight; y", nbins_y, bins_y);
+	TH1D* h_photEfficiency_y_relative_rat_tight = new TH1D("h_photEfficiency_y_relative_rat_tight", "h_photEfficiency_y_relative_rat_tight; y", nbins_y, bins_y);
 
 	// weights 
 	TH2D* h_JpsiAccEff_den = new TH2D("h_JpsiAccEff_den", "h_AccEff_den; y_{lab}; p_{T}", 30, 0.0, 3.0, 100, 0, 30);
 	TH2D* h_JpsiAccEff_num = new TH2D("h_JpsiAccEff_num", "h_AccEff_num; y_{lab}; p_{T}", 30, 0.0, 3.0, 100, 0, 30);
 	TH2D* h_JpsiAccEff_rat = new TH2D("h_JpsiAccEff_rat", "h_AccEff_rat; y_{lab}; p_{T}", 30, 0.0, 3.0, 100, 0, 30);
+
+	TH2D* h_JpsiAccEff_den_nTrk = new TH2D("h_JpsiAccEff_den_nTrk", "h_JpsiAccEff_den_nTrk; |y_{lab}|; N_{trk}", 30, 0.0, 3.0, nbinsWeightChi_nTrk, binsWeightChi_nTrk);
+	TH2D* h_JpsiAccEff_num_nTrk = new TH2D("h_JpsiAccEff_num_nTrk", "h_JpsiAccEff_num_nTrk; |y_{lab}|; N_{trk}", 30, 0.0, 3.0, nbinsWeightChi_nTrk, binsWeightChi_nTrk);
+	TH2D* h_JpsiAccEff_rat_nTrk = new TH2D("h_JpsiAccEff_rat_nTrk", "h_JpsiAccEff_rat_nTrk; |y_{lab}|; N_{trk}", 30, 0.0, 3.0, nbinsWeightChi_nTrk, binsWeightChi_nTrk);
 
 	TH2D* h_chiAccEff_den = new TH2D("h_chiAccEff_den", "h_chiAccEff_den; |y_{lab}|; p_{T}", nbinsWeightChi_absy, binsWeightChi_absy, nbinsWeightChi_pT, binsWeightChi_pT);
 	TH2D* h_chiAccEff_num = new TH2D("h_chiAccEff_num", "h_chiAccEff_num; |y_{lab}|; p_{T}", nbinsWeightChi_absy, binsWeightChi_absy, nbinsWeightChi_pT, binsWeightChi_pT);
@@ -319,9 +284,9 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 		if (PhotAcceptance(eta_phot, pt_phot) == true) h_photAcceptance2D_num->Fill(eta_phot, pt_phot);
 
 		h_JpsiAcceptance2D_den->Fill(eta_Jpsi, pt_Jpsi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true) h_JpsiAcceptance2D_num->Fill(eta_Jpsi, pt_Jpsi);
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && DimuonAcceptance(rap_Jpsi, pt_Jpsi) == true) h_JpsiAcceptance2D_num->Fill(eta_Jpsi, pt_Jpsi);
 		h_JpsiAcceptance2D_y_den->Fill(rap_Jpsi, pt_Jpsi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true) h_JpsiAcceptance2D_y_num->Fill(rap_Jpsi, pt_Jpsi);
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && DimuonAcceptance(rap_Jpsi, pt_Jpsi) == true) h_JpsiAcceptance2D_y_num->Fill(rap_Jpsi, pt_Jpsi);
 
 		double eta_chi = gen_chic_eta->at(0);
 		double pt_chi = gen_chic_pt->at(0);
@@ -329,13 +294,13 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 		double rap_chi = LVchic->Rapidity();
 
 		h_chiAcceptance2D_den->Fill(eta_chi, pt_chi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot)==true) h_chiAcceptance2D_num->Fill(eta_chi, pt_chi);
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && DimuonAcceptance(rap_Jpsi, pt_Jpsi) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_chiAcceptance2D_num->Fill(eta_chi, pt_chi);
 		
 		h_chiAcceptance2D_y_den->Fill(rap_chi, pt_chi);
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_chiAcceptance2D_y_num->Fill(rap_chi, pt_chi);
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && DimuonAcceptance(rap_Jpsi, pt_Jpsi) == true && PhotAcceptance(eta_phot, pt_phot) == true) h_chiAcceptance2D_y_num->Fill(rap_chi, pt_chi);
 
 		// EFFICIENCY
-		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && PhotAcceptance(eta_phot, pt_phot) == true) //do only if J/psi in acceptance
+		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && DimuonAcceptance(rap_Jpsi, pt_Jpsi) == true) //do only if J/psi in acceptance
 		{
 			h_muonEfficiency2D_den->Fill(eta1, pt1);
 			h_muonEfficiency2D_den->Fill(eta2, pt2);
@@ -365,6 +330,18 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 					h_photEfficiency1D_relative_den->Fill(pt_phot);
 				}
 
+				// y effect crosscheck
+				if (MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && DimuonSelectionPassMC(0) == true)
+				{
+					int matchPositionConv = gen_conv_matchPosition->at(0);
+					if (matchPositionConv > -0.5) {
+						h_photEfficiency_y_relative_den->Fill(rap_chi);
+						if (PhotSelectionPassLoose(matchPositionConv) == true) h_photEfficiency_y_relative_num_loose->Fill(rap_chi);
+						if (PhotSelectionPassMedium(matchPositionConv) == true) h_photEfficiency_y_relative_num_medium->Fill(rap_chi);
+						if (PhotSelectionPassTight(matchPositionConv) == true) h_photEfficiency_y_relative_num_tight->Fill(rap_chi);
+					}
+				}
+
 				h_chiEfficiency2D_y_den->Fill(rap_chi, pt_chi);
 				h_chiEfficiency1D_den->Fill(pt_chi);
 				
@@ -379,12 +356,15 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 
 		//weights (<acc*eff>, then to be used as 1/w)
 		h_JpsiAccEff_den->Fill(abs(rap_Jpsi), pt_Jpsi);
+		h_JpsiAccEff_den_nTrk->Fill(abs(rap_Jpsi), ntracks_inEvent);
 		h_chiAccEff_den->Fill(abs(rap_chi), pt_chi);
 		h_chiAccEff_den_nTrk->Fill(abs(rap_chi), ntracks_inEvent);
 
 		if (MuonAcceptance(eta1, pt1) == true && MuonAcceptance(eta2, pt2) == true && MuonSelectionPassMC(0) == true && MuonSelectionPassMC(1) == true && DimuonSelectionPassMC(0) == true)
 		{
 			h_JpsiAccEff_num->Fill(abs(rap_Jpsi), pt_Jpsi);
+			h_JpsiAccEff_num_nTrk->Fill(abs(rap_Jpsi), ntracks_inEvent);
+
 			if (PhotAcceptance(eta_phot, pt_phot) == true && PhotSelectionPassMC(0) == true && ChiSelectionPassMC(0))
 			{
 				h_chiAccEff_num->Fill(abs(rap_chi), pt_chi);
@@ -431,15 +411,26 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 	h_chiEfficiency1D_Q_rat->Divide(h_chiEfficiency1D_Q_num, h_chiEfficiency1D_Q_den, 1, 1, "B");
 	h_chiEfficiency1D_Q_ratRel->Divide(h_chiEfficiency1D_Q_rat, h_JpsiEfficiency1D_Q_rat, 1, 1, "B");
 	
+	h_photEfficiency_y_relative_den->Sumw2();
+	h_photEfficiency_y_relative_num_loose->Sumw2();
+	h_photEfficiency_y_relative_num_medium->Sumw2();
+	h_photEfficiency_y_relative_num_tight->Sumw2();
+
+	h_photEfficiency_y_relative_rat_loose->Divide(h_photEfficiency_y_relative_num_loose, h_photEfficiency_y_relative_den, 1, 1, "B");;
+	h_photEfficiency_y_relative_rat_medium->Divide(h_photEfficiency_y_relative_num_medium, h_photEfficiency_y_relative_den, 1, 1, "B");;
+	h_photEfficiency_y_relative_rat_tight->Divide(h_photEfficiency_y_relative_num_tight, h_photEfficiency_y_relative_den, 1, 1, "B");;
 
 	h_JpsiAccEff_den->Sumw2();
 	h_JpsiAccEff_num->Sumw2();
+	h_JpsiAccEff_den_nTrk->Sumw2();
+	h_JpsiAccEff_num_nTrk->Sumw2();
 	h_chiAccEff_den->Sumw2();
 	h_chiAccEff_num->Sumw2();
 	h_chiAccEff_den_nTrk->Sumw2();
 	h_chiAccEff_num_nTrk->Sumw2();
 
 	h_JpsiAccEff_rat->Divide(h_JpsiAccEff_num, h_JpsiAccEff_den);
+	h_JpsiAccEff_rat_nTrk->Divide(h_JpsiAccEff_num_nTrk, h_JpsiAccEff_den_nTrk);
 	h_chiAccEff_rat->Divide(h_chiAccEff_num, h_chiAccEff_den);
 	h_chiAccEff_rat_nTrk->Divide(h_chiAccEff_num_nTrk, h_chiAccEff_den_nTrk);
 
@@ -453,6 +444,29 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 	f_acceptance->Draw("same");
 	//can1->SaveAs("muonAcceptance2D_num.png");
 	
+
+	TCanvas* can2 = new TCanvas("can2", "plot", 1200, 800);
+	//TH1D* hOne = new TH1D("hOne", "hOne", nbins_y, bins_y);
+	//hOne->SetMaximum(1.1);
+	//hOne->SetMinimum(0);
+	//hOne->Draw("");
+	h_photEfficiency_y_relative_rat_loose->SetLineColor(kBlue);
+	h_photEfficiency_y_relative_rat_medium->SetLineColor(kGreen);
+	h_photEfficiency_y_relative_rat_tight->SetLineColor(kRed);
+	h_photEfficiency_y_relative_rat_loose->SetMarkerColor(kBlue);
+	h_photEfficiency_y_relative_rat_medium->SetMarkerColor(kGreen);
+	h_photEfficiency_y_relative_rat_tight->SetMarkerColor(kRed);
+	h_photEfficiency_y_relative_rat_loose->Draw();
+	h_photEfficiency_y_relative_rat_medium->Draw("same");
+	h_photEfficiency_y_relative_rat_tight->Draw("same");
+
+
+
+
+
+
+
+
 	TFile* fout = new TFile(fileOut, "RECREATE");
 
 	//h_muon_ptRel1->Write();
@@ -506,6 +520,7 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 	//h_gen_conv_ptDeltaRel->Write();
 
 	can1->Write();
+	can2->Write();
 	h_muonAcceptance2D_den->Write();
 	h_muonAcceptance2D_num->Write();
 	h_muonAcceptance2D_rat->Write();
@@ -551,15 +566,27 @@ int AcceptanceEfficiency(const char* fileInMC = "/eos/cms/store/group/phys_heavy
 	h_chiEfficiency1D_rat->Write();
 	h_chiEfficiency1D_Q_ratRel->Write();
 
+	h_photEfficiency_y_relative_den->Write();
+	h_photEfficiency_y_relative_num_loose->Write();
+	h_photEfficiency_y_relative_num_medium->Write();
+	h_photEfficiency_y_relative_num_tight->Write();
+	h_photEfficiency_y_relative_rat_loose->Write();
+	h_photEfficiency_y_relative_rat_medium->Write();
+	h_photEfficiency_y_relative_rat_tight->Write();
+
+
 	//weights
 	h_JpsiAccEff_den->Write();
 	h_JpsiAccEff_num->Write();
+	h_JpsiAccEff_den_nTrk->Write();
+	h_JpsiAccEff_num_nTrk->Write();
 	h_chiAccEff_den->Write();
 	h_chiAccEff_num->Write();
 	h_chiAccEff_den_nTrk->Write();
 	h_chiAccEff_num_nTrk->Write();
 
 	h_JpsiAccEff_rat->Write();
+	h_JpsiAccEff_rat_nTrk->Write();
 	h_chiAccEff_rat->Write();
 	h_chiAccEff_rat_nTrk->Write();
 

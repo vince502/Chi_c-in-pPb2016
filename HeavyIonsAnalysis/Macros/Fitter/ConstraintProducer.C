@@ -52,14 +52,14 @@
 #include "../tdrstyle.C"
 #include "../CMS_lumi.C"
 #include "../ChiTreeInit.C"
-
+#include "../ChiFitterInit.h"
 
 using namespace std;
 using namespace RooFit;
 
 ofstream file_log;
 
-const int PythCode_chic0 = 10441; //Pythia codes
+/*const int PythCode_chic0 = 10441; //Pythia codes
 const int PythCode_chic1 = 20443;
 const int PythCode_chic2 = 445;
 
@@ -87,13 +87,11 @@ const double mass_windowFitJpsi_l = 2.5;
 const double mass_windowFitJpsi_h = 4.0;
 const string mass_windowFitJpsi = "rvmassJpsi>2.5 && rvmassJpsi<4.0";
 
+*/
 
 
 
-// output
-const int nBinSets = 3;
-const string nBinSetNames[nBinSets] = { "pt", "y", "nTrack" };
-
+/*
 double bins_pT[] = {6, 9, 12, 18, 30};
 int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
 
@@ -103,6 +101,12 @@ int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
 double bins_nTrk[] = { 0, 50, 100, 150, 200, 300, 400 };
 int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
 
+*/
+
+
+// output
+const int nBinSets = 3;
+const string nBinSetNames[nBinSets] = { "pt", "y", "nTrack" };
 const int nFitFunctionParams = 15; //Real number can be lower, is handled (but not higher)
 TGraphAsymmErrors* gAsOutputArray [nBinSets][nFitFunctionParams] ; //stores the output of the fits
 
@@ -372,7 +376,8 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 ////////////////////////////////////
 
 
-void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_Constraint.root", const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+//void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_Constraint.root", const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-bothDir.root", const char* fileOut = "Chi_c_outConstr_MC9_test.root", const char* fileRds = "rds_MC9_Constraint_refit.root", const char* fileConstraints = "Chi_c_constraints_MC9_refit.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 {
 
 	//gStyle->SetOptStat(1111);
@@ -565,7 +570,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 				int dimuonPos = chi_daughterJpsi_position->at(iChi);
 				//if (DimuonSelectionPass(dimuonPos) == false) continue;
 				passDimSel = DimuonSelectionPass(dimuonPos);
-				passDimSelTight = DimuonSelectionPassTight(dimuonPos, ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity());
+				passDimSelTight = DimuonSelectionPassTight(dimuonPos);
 				// muon cuts
 				int muon1Pos = dimuon_muon1_position->at(dimuonPos);
 				int muon2Pos = dimuon_muon2_position->at(dimuonPos);
@@ -589,67 +594,56 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 				double dimuonM = LVdimuon->M();
 				double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass
 
-				if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
 
 
-				//////// Rotational bkg   /////
-				LVmuon1_rot = (TLorentzVector*)muon_p4->At(muon1Pos);
-				LVmuon2_rot = (TLorentzVector*)muon_p4->At(muon2Pos);
-				LVconv_rot = new TLorentzVector(*(TLorentzVector*)conv_p4->At(convPos));
-				LVconv_rot->RotateZ(TMath::Pi());
-				//if (muon_pt->at(muon1Pos) > muon_pt->at(muon2Pos)) { muon1ptCounter++; } //crosscheck that they have ordering
-				//else muon2ptCounter++;
-				if (rand->Uniform(0, 1) < 0.5) { LVmuon1_rot->RotateZ(TMath::Pi()); }
-				else { LVmuon2_rot->RotateZ(TMath::Pi()); }
-				LVdimuon_rot = new TLorentzVector(*LVmuon1_rot + *LVmuon2_rot);
-				//cout << LVdimuon_rot->Pt() << endl;
-				LVchic_rot = new TLorentzVector(*LVdimuon_rot + *LVconv);
-				LVchic_rotGamma = new TLorentzVector(*LVdimuon + *LVconv_rot);
+				////////////////////////
+				////   refit     // comment out if not done
+				///////////////////////
+
+
+				double refit_vProb = 0, ctauPV = 0, ctauPVError = 0, ctauSig = 0, ctauPV3D = 0;
+
+				if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
+
+					//cout << chi_refit_vprob->at(nRefitNumber) << endl;
+					//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
+					//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
+					//m_chi = chi_refitStored->at(iChi).mass();//use refit mass
+					ctauPV = chi_refit_ctauPV->at(iChi);
+					ctauPVError = chi_refit_ctauErrPV->at(iChi);
+					ctauSig = ctauPV / ctauPVError;
+					ctauPV3D = chi_refit_ctauPV3D->at(iChi);
+					refit_vProb = chi_refit_vprob->at(iChi);
+				}
+				else continue;//skip those that don't have it
+				if (refit_vProb < 0.01) continue;
+				Mdiff = chi_refitStored->at(iChi).mass();//use refit mass
+
+
+
+				////////
+
+
+
+
+
+
+
+
+
+
+				if (passDimSel == true && dimuonM > mass_cutoffJpsi_l && dimuonM < mass_cutoffJpsi_h && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
+
 
 
 				// Obtain yields
 
-				// fill dimuon stuff
 
-				
-				if (passDimSel == true) {
-					hdimuon_M->Fill(dimuonM);
-					hdimuon_M_rot->Fill(LVdimuon_rot->M());
-				}
-				if (dimuon_charge->at(dimuonPos) != 0) {
-					hdimuon_M_SS->Fill(dimuonM);
-				}
-
-
-				// Rotational bkg
-				if (LVdimuon_rot->M() > 2.95 && LVdimuon_rot->M() < 3.2) {
-					if (passDimSel == true) {
-						hchic_M_rot->Fill(LVchic_rot->M());
-						hSignal_rot->Fill(LVchic_rot->M() - LVdimuon_rot->M() + 3.097);
-					}
-				}
-				// Side-band
-				if (((dimuonM > 2.5 && dimuonM < 2.75) || (dimuonM > 3.4 && dimuonM < 3.7)) && passDimSel == true) {
-					hchic_M_SB->Fill(m_chi);
-					hSignal_SB->Fill(m_chi - dimuonM + 3.097);
-				}
-
-
-				if (dimuonM<2.95 || dimuonM>3.2) continue; //require narrow dimuon mass
-
-				if (passDimSel == true) {
-					hchic_M->Fill(m_chi); // just raw M
-					hchic_M_rotGamma->Fill(LVchic_rotGamma->M());
-				}
-				if (dimuon_charge->at(dimuonPos) != 0) {
-					hchic_M_SS->Fill(m_chi);
-				}
+				if (dimuonM<mass_cutoffJpsi_l || dimuonM>mass_cutoffJpsi_h) continue; //require narrow dimuon mass
 
 
 				if (passDimSel == true) {
-					hSignal->Fill(Mdiff);
-					hSignal_rotGamma->Fill(LVchic_rotGamma->M() - LVdimuon->M() + 3.097);
-					//cout << nchicCounterPass << endl;
+
 
 					//roofit:
 					if (Mdiff > mass_window_l && Mdiff < mass_window_h) {
@@ -659,14 +653,14 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 						rvntrack->setVal(ntracks_inEvent); //for now using total
 						//rvweight->setVal(1); // no weights for now
 						double accEff_chi = hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
-						//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
-						if (accEff_chi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
-							rvweight->setVal(1 / accEff_chi);
-						}
-						else rvweight->setVal(1); 
+ 
 						if (isMC) {
 							rvweight->setVal(1); //no weights if MC
 						}
+						else if (accEff_chi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
+							rvweight->setVal(1 / accEff_chi);
+						}
+						else rvweight->setVal(1); 
 
 						rdsNominal->add(*cols, rvweight->getVal());
 						if (gen_pdgId->at(0) == PythCode_chic1) { rdsNominal_chicOne->add(*cols, rvweight->getVal()); }
@@ -966,7 +960,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 
 
 		int i = 2;
-		TString TstrCut = TString::Format("rvrap > %f", bins_y[i]) + " && " + TString::Format("rvrap < %f", bins_y[i + 1]) + " && rvpt>6 && rvpt <30";
+		TString TstrCut = TString::Format("rvrap > %f", bins_y[i]) + " && " + TString::Format("rvrap < %f", bins_y[i + 1]) + " && rvpt>6.5 && rvpt <30";
 		cout << TstrCut << endl;
 		string strCut = TstrCut.Data();
 		RooDataSet* rdsDataBin = (RooDataSet*)myWs.data("rdsNominal_chicBoth")->reduce(strCut.c_str());
@@ -1041,7 +1035,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 
 
 		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
-		FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6 && rvpt <30", "all");
+		FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6.5 && rvpt <30", "all");
 		FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
 		
 		// pT fitting
@@ -1084,89 +1078,10 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  c
 
 	}
 
-	TCanvas* can2 = new TCanvas("can2", "plot", 1200, 800);
 
-	TH1D* h2 = dynamic_cast<TH1D*>(hSignal->Clone());
-
-	h2->GetXaxis()->SetTitle("M_inv [GeV]");
-	h2->GetYaxis()->SetTitle("counts");
-	//can2->SetLogy();
-	h2->Draw("");
-	TH1D* h3 = dynamic_cast<TH1D*>(hSignal_SS->Clone());
-	TH1D* h4 = dynamic_cast<TH1D*>(hSignal_rot->Clone());
-	TH1D* h5 = dynamic_cast<TH1D*>(hSignal_rotGamma->Clone());
-	TH1D* h6 = dynamic_cast<TH1D*>(hSignal_SB->Clone());
-	h3->SetLineColor(kRed);
-	h4->SetLineColor(kGreen + 2);
-	h5->SetLineColor(kYellow + 2);
-	h6->SetLineColor(kMagenta);
-	h3->Draw("same");
-	h4->Draw("same");
-	h5->Draw("same");
-	h6->Draw("same");
-
-	TLegend* leg2 = new TLegend(0.7, 0.2, 0.88, 0.4, "");
-	leg2->AddEntry(h3, "Same-sign", "l");
-	leg2->AddEntry(h4, "Rotation (muon)", "l");
-	leg2->AddEntry(h5, "Rotation (gamma)", "l");
-	leg2->AddEntry(h6, "Side-band", "l");
-	leg2->Draw();
-
-
-	TCanvas* can3 = new TCanvas("can3", "plot", 1200, 800);
-
-	TH1D* hs2 = dynamic_cast<TH1D*>(hSignal->Clone());
-	hs2->GetXaxis()->SetTitle("M_inv [GeV]");
-	hs2->GetYaxis()->SetTitle("counts [Arb. scaling]");
-	//can2->SetLogy();
-	hs2->Draw("");
-	TH1D* hs3 = dynamic_cast<TH1D*>(hSignal_SS->Clone());
-	TH1D* hs4 = dynamic_cast<TH1D*>(hSignal_rot->Clone());
-	TH1D* hs5 = dynamic_cast<TH1D*>(hSignal_rotGamma->Clone());
-	TH1D* hs6 = dynamic_cast<TH1D*>(hSignal_SB->Clone());
-	hs3->Scale(hs2->GetBinContent(100) / (hs3->GetBinContent(100) + 0.01));
-	hs4->Scale(hs2->GetBinContent(100) / (hs4->GetBinContent(100) + 0.01));
-	hs5->Scale(hs2->GetBinContent(100) / (hs5->GetBinContent(100) + 0.01));
-	hs6->Scale(hs2->GetBinContent(100) / (hs6->GetBinContent(100) + 0.01));
-
-	hs3->SetLineColor(kRed);
-	hs4->SetLineColor(kGreen + 2);
-	hs5->SetLineColor(kYellow + 2);
-	hs6->SetLineColor(kMagenta);
-	hs3->Draw("same");
-	hs4->Draw("same");
-	hs5->Draw("same");
-	hs6->Draw("same");
-
-	TLegend* leg3 = new TLegend(0.7, 0.2, 0.88, 0.4, "");
-	leg3->AddEntry(hs3, "Same-sign", "l");
-	leg3->AddEntry(hs4, "Rotation (muon)", "l");
-	leg3->AddEntry(hs5, "Rotation (gamma)", "l");
-	leg3->AddEntry(hs6, "Side-band", "l");
-	leg3->Draw();
-
-
-	//hSignal->Sumw2();
-	//hSignal2->Sumw2();
-	//hSignal3->Sumw2();
 
 	TFile* fout = new TFile(fileOut, "RECREATE");
-	can2->Write();
-	can3->Write();
-	hSignal->Write();
-	hSignal_SS->Write();
-	hSignal_rot->Write();
-	hSignal_rotGamma->Write();
-	hSignal_SB->Write();
-	hchic_M->Write();
-	hdimuon_M->Write();
-	hchic_M_SS->Write();
-	hdimuon_M_SS->Write();
-	hchic_M_rot->Write();
-	hdimuon_M_rot->Write();
-	hchic_M_rotGamma->Write();
-	hchic_M_SB->Write();
-	hntracks_inEvent->Write();
+
 
 	if (flagRunFits == true)
 	{
