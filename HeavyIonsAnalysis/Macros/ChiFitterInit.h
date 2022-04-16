@@ -46,13 +46,20 @@ const double k_mass_c2 = 3.5562;
 //const double mass_windowFit_l = 3.35;
 //const double mass_windowFit_h = 3.75;
 //const string mass_windowFit = "rvmass>3.35 && rvmass<3.75";
-const int nMassBins = 120;
-const double mass_window_l = 3.25;
-const double mass_window_h = 3.85;
-const double mass_windowFit_l = 3.25;
-const double mass_windowFit_h = 3.85;
-const string mass_windowFit = "rvmass>3.25 && rvmass<3.85";
 
+//const int nMassBins = 100;
+//const double mass_window_l = 3.35;
+//const double mass_window_h = 3.85;
+//const double mass_windowFit_l = 3.35;
+//const double mass_windowFit_h = 3.85;
+//const string mass_windowFit = "rvmass>3.35 && rvmass<3.85";
+
+const int nMassBins = 60;
+const double mass_window_l = 3.2;
+const double mass_window_h = 3.8;
+const double mass_windowFit_l = 3.2;
+const double mass_windowFit_h = 3.8;
+const string mass_windowFit = "rvmass>3.2 && rvmass<3.8";
 
 const int nMassBinsJpsi = 150;
 const double mass_windowJpsi_l = 2.5;
@@ -61,7 +68,7 @@ const double mass_windowFitJpsi_l = 2.5;
 const double mass_windowFitJpsi_h = 4.0;
 const string mass_windowFitJpsi = "rvmassJpsi>2.5 && rvmassJpsi<4.0";
 
-double bins_pT[] = { 6.5, 9, 12, 16, 22, 30 };
+double bins_pT[] = { 6.5, 9, 12, 18, 30 };
 int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
 
 double bins_y[] = { -2.4, -1.6, -1.0, 0.0 , 1.0, 1.6, 2.4 };

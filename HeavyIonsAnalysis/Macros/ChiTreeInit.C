@@ -425,9 +425,10 @@ bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main func
 
 // chic
 
-bool ChiSelectionPassMC(int chiPos)  //uses variables loaded in main function
+bool ChiSelectionPassMC(int chiPos, int chiMCPos = 0)  //uses variables loaded in main function
 {
-	return true; //TBD
+	return (ChiPassAllCuts(chiPos) && ChiIsMatchedAllDaughters(chiPos, chiMCPos));
+	//return true; //TBD
 }
 
 bool ChiPassAllCuts(int chiPos)

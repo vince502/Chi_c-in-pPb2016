@@ -235,5 +235,9 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 int LoadChiBranches(TTree* tree, bool isMC);
 
 
+bool ChiSelectionPassMC(int chiPos, int chiMCPos = 0);
+bool ChiPassAllCuts(int chiPos);
+bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0);
+
 #endif 
 

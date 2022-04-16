@@ -103,10 +103,12 @@ int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
 
 */
 
+int nParamOneFit = 5;//Since this is simultaneous fit, it is better to get ndf by hand
+
 
 // output
-const int nBinSets = 3;
-const string nBinSetNames[nBinSets] = { "pt", "y", "nTrack" };
+const int nBinSets = 5;
+const string nBinSetNames[nBinSets] = { "pt_all", "y", "nTrack", "pt_mid", "pt_fwd" };
 const int nFitFunctionParams = 15; //Real number can be lower, is handled (but not higher)
 TGraphAsymmErrors* gAsOutputArray [nBinSets][nFitFunctionParams] ; //stores the output of the fits
 
@@ -167,7 +169,7 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 	if (pdfName.compare("nominalPdf") == 0)
 	{
 
-		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
+		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.05], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
 		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
 		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
 		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
@@ -183,15 +185,15 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 	}
 	else if (pdfName.compare("nominalPdfSim") == 0)
 	{
-		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
+		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.01, 0.003, 0.035], alpha[1.85, 0.1, 50], n[2.7, 1.1, 50])");
 		Ws.factory("RooChebychev::background_chi1(rvmass, a1_chi1[0,-10,10])");
-		Ws.factory("SUM::nominalPdf_chi1(nsig_chi1[50,0,1000000]*chic1, nbkg_chi1[2000,0,100000]*background_chi1)");
+		Ws.factory("SUM::nominalPdf_chi1(nsig_chi1[50,0,100000]*chic1, nbkg_chi1[200,0,10000]*background_chi1)");
 		
 		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
-		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1.05, 1.00, 1.3])");
 		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
 		Ws.factory("RooChebychev::background_chi2(rvmass, a1_chi2[0,-10,10])");
-		Ws.factory("SUM::nominalPdf_chi2(nsig_chi2[50,0,1000000]*chic2, nbkg_chi2[2000,0,100000]*background_chi2)");
+		Ws.factory("SUM::nominalPdf_chi2(nsig_chi2[50,0,100000]*chic2, nbkg_chi2[200,0,10000]*background_chi2)");
 	}
 
 	else if (pdfName.compare("nominalPdfJpsi") == 0)
@@ -227,33 +229,51 @@ bool RefreshModel(RooWorkspace& Ws) // attempt to prevent the fits in the differ
 	Ws.var("a1_chi2")->removeError();
 	Ws.var("nsig_chi1")->removeError();
 	Ws.var("nsig_chi2")->removeError();
+	Ws.var("nbkg_chi1")->removeError();
+	Ws.var("nbkg_chi2")->removeError();
 
 	Ws.var("mean1")->setVal(3.5107);
-	Ws.var("sigma1")->setVal(0.005);
+	Ws.var("sigma1")->setVal(0.01);
 	Ws.var("alpha")->setVal(1.85);
-	Ws.var("n")->setVal(1.7);
+	Ws.var("n")->setVal(2.7);
+	Ws.var("sigmaRatio")->setVal(1.05);
 	Ws.var("a1_chi1")->setVal(0);
 	Ws.var("a1_chi2")->setVal(0);
-
+	Ws.var("nsig_chi1")->setVal(50);
+	Ws.var("nsig_chi2")->setVal(50);
+	Ws.var("nbkg_chi1")->setVal(200);
+	Ws.var("nbkg_chi2")->setVal(200);
 
 	return true;
 }
 
 
 
-int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooRealVar* rvmass, RooWorkspace& Ws, RooCategory& rCatChi, string binVarName = "", RooSimultaneous* myPdf = NULL, string extraCut = "", string canvasName = "") { //uses global variables
+int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooRealVar* rvmass, RooWorkspace& Ws, RooCategory& rCatChi, string binVarName = "", RooSimultaneous* myPdf = NULL, string extraCut = "", string regionName = "") { //uses global variables
 	//constrained fit: 0 no constraints, 1 yes, 2 no constraints, but write the fit results as constraints (for fitting MC)
 	cout << endl << "IN FITTING " << binVarName << "   " << nbins << endl << endl;
 	TCanvas *cFit = new TCanvas("cFit", "cFit", 1000, 600);
-	gPad->SetLeftMargin(0.15);
+	//gPad->SetLeftMargin(0.15);
+	cFit->cd();
+	//cFit->Divide(1, 2);
+	TPad *pad1 = new TPad("pad1", "pad1", 0, 0.275, 0.98, 1.0);
+	pad1->SetTicks(1, 1);
+	pad1->Draw();
+
+	//pull pad
+	TPad *pad2 = new TPad("pad2", "pad2", 0, 0.006, 0.98, 0.360);
+	pad2->SetTopMargin(0); // Upper and lower plot are joined
+	pad2->SetBottomMargin(0.67);
+	pad2->SetTicks(1, 1);
+
 
 	for (int i = 0; i < nbins; i++) {
 		cout << "Bins " << bins[i] << "  to  " << bins[i + 1] << endl;
-
+		pad1->cd();
 		RooPlot* massframeBin;
 		massframeBin = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins);
 		massframeBin->SetTitle("mass");
-		massframeBin->GetYaxis()->SetTitleOffset(1.3);
+		massframeBin->GetYaxis()->SetTitleOffset(1.0);
 
 		TString TstrCut = binVarName + TString::Format(" > %f", bins[i]) + " && " + binVarName + TString::Format(" < %f", bins[i + 1]) + extraCut;
 		cout << TstrCut << endl;
@@ -263,7 +283,11 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 		
 		RefreshModel(Ws);
 		cout << endl << "********* Starting Simutaneous Fit **************" << endl << endl;
-		RooFitResult* fitResultBin = myPdf->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), PrintLevel(-1), Save(true));// Range(mass_windowFit_l, mass_windowFit_h), Save(true));
+		RooFitResult* fitResultBin;
+		if (i != 8) {
+			fitResultBin = myPdf->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), PrintLevel(-1), Save(true));// Range(mass_windowFit_l, mass_windowFit_h), Save(true));
+		}
+		//fitResultBin = myPdf->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), PrintLevel(-1), Save(true));// Range(mass_windowFit_l, mass_windowFit_h), Save(true));
 		cout << endl << "********* Finished Simutaneous Fit **************" << endl << endl;
 		//cout << endl << "Importing fit result..." << endl;
 		//myWs.import(*fitResSim);
@@ -274,7 +298,19 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 
 		int nBinSet; int nFitFunctionParam = 0;
 		if (binVarName.compare("rvpt") == 0) {
-			nBinSet = 0;
+			if (regionName.compare("all") == 0)
+			{
+				nBinSet = 0;
+			}
+			if (regionName.compare("midrap") == 0)
+			{
+				nBinSet = 3;
+			}
+			if (regionName.compare("fwdrap") == 0)
+			{
+				nBinSet = 4;
+			}
+			
 		}
 		else if (binVarName.compare("rvrap") == 0) {
 			nBinSet = 1;
@@ -283,27 +319,28 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 			nBinSet = 2;
 		}
 
-		RooArgList paramList = fitResultBin->floatParsFinal();
-		RooRealVar *par;
-		for (int j = 0; j < paramList.getSize(); j++)
-		{
-			par = (RooRealVar*)paramList.at(j);
-			//cout << par->getTitle() << endl;
-			//cout << par->getVal() << endl;
-			//cout << par->getError() << endl;
+		if (i != 2) {
+			RooArgList paramList = fitResultBin->floatParsFinal();
+			RooRealVar *par;
+			for (int j = 0; j < paramList.getSize(); j++)
+			{
+				par = (RooRealVar*)paramList.at(j);
+				//cout << par->getTitle() << endl;
+				//cout << par->getVal() << endl;
+				//cout << par->getError() << endl;
 
-			// if the first bin, create the graph
-			if (i == 0){
-				gAsOutputArray[nBinSet][j] = new TGraphAsymmErrors(nbins);
-				cout << "gAsChic_Output_" + par->getTitle() + "_" + nBinSetNames[nBinSet] << endl;
-				cout << "Chic " + nBinSetNames[nBinSet] + " " + par->getTitle() + " dependence" << endl;
-				gAsOutputArray[nBinSet][j]->SetNameTitle("gAsChic_Output_"+ par->getTitle() + "_" + nBinSetNames[nBinSet], "Chic "+ nBinSetNames[nBinSet]+ " " +  par->getTitle()+ " dependence");
+				// if the first bin, create the graph
+				if (i == 0) {
+					gAsOutputArray[nBinSet][j] = new TGraphAsymmErrors(nbins);
+					cout << "gAsChic_Output_" + par->getTitle() + "_" + nBinSetNames[nBinSet] << endl;
+					cout << "Chic " + nBinSetNames[nBinSet] + " " + par->getTitle() + " dependence" << endl;
+					gAsOutputArray[nBinSet][j]->SetNameTitle("gAsChic_Output_" + par->getTitle() + "_" + nBinSetNames[nBinSet], "Chic " + nBinSetNames[nBinSet] + " " + par->getTitle() + " dependence");
+				}
+
+				// save as tgraphAsymmErrors
+				SetPointFromFit(gAsOutputArray[nBinSet][j], (string)par->getTitle(), Ws, i, bins);
 			}
-
-			// save as tgraphAsymmErrors
-			SetPointFromFit(gAsOutputArray[nBinSet][j], (string)par->getTitle(), Ws, i, bins);
 		}
-
 		//if (binVarName.compare("rvpt") == 0) {
 		//	int nbin
 
@@ -344,20 +381,111 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 
 		// PLOT
 
-		rdsDataBin->plotOn(massframeBin, Cut("rCatChi==rCatChi::ChicOne"), MarkerStyle(20), MarkerColor(kRed));
-		rdsDataBin->plotOn(massframeBin, Cut("rCatChi==rCatChi::ChicTwo"), MarkerStyle(20), MarkerColor(kGreen));
+		rdsDataBin->plotOn(massframeBin, Cut("rCatChi==rCatChi::ChicOne"), Name("dataHistChicOne"), MarkerStyle(20), MarkerColor(kRed));
+		rdsDataBin->plotOn(massframeBin, Cut("rCatChi==rCatChi::ChicTwo"), Name("dataHistChicTwo"), MarkerStyle(20), MarkerColor(kGreen+2));
 
-		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicOne"), ProjWData(rCatChi, *rdsDataBin), LineColor(kRed));
+		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicOne"), Name("pdfChicOneFull"), ProjWData(rCatChi, *rdsDataBin), LineColor(kRed));
 		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicOne"), Components("chic1"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kRed));
 
-		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen));
-		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen));
+		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicTwo"), Name("pdfChicTwoFull"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen+2));
+		myPdf->plotOn(massframeBin, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen+2));
 
-		myPdf->paramOn(massframeBin, Layout(0.55));
+		myPdf->paramOn(massframeBin, Layout(0.75));
 
+
+		//cout << "Print" << endl;
+		//massframeBin->Print();
+		double chi2_fit1 = massframeBin->chiSquare("pdfChicOneFull", "dataHistChicOne", nParamOneFit);
+		double chi2_fit2 = massframeBin->chiSquare("pdfChicTwoFull", "dataHistChicTwo", nParamOneFit);
+		//cout<< chi2_fit1 << endl;
+		//double chi2_fit1Unreduced = massframeBin->chiSquare("pdfChicOneFull", "dataHistChicOne");
+		//cout << "Unreduced: " << chi2_fit1Unreduced << endl;
 
 		massframeBin->Draw();
-		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + canvasName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
+
+
+		TPaveText *textchi1 = new TPaveText(.23, .75, .38, .83, "brNDC");
+		textchi1->SetFillColor(kWhite);
+		textchi1->SetTextColor(kRed);
+		textchi1->SetTextSize(0.05);
+		textchi1->SetBorderSize(0);
+		string txtchi1 = "Chic 1 #chi^{2}/ndf: " + to_string(chi2_fit1);
+		textchi1->AddText(txtchi1.c_str());
+		textchi1->Draw();
+
+		TPaveText *textchi2 = new TPaveText(.23, .65, .38, .73, "brNDC");
+		textchi2->SetFillColor(kWhite);
+		textchi2->SetTextColor(kGreen+2);
+		textchi2->SetTextSize(0.05);
+		textchi2->SetBorderSize(0);
+		string txtchi2 = "Chic 2 #chi^{2}/ndf: " + to_string(chi2_fit2);
+		textchi2->AddText(txtchi2.c_str());
+		textchi2->Draw();
+
+		//txt1->Draw();
+
+		//PULLS
+		pad2->cd();
+		//RooHist* hpull = massframeBin->pullHist("rPullHist", myPdfName.c_str());
+		RooHist* hpull = massframeBin->pullHist("dataHistChicOne","pdfChicOneFull");
+		hpull->SetMarkerSize(0.8);
+		hpull->SetMarkerColor(kRed);
+		RooHist* hpull2 = massframeBin->pullHist("dataHistChicTwo", "pdfChicTwoFull");
+		hpull2->SetMarkerSize(0.8);
+		hpull2->SetMarkerColor(kGreen+2);
+		RooPlot* pullFrame = rvmass->frame(Title("Pull Distribution"));
+		pullFrame->addPlotable(hpull, "P");
+		pullFrame->addPlotable(hpull2, "P");
+		pullFrame->SetTitleSize(0);
+		pullFrame->GetYaxis()->SetTitle("Pull");
+		pullFrame->GetYaxis()->SetTitleSize(0.19);
+		pullFrame->GetYaxis()->SetLabelSize(0.14);
+		//pullFrame->GetYaxis()->SetLabelOffset(1.1);
+		pullFrame->GetYaxis()->SetRangeUser(-5.0, 5.0);
+		pullFrame->GetYaxis()->SetNdivisions(502, kTRUE);
+		pullFrame->GetYaxis()->CenterTitle();
+		pullFrame->GetXaxis()->SetLabelSize(0.20);
+		pullFrame->GetXaxis()->SetTitle("#mu#mu#gamma - #mu#mu + 3.097 [GeV/c^{2}]");
+		pullFrame->GetXaxis()->SetTitleOffset(1.05);
+		pullFrame->GetXaxis()->SetTitleSize(0.20);
+
+		//// Add text to frame
+		//TText* txt = new TText(2, 100, "Signal");
+		//txt->SetTextSize(0.04);
+		//txt->SetTextColor(kRed);
+		//txt->Draw("same");
+		////massframeBin->addObject(txt);
+
+
+		pullFrame->Draw();
+
+		//Chic2
+		//double chi2_fit1 = massframeBin->chiSquare("dataHistChicOne",0,20);
+		cout << "    CHI2-1     " << massframeBin->chiSquare() << "   and calculated chi2-1:  " << chi2_fit1 << "   and calculated chi2-2:  " << chi2_fit2<< endl;
+		cout << "    Unreduced chi2-1:  " << massframeBin->chiSquare("pdfChicOneFull", "dataHistChicOne", 0) << "   and unreduced chi2-2:  " << massframeBin->chiSquare("pdfChicTwoFull", "dataHistChicTwo", 0) << endl;
+		//double chi2_fit2 = massframeBin->chiSquare("dataHistChicTwo", "pdfChicTwoFull", (nMassBins - nParamOneFit));
+
+
+
+
+
+
+
+
+		TLine *l1 = new TLine(mass_windowFit_l, 0, mass_windowFit_h, 0);
+		l1->SetLineStyle(9);
+		l1->Draw("same");
+		//pad1->Update();
+
+		cFit->cd();
+		pad1->Draw();
+		pad2->Draw();
+
+		pad1->Update();
+		pad2->Update();
+
+
+		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + regionName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
 
 	}
 
@@ -377,11 +505,11 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 
 
 //void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_Constraint.root", const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
-void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-bothDir.root", const char* fileOut = "Chi_c_outConstr_MC9_test.root", const char* fileRds = "rds_MC9_Constraint_refit.root", const char* fileConstraints = "Chi_c_constraints_MC9_refit.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-bothDir.root", const char* fileOut = "Chi_c_outConstr_MC9_WideRange.root", const char* fileRds = "rds_MC9_ConstraintWideRange.root", const char* fileConstraints = "Chi_c_constraints_MC9_WideRange.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
 {
 
 	//gStyle->SetOptStat(1111);
-	//gStyle->SetOptStat(0);
+	gStyle->SetOptStat(0);
 	setTDRStyle();
 	
 	bool isMC = true;
@@ -542,7 +670,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 		bool passDimSel = false;
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
-		//if (nentries > 50000) { nentries = 50000; }
+	//	if (nentries > 50000) { nentries = 5000; }
 		cout << nentries << endl;
 		for (Long64_t i = 0; i < nentries; i++)
 		{
@@ -566,6 +694,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 			for (int iChi = 0; iChi < chi_p4->GetEntriesFast(); iChi++)
 			{
 				++nchicCounter;
+				if (ChiSelectionPassMC(iChi, 0) == false)continue; //check it is matched and passed
 				// check Acceptance and Cuts
 				int dimuonPos = chi_daughterJpsi_position->at(iChi);
 				//if (DimuonSelectionPass(dimuonPos) == false) continue;
@@ -603,21 +732,21 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 				double refit_vProb = 0, ctauPV = 0, ctauPVError = 0, ctauSig = 0, ctauPV3D = 0;
 
-				if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
+				//if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
 
-					//cout << chi_refit_vprob->at(nRefitNumber) << endl;
-					//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
-					//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
-					//m_chi = chi_refitStored->at(iChi).mass();//use refit mass
-					ctauPV = chi_refit_ctauPV->at(iChi);
-					ctauPVError = chi_refit_ctauErrPV->at(iChi);
-					ctauSig = ctauPV / ctauPVError;
-					ctauPV3D = chi_refit_ctauPV3D->at(iChi);
-					refit_vProb = chi_refit_vprob->at(iChi);
-				}
-				else continue;//skip those that don't have it
-				if (refit_vProb < 0.01) continue;
-				Mdiff = chi_refitStored->at(iChi).mass();//use refit mass
+				//	//cout << chi_refit_vprob->at(nRefitNumber) << endl;
+				//	//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
+				//	//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
+				//	//m_chi = chi_refitStored->at(iChi).mass();//use refit mass
+				//	ctauPV = chi_refit_ctauPV->at(iChi);
+				//	ctauPVError = chi_refit_ctauErrPV->at(iChi);
+				//	ctauSig = ctauPV / ctauPVError;
+				//	ctauPV3D = chi_refit_ctauPV3D->at(iChi);
+				//	refit_vProb = chi_refit_vprob->at(iChi);
+				//}
+				//else continue;//skip those that don't have it
+				//if (refit_vProb < 0.01) continue;
+				//Mdiff = chi_refitStored->at(iChi).mass();//use refit mass
 
 
 
@@ -813,7 +942,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 	//	rdsNominal->plotOn(massframeCheck, MarkerStyle(21), MarkerColor(kBlack));
 	//	rdsNominal_chicBoth->plotOn(massframeCheck, MarkerStyle(20),	MarkerColor(kBlue));
 	//	rdsNominal_chicOne->plotOn(massframeCheck, MarkerStyle(20), MarkerColor(kRed));
-	//	rdsNominal_chicTwo->plotOn(massframeCheck, MarkerStyle(20), MarkerColor(kGreen));
+	//	rdsNominal_chicTwo->plotOn(massframeCheck, MarkerStyle(20), MarkerColor(kGreen+2));
 
 	//	TCanvas *cCrosscheck = new TCanvas("cCrosscheck", "cCrosscheck", 1000, 600);
 	//	gPad->SetLeftMargin(0.15);
@@ -980,24 +1109,24 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 		//myWs.pdf("simPdf")->plotOn(massframe);
 		//rdsNominal_chicOne->plotOn(massframe, MarkerStyle(20), MarkerColor(kRed));
-		//rdsNominal_chicTwo->plotOn(massframe, MarkerStyle(20), MarkerColor(kGreen));
+		//rdsNominal_chicTwo->plotOn(massframe, MarkerStyle(20), MarkerColor(kGreen+2));
 		//rdsNominal_chicBoth->plotOn(massframe, MarkerStyle(20), MarkerColor(kBlue));
 		rdsDataBin->plotOn(massframe, Cut("rCatChi==rCatChi::ChicOne"), MarkerStyle(20), MarkerColor(kRed));
-		rdsDataBin->plotOn(massframe, Cut("rCatChi==rCatChi::ChicTwo"), MarkerStyle(20), MarkerColor(kGreen));
+		rdsDataBin->plotOn(massframe, Cut("rCatChi==rCatChi::ChicTwo"), MarkerStyle(20), MarkerColor(kGreen+2));
 		//myWs.pdf("simPdf")->paramOn(massframe, Layout(0.55));
 		//myWs.pdf("simPdf")->plotOn(massframe);//, Components("background"), LineStyle(kDashed));
 	//	myWs.pdf("nominalPdf_chi1")->plotOn(massframe, LineColor(kRed));
-		//myWs.pdf("nominalPdf_chi2")->plotOn(massframe, LineColor(kGreen));
+		//myWs.pdf("nominalPdf_chi2")->plotOn(massframe, LineColor(kGreen+2));
 		//myWs.pdf("nominalPdf_chi1")->plotOn(massframe, Components("chic1"), Range(mass_windowFit_l, mass_windowFit_h), LineStyle(kDashed), LineColor(kRed));
-		//myWs.pdf("nominalPdf_chi2")->plotOn(massframe, Components("chic2"), Range(mass_windowFit_l, mass_windowFit_h), LineStyle(kDashed), LineColor(kGreen));
+		//myWs.pdf("nominalPdf_chi2")->plotOn(massframe, Components("chic2"), Range(mass_windowFit_l, mass_windowFit_h), LineStyle(kDashed), LineColor(kGreen+2));
 
 
 		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicOne"), ProjWData(rCatChi, *rdsDataBin), LineColor(kRed));
 		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicOne"), Components("chic1"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kRed));
 
 
-		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen));
-		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen));
+		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen+2));
+		simPdfChi->plotOn(massframe, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen+2));
 
 		simPdfChi->paramOn(massframe, Layout(0.55));
 
@@ -1006,8 +1135,8 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicOne"), Components("chic1"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kRed));
 
 
-		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen));
-		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen));
+		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsDataBin), LineColor(kGreen+2));
+		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), Components("chic2"), ProjWData(rCatChi, *rdsDataBin), LineStyle(kDashed), LineColor(kGreen+2));
 
 		//myWs.pdf("simPdfChi")->paramOn(massframe, Layout(0.55));
 
@@ -1019,7 +1148,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 		//myWs.pdf("simPdfChi")->plotOn(massframe, Slice(rCatChi, "ChicOne"), Components("chic2"), ProjWData(rCatChi, *rdsNominal_chicBoth), LineStyle(kDashed), LineColor(kRed));
 		//myWs.pdf("simPdf")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), Components("chicdgsdgs"), ProjWData(rCatChi, *rdsNominal_chicBoth), LineStyle(kDashed), LineColor(kRed));
 
-		//myWs.pdf("simPdf")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsNominal_chicBoth), LineColor(kGreen));
+		//myWs.pdf("simPdf")->plotOn(massframe, Slice(rCatChi, "ChicTwo"), ProjWData(rCatChi, *rdsNominal_chicBoth), LineColor(kGreen+2));
 		//myWs.pdf("simPdfO")->paramOn(massframe, Layout(0.55));
 
 		TCanvas *cTest = new TCanvas("cTest", "cTest", 1000, 600);
@@ -1034,10 +1163,13 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 
 
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
-		FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6.5 && rvpt <30", "all");
-		FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
+		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-2.4 && rvrap <2.4", "all");
+		//FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6.5 && rvpt <30", "all");
 		
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap<-1 || rvrap >1)", "fwdrap");
+		//FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
+
 		// pT fitting
 		/*
 		for (int i = 0; i < nbins_pT; i++) {
@@ -1063,7 +1195,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 			myWs.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
 			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
 			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
+			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen+2));
 
 
 			massframeBin->Draw();
