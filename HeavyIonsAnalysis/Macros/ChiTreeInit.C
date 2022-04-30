@@ -90,9 +90,11 @@ int LoadChiBranches(TTree* tree, bool isMC) {
 
 	//conversion info
 
-	tree->SetBranchAddress("conv_duplicityStatus", &conv_duplicityStatus);
-	tree->SetBranchAddress("conv_splitDR", &conv_splitDR);
-	tree->SetBranchAddress("conv_splitDpT", &conv_splitDpT);
+	tree->SetBranchAddress("convRaw_duplicityStatus", &convRaw_duplicityStatus);
+	tree->SetBranchAddress("convRaw_splitDR", &convRaw_splitDR);
+	tree->SetBranchAddress("convRaw_splitDpT", &convRaw_splitDpT);
+	tree->SetBranchAddress("conv_positionRaw", &conv_positionRaw);
+ 
 	tree->SetBranchAddress("conv_tk1ValidHits", &conv_tk1ValidHits);
 	tree->SetBranchAddress("conv_tk2ValidHits", &conv_tk2ValidHits);
 	tree->SetBranchAddress("convQuality_isHighPurity", &convQuality_isHighPurity);
@@ -253,72 +255,12 @@ bool MuonSelectionPassMC(int muonPos)  //uses variables loaded in main function
 {
 	int matchPosition = gen_muon_matchPosition->at(muonPos);
 	if (matchPosition < -0.5) return false; //not matched
+	if (gen_muon_rDelta->at(muonPos)> muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(muonPos) > muon_maxDPtRel_analysis ) return false;//not matched
 	if (muonIsSoft->at(matchPosition) != 1) return false;
 	if (muonIsHLTDoubleMuOpen->at(matchPosition) != 1) return false;
 	return true;
 }
 
-// dimuon - acceptance
-
-bool DimuonAcceptanceLoose(double rap, double pt)
-{
-	if (fabs(rap) > 2.4) return false; 
-	if (pt < 6.5) return false;
-	if (pt > 30.0) return false;
-	return true;
-}
-bool DimuonAcceptanceTight(double rap, double pt)
-{
-	if (fabs(rap) > 1.0) return false;  //2.4
-	if (pt < 6.5) return false;
-	if (pt > 25) return false;
-	return true;
-}
-
-bool DimuonAcceptance(double rap, double pt) {
-	return DimuonAcceptanceLoose(rap, pt);
-}
-
-
-
-// dimuon
-
-bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
-{
-	if (dimuon_charge->at(dimuonPos) != 0) return false;
-	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
-	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
-	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
-	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
-	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
-}
-
-bool DimuonSelectionPassTight(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
-{
-	if (dimuon_charge->at(dimuonPos) != 0) return false;
-	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
-	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
-	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
-	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
-	return DimuonAcceptanceTight(rap, dimuon_pt->at(dimuonPos));
-}
-
-bool DimuonSelectionPassMC(int dimuonPos)
-{
-	int matchPosition = gen_Jpsi_matchPosition->at(dimuonPos);
-	if (matchPosition < -0.5) return false; //not matched
-	return DimuonSelectionPass(matchPosition);
-}
-
-bool DimuonSelectionPassNoCharge(int dimuonPos)  //to allow selecting same sign bkg (but no sign cut directly)
-{
-	//if (dimuon_charge->at(dimuonPos) != 0) return false;
-	//if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
-	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
-	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
-	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
-	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
-}
 
 // conversion
 
@@ -333,7 +275,7 @@ bool PhotAcceptance(double eta, double pt)
 
 bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main function //nominal by Alberto and Jhovanny (8.2021) (with updated conversion removal)
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
+	//if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -356,7 +298,7 @@ bool PhotSelectionPassTight(int photPos)  //uses variables loaded in main functi
 
 bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main function
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
+	//if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -379,7 +321,7 @@ bool PhotSelectionPassMedium(int photPos)  //uses variables loaded in main funct
 
 bool PhotSelectionPassLoose(int photPos)  //uses variables loaded in main function
 {
-	if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
+	//if (conv_duplicityStatus->at(photPos) != 0 && conv_duplicityStatus->at(photPos) != 1 && conv_duplicityStatus->at(photPos) != 2) return false;
 	//if (convQuality_isHighPurity->at(photPos) != 1) return false;
 	if (convQuality_isGeneralTracksOnly->at(photPos) != 1) return false;
 	//if (conv_vertexPositionRho->at(photPos) <= 1.5) return false;
@@ -409,6 +351,7 @@ bool PhotSelectionPassMC(int photPos)  //uses variables loaded in main function
 {
 	int matchPosition = gen_conv_matchPosition->at(photPos);
 	if (matchPosition < -0.5) return false; //not matched
+	if (gen_conv_rDelta->at(photPos) > conv_maxDeltaR_analysis || gen_conv_ptDeltaRel->at(photPos) > conv_maxDPtRel_analysis) return false;//not matched
 	return PhotSelectionPass(matchPosition);
 }
 
@@ -420,29 +363,154 @@ bool PhotSelectionPassMCLoose(int photPos)  //uses variables loaded in main func
 	return true;
 }
 
+/////////////////////
+//  D I M U O N /////
+/////////////////////
 
+// dimuon - acceptance
 
-
-// chic
-
-bool ChiSelectionPassMC(int chiPos, int chiMCPos = 0)  //uses variables loaded in main function
+bool DimuonAcceptanceLoose(double rap, double pt)
 {
-	return (ChiPassAllCuts(chiPos) && ChiIsMatchedAllDaughters(chiPos, chiMCPos));
-	//return true; //TBD
+	if (fabs(rap) > 2.4) return false;
+	if (pt < 6.5) return false;
+	if (pt > 30.0) return false;
+	return true;
 }
+bool DimuonAcceptanceTight(double rap, double pt)
+{
+	if (fabs(rap) > 1.0) return false;  //2.4
+	if (pt < 6.5) return false;
+	if (pt > 25) return false;
+	return true;
+}
+
+bool DimuonAcceptance(double rap, double pt) {
+	return DimuonAcceptanceLoose(rap, pt);
+}
+
+
+
+// dimuon selection
+
+bool DimuonSelectionPass(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
+{
+	if (dimuon_charge->at(dimuonPos) != 0) return false;
+	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
+}
+
+bool DimuonSelectionPassTight(int dimuonPos)  //uses variables loaded in main function // contains acceptance cut for historic reasons
+{
+	if (dimuon_charge->at(dimuonPos) != 0) return false;
+	if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptanceTight(rap, dimuon_pt->at(dimuonPos));
+}
+
+bool DimuonSelectionPassMC(int dimuonMCPos)
+{
+	int matchPosition = DimuonMCMatched(dimuonMCPos);
+	if (matchPosition < -0.5) return false; //not matched
+	return DimuonSelectionPass(matchPosition);
+}
+
+bool DimuonSelectionPassNoCharge(int dimuonPos)  //to allow selecting same sign bkg (but no sign cut directly)
+{
+	//if (dimuon_charge->at(dimuonPos) != 0) return false;
+	//if (dimuon_vtxProb->at(dimuonPos) < 0.01) return false;
+	double ctauSigJpsi = dimuon_ctpv->at(dimuonPos) / dimuon_ctpvError->at(dimuonPos);
+	if (ctauSigJpsi > 3 || ctauSigJpsi < -3) return false;
+	double rap = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->Rapidity();
+	return DimuonAcceptance(rap, dimuon_pt->at(dimuonPos));
+}
+
+int DimuonMCMatched(int dimuonMCPos = 0)// check if the gen jpsi was matched to reco. Usually one Jpsi per event (thus index 0). New version - matching to the muons only: 
+//-1 no muon match, -2 muons matched, but the dimuon doesn't exist (probably removed by dimuon preselection - confirmed for most)
+{
+	int dimuonPos = -2; //set to default (no match)
+
+	int iMuon1MC = gen_muon_matchPosition->at(2 * dimuonMCPos);
+	int iMuon2MC = gen_muon_matchPosition->at(2 * dimuonMCPos + 1);
+
+	if (iMuon1MC < 0 || gen_muon_rDelta->at(2 * dimuonMCPos) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * dimuonMCPos) > muon_maxDPtRel_analysis) return -1; //muon not matched
+	if (iMuon2MC < 0 || gen_muon_rDelta->at(2 * dimuonMCPos + 1) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * dimuonMCPos + 1) > muon_maxDPtRel_analysis) return -1; //muon not matched
+
+	// all the final objects were matched, let's find the chic that is the proper match 
+
+
+	for (int iJpsi = 0; iJpsi < dimuon_p4->GetEntriesFast(); iJpsi++) // Jpsi loop
+	{
+		if (dimuon_muon1_position->at(iJpsi) != iMuon1MC && (dimuon_muon1_position->at(iJpsi) != iMuon2MC)) { continue; } //first muon don't agree with either gen
+		if (dimuon_muon2_position->at(iJpsi) != iMuon1MC && (dimuon_muon2_position->at(iJpsi) != iMuon2MC)) { continue; } //second muon don't agree with either gen
+		if (dimuonPos < 0) { dimuonPos = iJpsi; } //we found the one matched
+		else { cout << "Something wrong, two Jpsi shouldn't be both matched" << endl; } //we already found one, this is a crosscheck (once tested, add break above)
+	}
+	/*if (dimuonPos == -1) {
+		cout << "Something odd, all the objects were matched, but we didn't find the matching dimuon. Muon 1 and 2 acceptance and selection cuts: " << MuonAcceptance(muon_eta->at(iMuon1MC), muon_pt->at(iMuon1MC))<< " " << MuonAcceptance(muon_eta->at(iMuon2MC), muon_pt->at(iMuon2MC)) << "  sel: " << MuonSelectionPassMC(2 * dimuonMCPos) << " " << MuonSelectionPassMC(2 * dimuonMCPos+1) << " Tracker: " << muonIsTracker->at(iMuon1MC)<< " " << muonIsTracker->at(iMuon2MC) << endl;
+		cout << "n dimuons " << dimuon_p4->GetEntriesFast() << endl;
+		if (dimuon_p4->GetEntriesFast() > 0)cout << "Reco muon pTs: " << muon_pt->at(dimuon_muon1_position->at(0)) << " " << muon_pt->at(dimuon_muon2_position->at(0)) << " etas: " << muon_eta->at(dimuon_muon1_position->at(0)) << " " << muon_eta->at(dimuon_muon2_position->at(0)) <<endl;
+		cout << "Maybe different vertices?: " << muon_pvtx_index->at(iMuon1MC) << "  " << muon_pvtx_index->at(iMuon2MC) << endl;
+		TLorentzVector* LVmuon1 = (TLorentzVector*)muon_p4->At(iMuon1MC);
+		TLorentzVector* LVmuon2 = (TLorentzVector*)muon_p4->At(iMuon2MC);
+		TLorentzVector* LVmuon1Gen = (TLorentzVector*)gen_muon_p4->At(2 * dimuonMCPos);
+		TLorentzVector* LVmuon2Gen = (TLorentzVector*)gen_muon_p4->At(2 * dimuonMCPos +1);
+		cout << "Not enough pt?: " << (*LVmuon1+*LVmuon2).Pt() << " rap: " << (*LVmuon1 + *LVmuon2).Rapidity() << " mass: " << (*LVmuon1 + *LVmuon2).M() <<  endl;
+		cout << "Delta r: " << gen_muon_rDelta->at(2 * dimuonMCPos) << " " << gen_muon_rDelta->at(2 * dimuonMCPos + 1) << " and dpT: " << gen_muon_ptDeltaRel->at(2 * dimuonMCPos) << " " << gen_muon_ptDeltaRel->at(2 * dimuonMCPos + 1) << endl;
+		cout << "Gen Mass: " << ((TLorentzVector*)gen_Jpsi_p4->At(dimuonMCPos))->M() << " and muon pT: " << gen_muon_pt->at(2 * dimuonMCPos) << " " << gen_muon_pt->at(2 * dimuonMCPos+1) << "  compared to reco muon mass: " << (*LVmuon1 + *LVmuon2).M() << " and pt " << muon_pt->at(iMuon1MC) << " " << muon_pt->at(iMuon2MC) <<endl;
+		cout << "Gen muon eta: " << gen_muon_eta->at(2 * dimuonMCPos) << " " << gen_muon_eta->at(2 * dimuonMCPos + 1) << " and reco eta: " << muon_eta->at(iMuon1MC) << " " << muon_eta->at(iMuon2MC) << endl;
+		cout << "Gen Mass: " << ((TLorentzVector*)gen_Jpsi_p4->At(dimuonMCPos))->M() << " and calculated from decay muons, gen information: " << (*LVmuon1Gen + *LVmuon2Gen).M() << endl;
+		cout << "is good gen decay: " << gen_isGoodChicDecay->at(dimuonMCPos) << " n photons: " << gen_Jpsi_photon_n->at(dimuonMCPos) << endl;
+		if (gen_Jpsi_photon_n->at(dimuonMCPos)>0){
+			TLorentzVector* LVphot1Gen = (TLorentzVector*)gen_Jpsi_photon_p4->At(0);
+			cout<< "Photon pT: " << gen_Jpsi_photon_pt->at(0) << ", now we add the photon to the mass: " << (*LVmuon1Gen + *LVmuon2Gen + *LVphot1Gen).M() << endl;
+		}
+		cout << endl;
+		return -2;
+	}//*/
+	return dimuonPos; //either matched, or -2 if such reco doesn't exist
+}
+
+// overall dimuon pass
+
+bool DimuonPassAllCuts(int dimuonPos)
+{
+	if (DimuonSelectionPass(dimuonPos) == false) return false;
+	int muon1Pos = dimuon_muon1_position->at(dimuonPos);
+	int muon2Pos = dimuon_muon2_position->at(dimuonPos);
+	if (MuonSelectionPass(muon1Pos) == false) return false;
+	if (MuonSelectionPass(muon2Pos) == false) return false;
+	if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) return false;
+	if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) return false;
+	return true;
+}
+
+
+int DimuonPassAllCutsMC(int dimuonMCPos = 0)  // -1 if failed, else returns the position of good reco
+{
+	int dimuonPos = DimuonMCMatched(dimuonMCPos);
+	if (dimuonPos < 0) { return -1; }
+	else if (DimuonPassAllCuts(dimuonPos) == false) { return -1; }
+	else return dimuonPos;
+}
+
+
+
+
+/////////////////////
+////  C H I C   /////
+/////////////////////
+
 
 bool ChiPassAllCuts(int chiPos)
 {
 	int dimuonPos = chi_daughterJpsi_position->at(chiPos);
-	if (DimuonSelectionPass(dimuonPos) == false) return false;
+	if (DimuonPassAllCuts(dimuonPos) == false) return false;
 
-	// muon cuts
-	int muon1Pos = dimuon_muon1_position->at(dimuonPos);
-	int muon2Pos = dimuon_muon2_position->at(dimuonPos);
-	if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) return false;
-	if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) return false;
-	if (MuonSelectionPass(muon1Pos) == false) return false;
-	if (MuonSelectionPass(muon2Pos) == false) return false;
 	// photon
 	int convPos = chi_daughterConv_position->at(chiPos);
 	if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) return false;
@@ -481,15 +549,79 @@ bool ChiPassAllCuts(int chiPos)
 }
 
 
+int ChiMCMatched(int chiMCPos = 0)// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
+//-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could maybe rarely be caused by chic selection)
+{
+	int chiPos = -2; //set to default (no match)
+	
+	// check if the matching to the gen objects happened (this we can get directly from the stored information, without checking the actual matched reco object)
+	if (gen_conv_matchPosition->at(chiMCPos) < 0 || gen_conv_rDelta->at(chiMCPos) > conv_maxDeltaR_analysis || gen_conv_ptDeltaRel->at(chiMCPos) > conv_maxDPtRel_analysis) return -1; //conv was not matched
+	if (gen_muon_matchPosition->at(2 * chiMCPos) < 0 || gen_muon_rDelta->at(2 * chiMCPos) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * chiMCPos) > muon_maxDPtRel_analysis) return -1; //muon not matched
+	if (gen_muon_matchPosition->at(2 * chiMCPos + 1) < 0 || gen_muon_rDelta->at(2 * chiMCPos + 1) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * chiMCPos + 1) > muon_maxDPtRel_analysis) return -1; //muon not matched
+
+	// all the final objects were matched, let's find the chic that is the proper match 
+
+
+	for (int iChi = 0; iChi < chi_p4->GetEntriesFast(); iChi++) //loop over chic to find the one matched
+	{
+		if (chi_daughterConv_position->at(iChi) != gen_conv_matchPosition->at(chiMCPos)) { continue; }
+		int dimuonPos = chi_daughterJpsi_position->at(iChi);
+		int iMuon1MC = gen_muon_matchPosition->at(2 * chiMCPos);
+		int iMuon2MC = gen_muon_matchPosition->at(2 * chiMCPos + 1);
+
+		if (dimuon_muon1_position->at(dimuonPos) != iMuon1MC && (dimuon_muon1_position->at(dimuonPos) != iMuon2MC)) { continue; } //first muon don't agree with either gen
+		if (dimuon_muon2_position->at(dimuonPos) != iMuon1MC && (dimuon_muon2_position->at(dimuonPos) != iMuon2MC)) { continue; } //second muon don't agree with either gen
+		if (chiPos < 0) { chiPos = iChi; } //we found the one matched
+		else { cout << "Something wrong, two chic shouldn't be both matched" << endl; } //we already found one, this is a crosscheck (once tested, add break above)
+	}
+
+	return chiPos; //either matched, or -2 if such reco doesn't exist
+}
+
+
+
+int ChiPassAllCutsMC(int chiMCPos = 0)
+{
+	int chiPos = ChiMCMatched(chiMCPos); // we have 1 chic, check as which one it was potentially reconstructed
+	if (chiPos < -0.5) { return -1; }// -1 not matched
+	else if (ChiPassAllCuts(chiPos) == false) { return -1; }
+	else return chiPos;
+
+}
+
+
+
+
+
+
 bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0)// check if the gen chic was matched to reco, as well as J/psi and photon. Usually one chic per event (thus index 0)
+// mostly obsolete
 {
 	int iChiMC = gen_chic_matchPosition->at(chiMCPos); // we have 1 chic, check as which one it was potentially reconstructed
 	if (iChiMC < -0.5) { return false; }// -1 not matched
 	if (chiPos != iChiMC) { return false; }
 	if (chi_daughterConv_position->at(chiPos) != gen_conv_matchPosition->at(chiMCPos)) { return false; } //conversions don't agree
+	if (gen_conv_matchPosition->at(chiMCPos)<0 || gen_conv_rDelta->at(chiMCPos) > conv_maxDeltaR_analysis || gen_conv_ptDeltaRel->at(chiMCPos) > conv_maxDPtRel_analysis) return false;//not matched
 	int dimuonPos = chi_daughterJpsi_position->at(chiPos);
 	if (dimuonPos != gen_Jpsi_matchPosition->at(chiMCPos)) { return false; } //dimuons don't agree
-	if (dimuon_muon1_position->at(dimuonPos) != gen_muon_matchPosition->at(2 * chiMCPos) && (dimuon_muon1_position->at(dimuonPos) != gen_muon_matchPosition->at(2 * chiMCPos + 1))) { return false; } //first muon don't agree with either gen
-	if (dimuon_muon2_position->at(dimuonPos) != gen_muon_matchPosition->at(2 * chiMCPos) && (dimuon_muon2_position->at(dimuonPos) != gen_muon_matchPosition->at(2 * chiMCPos + 1))) { return false; } //second muon don't agree with either gen
+	if (gen_Jpsi_matchPosition->at(chiMCPos) < 0 || gen_Jpsi_rDelta->at(chiMCPos) > jpsi_maxDeltaR_analysis || gen_Jpsi_ptDeltaRel->at(chiMCPos) > jpsi_maxDPtRel_analysis) return false;//not matched
+	int iMuon1MC = gen_muon_matchPosition->at(2 * chiMCPos);
+	int iMuon2MC = gen_muon_matchPosition->at(2 * chiMCPos + 1);
+	if (dimuon_muon1_position->at(dimuonPos) != iMuon1MC && (dimuon_muon1_position->at(dimuonPos) != iMuon2MC)) { return false; } //first muon don't agree with either gen
+	if (dimuon_muon2_position->at(dimuonPos) != iMuon1MC && (dimuon_muon2_position->at(dimuonPos) != iMuon2MC)) { return false; } //second muon don't agree with either gen
+	if (gen_muon_matchPosition->at(2 * chiMCPos) < 0 || gen_muon_rDelta->at(2 * chiMCPos) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * chiMCPos) > muon_maxDPtRel_analysis) return false;//not matched
+	if (gen_muon_matchPosition->at(2 * chiMCPos +1) < 0 || gen_muon_rDelta->at(2 * chiMCPos +1) > muon_maxDeltaR_analysis || gen_muon_ptDeltaRel->at(2 * chiMCPos +1) > muon_maxDPtRel_analysis) return false;//not matched
+
 	return true;
 }
+
+
+
+
+
+
+
+
+
+
+

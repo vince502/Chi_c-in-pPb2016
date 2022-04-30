@@ -74,7 +74,10 @@ private:
 	void Clear();
 	int SelectVertex(edm::Handle<std::vector<reco::Vertex> >& priVtxs, double zPos); //returns the index (in the collection) of vertex matched to the z position
 
-	// photon checks
+	// photon functions
+
+	void Conv_removeDuplicates(edm::Handle <std::vector <reco::Conversion>> convCollIn, reco::ConversionCollection* convCollOut); // Removes the duplicate conversions, since they mess up matching. We remove them in an early pass, so all the other steps are done with a cleaned-up collection
+
 	static bool lt_comparator(std::pair<double, short> a, std::pair<double, short> b); // comparator for checking conversions
 	bool Conv_checkTkVtxCompatibility(const reco::Conversion& conv, const reco::VertexCollection&  priVtxs, double sigmaTkVtxComp_, bool& Flag_Best_Out, bool& Flag_SecondBestA_Out, bool& Flag_SecondBestB_Out, double& sigmaMinValue1Out, double& sigmaMinValue2Out);
 	bool Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB);
@@ -83,6 +86,7 @@ private:
 	//photon MC
 	bool Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, const reco::GenParticle& gen_phot, double maxDeltaR, double maxDPtRel);
 	bool ConvSelection(const reco::Conversion& conv);
+
 
 	// chi functions
 	const pat::CompositeCandidate makeChiCandidate(const pat::CompositeCandidate& dimuon, const pat::CompositeCandidate& photon);
@@ -232,12 +236,13 @@ private:
 
 	//conversion info
 
-	std::vector <int> conv_duplicityStatus; // 0: is not duplicate to any, 1: shares a track, but isn't split 2: shares a track, and is split, but is kept, 3: doesn't have 2 tracks, 4: shares the track, is split, and is removed
-	std::vector <double> conv_splitDR;
-	std::vector <double> conv_splitDpT;
-	std::vector <int> conv_duplicityStatus_AV; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
-	std::vector <double> conv_splitDR_AV;
-	std::vector <double> conv_splitDpT_AV;
+	std::vector <int> convRaw_duplicityStatus; // 0: is not duplicate to any, 1: shares a track, but isn't split 2: shares a track, and is split, but is kept, 3: doesn't have 2 tracks, 4: shares the track, is split, and is removed
+	std::vector <double> convRaw_splitDR;
+	std::vector <double> convRaw_splitDpT;
+	std::vector <int> convRaw_duplicityStatus_AV; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
+	std::vector <double> convRaw_splitDR_AV;
+	std::vector <double> convRaw_splitDpT_AV;
+	std::vector <int> conv_positionRaw;
 	std::vector <int> conv_tk1ValidHits;
 	std::vector <int> conv_tk2ValidHits;
 	std::vector <bool> convQuality_isHighPurity;

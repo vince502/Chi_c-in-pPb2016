@@ -3,7 +3,7 @@ from CRABClient.UserUtilities import config, getUsernameFromCRIC
 config = config()
 
 config.section_("General")
-config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC9A'
+config.General.requestName = 'Chi_c_pPb8TeV_AOD_MC_Official_v2_pPb'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = False
@@ -25,9 +25,11 @@ config.section_("Data")
 #config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v6-61416874db099c53202c8cb2d81ec4a3/USER' #v6
 #config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v7-61416874db099c53202c8cb2d81ec4a3/USER' #v7
 #config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v8-61416874db099c53202c8cb2d81ec4a3/USER' #v8
-config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v9-4e07c3c67d0ff0e1e9aecbbcb6a514fc/USER' #v9
-config.Data.inputDBS = 'phys03'
-config.Data.unitsPerJob   = 10 #10 #3 was suggested by dryrun, but turned out to be too small
+#config.Data.inputDataset = '/Chi_c_pPb8TeV_privateMC_GEN/okukral-Chi_c_pPb8TeV_MC_RECO_v9-4e07c3c67d0ff0e1e9aecbbcb6a514fc/USER' #v9 
+config.Data.inputDataset = '/Chic1Chic2_JpsiTogg_MuMuTogg_pThat4p5_pPb-EmbEPOS_8p16_pythia8_evtgen/pPb816Summer16DR-80X_mcRun2_pA_v4-v5/AODSIM' #official
+#config.Data.inputDBS = 'phys03'
+config.Data.inputDBS = 'global'
+config.Data.unitsPerJob   = 10 #3 was suggested by dryrun, but turned out to be too small
 config.Data.totalUnits   = -1
 config.Data.splitting     = 'FileBased'
 config.Data.outLFNDirBase = '/store/group/phys_heavyions/%s/Chi_c/%s' % (getUsernameFromCRIC(), config.General.requestName)

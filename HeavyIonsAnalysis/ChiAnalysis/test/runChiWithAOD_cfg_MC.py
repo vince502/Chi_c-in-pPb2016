@@ -1,9 +1,10 @@
 #This example can be run over files from AOD, therefore we need to build some information in fly.
 #
+#outFileName = 'Chi_c_pPb8TeV_MC_noPhotFilt.root'
 outFileName = 'Chi_c_pPb8TeV_MC.root'
 #inFileNames = '/store/himc/pPb816Summer16DR/ZZ_PbP-EmbEPOS_8p16_Pythia8/AODSIM/PbPEmb_80X_mcRun2_pA_v4-v1/60000/3A305B07-17F1-E711-8B05-001E677926C0.root'
-inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_36/src/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_Pbp_RECO.root' 
-#inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_30/src/EPOStest_RECO.root' 
+#inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicMC/CMSSW_8_0_36/src/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_noPhotFilt_RECO.root' 
+inFileNames = 'file:/afs/cern.ch/work/o/okukral/ChicData/AODSIM_Official_ExampleFile_Pbp.root' 
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_7.root' #v7 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_3.root' #v6 MC
 #inFileNames = 'file:/afs/cern.ch/user/o/okukral/Work/ChicData/ChiCJpsiMuMu_Pythia8_8p16TeV_TuneCUETP8M1_RECO_2.root' #v5 MC
@@ -47,7 +48,7 @@ process.options   = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 process.load('HeavyIonsAnalysis.Configuration.hfCoincFilter_cff')
 process.primaryVertexFilterPA = cms.EDFilter("VertexSelector",
     src = cms.InputTag("offlinePrimaryVertices"),
-    cut = cms.string("!isFake && abs(z) <= 50 && position.Rho <= 2 && tracksSize >= 2"),
+    cut = cms.string("!isFake && abs(z) <= 25 && position.Rho <= 2 && tracksSize >= 2"),
     filter = cms.bool(True),
 )
 process.noScraping = cms.EDFilter("FilterOutScraping",

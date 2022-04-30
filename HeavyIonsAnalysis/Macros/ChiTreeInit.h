@@ -20,6 +20,26 @@
 //#include "DataFormats/HeavyIonEvent/interface/Centrality.h"
 
 
+// MATCHING VARIABLES
+
+const double muon_maxDeltaR_analysis = 0.1;
+const double muon_maxDPtRel_analysis = 0.1;
+
+// constants for dimuon cuts
+const double jpsi_maxDeltaR_analysis = 0.05;
+const double jpsi_maxDPtRel_analysis = 0.1;
+
+// constants for conversion cuts
+const double conv_maxDeltaR_analysis = 0.1;
+const double conv_maxDPtRel_analysis = 1;
+
+
+
+
+
+
+
+
 // not really used:
 //pat::Muon
 //pat::CompositeCandidate
@@ -100,9 +120,11 @@ std::vector <double>* dimuon_ctpvError = 0;
 
 //conversion info
 
-std::vector <int>* conv_duplicityStatus = 0; // 0: is not duplicate to any, 1: shares a track, but is largest in prob 2: shares a track, and is not largest in prob, 3: doesn't have 2 tracks
-std::vector <double>* conv_splitDR = 0;
-std::vector <double>* conv_splitDpT = 0;
+std::vector <int>* convRaw_duplicityStatus = 0; // 0: is not duplicate to any, 1: shares a track, but isn't split 2: shares a track, and is split, but is kept, 3: doesn't have 2 tracks, 4: shares the track, is split, and is removed
+std::vector <double>* convRaw_splitDR = 0;
+std::vector <double>* convRaw_splitDpT = 0;
+std::vector <int>* conv_positionRaw = 0;
+
 std::vector <int>* conv_tk1ValidHits = 0;
 std::vector <int>* conv_tk2ValidHits = 0;
 std::vector <bool>* convQuality_isHighPurity = 0;
@@ -235,9 +257,62 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 int LoadChiBranches(TTree* tree, bool isMC);
 
 
-bool ChiSelectionPassMC(int chiPos, int chiMCPos = 0);
+bool MuonAcceptance(double eta, double pt);
+
+bool MuonSelectionPass(int muonPos);
+
+bool MuonSelectionPassMC(int muonPos);
+
+
+// conversion
+
+bool PhotAcceptance(double eta, double pt);
+bool PhotSelectionPassTight(int photPos);
+bool PhotSelectionPassMedium(int photPos);
+bool PhotSelectionPassLoose(int photPos);
+
+bool PhotSelectionPass(int photPos); //nominal
+bool PhotSelectionPassMC(int photPos);
+bool PhotSelectionPassMCLoose(int photPos);
+
+/////////////////////
+//  D I M U O N /////
+/////////////////////
+
+// dimuon - acceptance
+bool DimuonAcceptanceLoose(double rap, double pt);
+bool DimuonAcceptanceTight(double rap, double pt);
+
+bool DimuonAcceptance(double rap, double pt);
+
+
+// dimuon selection
+bool DimuonSelectionPass(int dimuonPos);
+bool DimuonSelectionPassTight(int dimuonPos);
+bool DimuonSelectionPassMC(int dimuonMCPos);
+bool DimuonSelectionPassNoCharge(int dimuonPos);
+int DimuonMCMatched(int dimuonMCPos = 0);
+
+// overall dimuon pass
+
+bool DimuonPassAllCuts(int dimuonPos);
+int DimuonPassAllCutsMC(int dimuonMCPos = 0);  // -1 if failed, else returns the position of good reco
+
+
+/////////////////////
+////  C H I C   /////
+/////////////////////
+
 bool ChiPassAllCuts(int chiPos);
-bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0);
+
+int ChiMCMatched(int chiMCPos = 0);// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
+//-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could be chic)
+
+int ChiPassAllCutsMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
+
+
+bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0); // mostly obsolete
+
 
 #endif 
 

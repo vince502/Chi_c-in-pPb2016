@@ -52,7 +52,7 @@
 #include "../ChiTreeInit.C"
 #include "../ChiFitterInit.h"
 
-#define UsesTMVA // if defined, the code needs to be run in CMSSW_10_3_X, otherwise CMSSW_8_0_X is good enough (production release)
+//#define UsesTMVA // if defined, the code needs to be run in CMSSW_10_3_X, otherwise CMSSW_8_0_X is good enough (production release)
 
 #ifdef UsesTMVA
 #include "TMVA/Tools.h"
@@ -68,46 +68,6 @@ using namespace RooFit;
 ofstream file_log;
 
 
-/*
-const int PythCode_chic0 = 10441; //Pythia codes
-const int PythCode_chic1 = 20443;
-const int PythCode_chic2 = 445;
-
-const double k_mass_c0 = 3.4148; //pdg 1. 2018
-const double k_mass_c1 = 3.5107;
-const double k_mass_c2 = 3.5562;
-
-//const int nMassBins = 80;
-//const double mass_window_l = 3.35;
-//const double mass_window_h = 3.75;
-//const double mass_windowFit_l = 3.35;
-//const double mass_windowFit_h = 3.75;
-//const string mass_windowFit = "rvmass>3.35 && rvmass<3.75";
-const int nMassBins = 140;
-const double mass_window_l = 3.25;
-const double mass_window_h = 3.85;
-const double mass_windowFit_l = 3.25;
-const double mass_windowFit_h = 3.85;
-const string mass_windowFit = "rvmass>3.25 && rvmass<3.85";
-
-
-const int nMassBinsJpsi = 150;
-const double mass_windowJpsi_l = 2.5;
-const double mass_windowJpsi_h = 4.0;
-const double mass_windowFitJpsi_l = 2.5;
-const double mass_windowFitJpsi_h = 4.0;
-const string mass_windowFitJpsi = "rvmassJpsi>2.5 && rvmassJpsi<4.0";
-
-double bins_pT[] = {6, 9, 12, 18, 25, 30, 40};
-int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
-
-double bins_y[] = {-2.4, -1.6, -1.0, 0.0 , 1.0, 1.6, 2.4 };
-//double bins_y[] = { -2.4, -1.6, -1.0, 1.0, 1.6, 2.4 };
-int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
-
-double bins_nTrk[] = { 0, 50, 100, 150, 200, 400 };
-int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
-*/
 // constraints
 
 TGraphAsymmErrors* gAsChic_alpha_pT, *gAsChic_alpha_y, *gAsChic_alpha_nTrk;
@@ -318,7 +278,7 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to p
 	return true;
 }
 
-int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = "", string pdfName = "", const char* fileConstraints = "") {
+int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = "", string regionName = "", string pdfName = "", const char* fileConstraints = "") {
 	TFile* fileConstr = new TFile(fileConstraints, "READ"); //opening the file for every fit is probably not the most efficient, but fitting itself is much more time consuming, so it is okay
 	if (fileConstr->IsOpen() == false) {
 		cout << "Constraint file not properly opened!" << endl << endl;
@@ -326,14 +286,25 @@ int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = 
 	}
 	string binNaming;
 	if (binVarName.compare("rvpt") == 0) {
-		binNaming = "pt";
+		if (regionName.compare("all") == 0)
+		{
+			binNaming = "pt_all";
+		}
+		if (regionName.compare("midrap") == 0)
+		{
+			binNaming = "pt_mid";
+		}
+		if (regionName.compare("fwdrap") == 0)
+		{
+			binNaming = "pt_fwd";
+		}
 	}
 	else if (binVarName.compare("rvrap") == 0) {
 		binNaming = "y";
 	}
 	else if (binVarName.compare("rvntrack") == 0) {
 		binNaming = "nTrack";
-		if (bin > 2) bin = 2; //WARNING - for now bin 2 used for higher ntracks bins (those constraints are bad due to stats)
+		if (bin > 3) bin = 3; //WARNING - for now bin 3 used for higher ntracks bins (those constraints are bad due to stats)
 	}
 	if (pdfName.compare("nominalPdf") == 0)
 	{
@@ -375,38 +346,69 @@ int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = 
 
 
 
-int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooRealVar* rvmass, RooWorkspace& Ws, bool isJpsi = false, string binVarName = "", string myPdfName = "", string extraCut = "", string canvasName = "", bool bConstrainedFit = false, const char* fileConstraints = "") { //uses global variables
+int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooRealVar* rvmass, RooWorkspace& Ws, bool isJpsi = false, string binVarName = "", string myPdfName = "", string extraCut = "", string regionName = "", bool bConstrainedFit = false, const char* fileConstraints = "") { //uses global variables
 	cout << endl << "IN FITTING " << binVarName << "   " << nbins << endl << endl;
-	TCanvas *cFit = new TCanvas("cFit", "cFit", 1000, 600);
-	gPad->SetLeftMargin(0.15);
+	TCanvas *cFit = new TCanvas("cFit", "cFit", 1000, 1000);
+	//gPad->SetLeftMargin(0.15);
+	cFit->cd();
+	//cFit->Divide(1, 2);
+	TPad *pad1 = new TPad("pad1", "pad1", 0, 0.16, 0.98, 1.0);
+	pad1->SetTicks(1, 1);
+	pad1->Draw();
+
+	//pull pad
+	TPad *pad2 = new TPad("pad2", "pad2", 0, 0.006, 0.98, 0.260);
+	pad2->SetTopMargin(0); // Upper and lower plot are joined
+	pad2->SetBottomMargin(0.67);
+	pad2->SetTicks(1, 1);
+
+	double mass_windowFitCommon_l, mass_windowFitCommon_h;
+	int nMassBinsCommon;
+
+	if (isJpsi == false) {
+		mass_windowFitCommon_l = mass_windowFit_l;
+		mass_windowFitCommon_h = mass_windowFit_h;
+		nMassBinsCommon = nMassBins;
+	}
+	else {
+		mass_windowFitCommon_l = mass_windowFitJpsi_l;
+		mass_windowFitCommon_h = mass_windowFitJpsi_h;
+		nMassBinsCommon = nMassBinsJpsi;
+	}
 
 
 	for (int i = 0; i < nbins; i++) {
 		cout << "Bins " << bins[i] << "  to  " << bins[i + 1] << endl;
-
+		pad1->cd();
 		RooPlot* massframeBin;
-		if (isJpsi == false) { massframeBin = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins); }
-		else { massframeBin = rvmass->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi); }
+
+		//if (isJpsi == false) {
+		massframeBin = rvmass->frame(mass_windowFitCommon_l, mass_windowFitCommon_h, nMassBinsCommon); 
+		//}
+		//else { massframeBin = rvmass->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi); }
 		massframeBin->SetTitle("mass");
 		TString TstrCut = binVarName + TString::Format(" > %f", bins[i]) + " && " + binVarName + TString::Format(" < %f", bins[i + 1]) + extraCut;
 		cout << TstrCut << endl;
 		string strCut = TstrCut.Data();
 		RooDataSet* rdsDataBin;
 		if (isJpsi == false) { rdsDataBin = (RooDataSet*)Ws.data("rdsNominal")->reduce(strCut.c_str()); 
+			//rdsDataBin = (RooDataSet*)rdsDataBin->reduce(mass_windowFit.c_str());
 			RefreshModel(Ws, myPdfName, false);
 		}else {
 			rdsDataBin = (RooDataSet*)Ws.data("rdsNominalJpsi")->reduce(strCut.c_str()); 
+			//rdsDataBin = (RooDataSet*)rdsDataBin->reduce(mass_windowFitJpsi.c_str());
 			RefreshModel(Ws, myPdfName, true);
 		}
 
-		rdsDataBin->plotOn(massframeBin);
+		rdsDataBin->plotOn(massframeBin, Name("dataHist"));
+		cout << endl << endl << endl << rdsDataBin->GetName() << endl << endl;
 
 		if (bConstrainedFit == true) {
-			SetConstraints(Ws, bins, i, binVarName, myPdfName, fileConstraints);
+			SetConstraints(Ws, bins, i, binVarName, regionName, myPdfName, fileConstraints);
 		}
 
 
-		RooFitResult* fitResultBin = Ws.pdf(myPdfName.c_str())->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), PrintLevel(-1), Save(true));
+		RooFitResult* fitResultBin = Ws.pdf(myPdfName.c_str())->fitTo(*rdsDataBin, Extended(true), /*Range(mass_windowFitCommon_l, mass_windowFitCommon_h),*/ SumW2Error(true), NumCPU(1), PrintLevel(-1), Save(true));
 		//fitResultBin->Print("v");
 		//Ws.import(*fitResultBin, TString::Format("fitResult_%s", myPdfNameBin.c_str()));
 		if (isJpsi == false) {
@@ -453,9 +455,7 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 			SetPointFromFit(gAsResult, "nsigJpsi", Ws, i, bins);
 		}
 
-		Ws.pdf(myPdfName.c_str())->plotOn(massframeBin);
-		Ws.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
-		
+				
 		if (isJpsi == false) {
 			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
 			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
@@ -467,8 +467,48 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
 
 		}
+
+		Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Name("FullPdf"));
+		Ws.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
+		massframeBin->GetXaxis()->SetTitleSize(0);
+		massframeBin->GetXaxis()->SetLabelSize(0);
 		massframeBin->Draw();
-		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi?"Jpsi_":"Chic_") + canvasName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
+
+		//PULLS
+
+		pad2->cd();
+		//RooHist* hpull = massframeBin->pullHist("rPullHist", myPdfName.c_str());
+		RooHist* hpull = massframeBin->pullHist("dataHist", "FullPdf");
+		hpull->SetMarkerSize(0.8);
+		RooPlot* pullFrame = rvmass->frame(Title("Pull Distribution"));
+		pullFrame->addPlotable(hpull, "P");
+		pullFrame->SetTitleSize(0);
+		pullFrame->GetYaxis()->SetTitle("Pull");
+		pullFrame->GetYaxis()->SetTitleSize(0.19);
+		pullFrame->GetYaxis()->SetLabelSize(0.14);
+		//pullFrame->GetYaxis()->SetLabelOffset(1.1);
+		pullFrame->GetYaxis()->SetRangeUser(-5.0, 5.0);
+		pullFrame->GetYaxis()->SetNdivisions(502, kTRUE);
+		pullFrame->GetYaxis()->CenterTitle();
+		pullFrame->GetXaxis()->SetLabelSize(0.20);
+		pullFrame->GetXaxis()->SetTitle("#mu#mu#gamma - #mu#mu + 3.097 [GeV/c^{2}]");
+		pullFrame->GetXaxis()->SetTitleOffset(1.05);
+		pullFrame->GetXaxis()->SetTitleSize(0.20);
+		pullFrame->Draw();
+
+		TLine *l1 = new TLine(mass_windowFitCommon_l, 0, mass_windowFitCommon_h, 0);
+		l1->SetLineStyle(9);
+		l1->Draw("same");
+		//pad1->Update();
+
+		cFit->cd();
+		pad1->Draw();
+		pad2->Draw();
+
+		pad1->Update();
+		pad2->Update();
+
+		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi?"Jpsi_":"Chic_") + regionName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
 
 	}
 
@@ -486,7 +526,7 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 
 ////////////////////////////////////
 
-void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW7.root", const char* fileOut = "Chi_c_output_RW7_testF_BDT.root", const char* fileRds = "rds_RW7_F_BDT.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_MC9.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
+void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW7.root", const char* fileOut = "Chi_c_output_RW7_Test.root", const char* fileRds = "rds_RW7_Test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_MC9_moreBinsNarrow.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_pPb8TeV-Comp285993.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285993.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = false,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/PADoubleMuon/crab_Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/211202_000528/0000/Chi_c_pPb8TeV-PbpCompTest.root", const char* fileOut = "Chi_c_output_RW4_testCutTightRefitAlberto2.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTightRefitAlberto.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
@@ -507,6 +547,10 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 	TGraphAsymmErrors* gAsChic_pT = new TGraphAsymmErrors(nbins_pT);
 	gAsChic_pT->SetNameTitle("gAsChic_pT","Chic pT dependence");
+	TGraphAsymmErrors* gAsChic_pT_mid = new TGraphAsymmErrors(nbins_pT);
+	gAsChic_pT_mid->SetNameTitle("gAsChic_pT_mid", "Chic pT dependence - midrapidity");
+	TGraphAsymmErrors* gAsChic_pT_fwd = new TGraphAsymmErrors(nbins_pT);
+	gAsChic_pT_fwd->SetNameTitle("gAsChic_pT_fwd", "Chic pT dependence - forward rapidity");
 	TGraphAsymmErrors* gAsJpsi_pT = new TGraphAsymmErrors(nbins_pT);
 	gAsJpsi_pT->SetNameTitle("gAsJpsi_pT", "Jpsi pT dependence");
 	TGraphAsymmErrors* gAsRatio_pT = new TGraphAsymmErrors(nbins_pT);
@@ -689,7 +733,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		bool passDimSel = false;
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
-		//if (nentries > 200000) { nentries = 200000; }
+		if (nentries > 100000) { nentries = 100000; }
 		cout << nentries << endl;
 		for (Long64_t i = 0; i < nentries; i++)
 		{
@@ -770,7 +814,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 				#endif
 
 
-				//if (PhotSelectionPass(convPos) == false) continue;
+				if (PhotSelectionPass(convPos) == false) continue;
 
 				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
 				// Get Lorentz V
@@ -1197,7 +1241,9 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 		}*/
 
-		FitRooDataSet(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-2.4 && rvrap <2.4", "all", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_pT_mid, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_pT_fwd, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap<-1 || rvrap >1)", "fwdrap", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_y, bins_y, nbins_y, rvmass, myWs, false, "rvrap", myPdfName.c_str(), " && rvpt>6 && rvpt <25", "all", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", flagConstrainedFit, fileConstraints);
 
@@ -1469,6 +1515,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	if (flagRunFits == true)
 	{
 		gAsChic_pT->Write();
+		gAsChic_pT_mid->Write();
+		gAsChic_pT_fwd->Write();
 		gAsJpsi_pT->Write();
 		gAsRatio_pT->Write();
 		//can_pT->Write();

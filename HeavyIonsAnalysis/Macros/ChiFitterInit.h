@@ -61,6 +61,14 @@ const double mass_windowFit_l = 3.2;
 const double mass_windowFit_h = 3.8;
 const string mass_windowFit = "rvmass>3.2 && rvmass<3.8";
 
+// constraint code is fitted in narrower range, to avoid the turn on which doesn't determine peak shape
+const int nMassBinsConstr = 50;
+const double mass_windowConstr_l = 3.3;
+const double mass_windowConstr_h = 3.8;
+const double mass_windowFitConstr_l = 3.3;
+const double mass_windowFitConstr_h = 3.8;
+const string mass_windowFitConstr = "rvmass>3.3 && rvmass<3.8";
+
 const int nMassBinsJpsi = 150;
 const double mass_windowJpsi_l = 2.5;
 const double mass_windowJpsi_h = 4.0;

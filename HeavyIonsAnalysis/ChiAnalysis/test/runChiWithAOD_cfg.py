@@ -34,7 +34,7 @@ process.options   = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 process.load('HeavyIonsAnalysis.Configuration.hfCoincFilter_cff')
 process.primaryVertexFilterPA = cms.EDFilter("VertexSelector",
     src = cms.InputTag("offlinePrimaryVertices"),
-    cut = cms.string("!isFake && abs(z) <= 50 && position.Rho <= 2 && tracksSize >= 2"),
+    cut = cms.string("!isFake && abs(z) <= 25 && position.Rho <= 2 && tracksSize >= 2"),
     filter = cms.bool(True),
 )
 process.noScraping = cms.EDFilter("FilterOutScraping",
