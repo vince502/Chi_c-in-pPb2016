@@ -21,6 +21,7 @@
 #include "TCanvas.h"
 #include "TAxis.h"
 #include "TLegend.h"
+#include "TPaveText.h"
 #include "TF1.h"
 #include "TClonesArray.h"
 
@@ -44,6 +45,7 @@
 #include <RooChebychev.h>
 #include <RooPolynomial.h>
 #include "RooDataHist.h"
+#include "RooHist.h"
 #include "RooCategory.h"
 #include "RooSimultaneous.h"
 #include "RooAddPdf.h"
@@ -59,6 +61,8 @@ using namespace RooFit;
 
 ofstream file_log;
 
+//string myPdfName = "nominalPdfSimDoubleCB";
+string myPdfName = "nominalPdfSimHypatia";
 
 int nParamOneFit = 5;//Since this is simultaneous fit, it is better to get ndf by hand (it is used in calculation of chi2/ndf per each part of simultaneous fit (chic1 and chic2)
 
@@ -82,6 +86,73 @@ TGraphAsymmErrors* gAsChic_mean1_pT, *gAsChic_mean1_y, *gAsChic_mean1_nTrk;
 TLorentzVector* LVchic, *LVdimuon, *LVconv, *LVmuon1, *LVmuon2;
 TLorentzVector* LVchic_rot, *LVchic_rotGamma, *LVdimuon_rot, *LVconv_rot, *LVmuon1_rot, *LVmuon2_rot;
 TLorentzVector LVaux;
+
+//////// double CB 
+
+class RooDoubleCB : public RooAbsPdf {  //double sided cb, taken from Alberto's code
+public:
+	RooDoubleCB() {};
+	RooDoubleCB(const char *name, const char *title,
+		RooAbsReal& _x,
+		RooAbsReal& _mu,
+		RooAbsReal& _sig,
+		RooAbsReal& _a1,
+		RooAbsReal& _n1,
+		RooAbsReal& _a2,
+		RooAbsReal& _n2);
+	RooDoubleCB(const RooDoubleCB& other, const char* name = 0);
+	virtual TObject* clone(const char* newname) const { return new RooDoubleCB(*this, newname); }
+	inline virtual ~RooDoubleCB() { }
+
+protected:
+
+	RooRealProxy x;
+	RooRealProxy mu;
+	RooRealProxy sig;
+	RooRealProxy a1;
+	RooRealProxy n1;
+	RooRealProxy a2;
+	RooRealProxy n2;
+
+	Double_t evaluate() const;
+
+private:
+
+	ClassDef(RooDoubleCB, 1)
+};
+
+///// Hypatia  - from roofit team - copied here since it requires root 6.2x
+
+class RooHypatia2 : public RooAbsPdf {
+public:
+	RooHypatia2() {};
+	RooHypatia2(const char *name, const char *title,
+		RooAbsReal& x, RooAbsReal& lambda, RooAbsReal& zeta, RooAbsReal& beta,
+		RooAbsReal& sigma, RooAbsReal& mu, RooAbsReal& a, RooAbsReal& n, RooAbsReal& a2, RooAbsReal& n2);
+	RooHypatia2(const RooHypatia2& other, const char* name = 0);
+	virtual TObject* clone(const char* newname) const override { return new RooHypatia2(*this, newname); }
+	inline virtual ~RooHypatia2() { }
+
+
+private:
+	RooRealProxy _x;
+	RooRealProxy _lambda;
+	RooRealProxy _zeta;
+	RooRealProxy _beta;
+	RooRealProxy _sigma;
+	RooRealProxy _mu;
+	RooRealProxy _a;
+	RooRealProxy _n;
+	RooRealProxy _a2;
+	RooRealProxy _n2;
+
+	Double_t evaluate() const override;
+	
+	/// \cond CLASS_DEF_DOXY
+	ClassDefOverride(RooHypatia2, 1);
+	/// \endcond
+};
+
 
 
 
@@ -124,27 +195,33 @@ int SetPointFromFit(TGraphAsymmErrors* gAsResult, string fitVarName, RooWorkspac
 
 bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 {
-	//if (pdfName.find("nominalPdf") != string::npos)
-	if (pdfName.compare("nominalPdf") == 0)
+	if (pdfName.compare("nominalPdfSimDoubleCB") == 0)
 	{
+		Ws.factory("RooDoubleCB::chic1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.02, 0.007, 0.034], alpha[1.85, 0.1, 10], n[2.7, 1.1, 50], alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 50])");
+		Ws.factory("RooChebychev::background_chi1(rvmass, a1_chi1[0,-1.5,1.5])");
+		Ws.factory("SUM::nominalPdf_chi1(nsig_chi1[2000,0,100000]*chic1, nbkg_chi1[200,0,10000]*background_chi1)");
 
-		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.05], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
 		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
-		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
-		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
-		Ws.factory("SUM::signal(c2toc1[0.4,0.1,1.]*chic2, chic1)");
-		//Ws.factory("Exponential::expbkg(rvmass,e_1[-0.2,-0.5,0])");
-		//Ws.factory("Uniform::one(rvmass)");
-		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
-		//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
-		Ws.factory("RooChebychev::background(rvmass, a1[0,-10,10])");
-
-
-		Ws.factory("SUM::nominalPdf(nsig[50,0,1000000]*signal, nbkg[2000,0,100000]*background)");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1.05, 1.00, 1.3])");
+		Ws.factory("RooDoubleCB::chic2(rvmass, mean2, sigma2, alpha, n, alphaH, nH)");
+		Ws.factory("RooChebychev::background_chi2(rvmass, a1_chi2[0,-1.5,1.5])");
+		Ws.factory("SUM::nominalPdf_chi2(nsig_chi2[50,0,100000]*chic2, nbkg_chi2[200,0,10000]*background_chi2)");
 	}
-	else if (pdfName.compare("nominalPdfSim") == 0)
+	if (pdfName.compare("nominalPdfSimHypatia") == 0)
 	{
-		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.01, 0.003, 0.035], alpha[1.85, 0.1, 50], n[2.7, 1.1, 50])");
+		Ws.factory("RooHypatia2::chic1(rvmass, lambda[-1], zeta[0], beta[-0.01], mean1[3.5107, 3.46, 3.53], sigma1[0.02, 0.007, 0.034], aSig1[50], nSig1[2], aSig2[50], nSig2[1])");
+		Ws.factory("RooChebychev::background_chi1(rvmass, a1_chi1[0,-1.5,1.5])");
+		Ws.factory("SUM::nominalPdf_chi1(nsig_chi1[2000,0,100000]*chic1, nbkg_chi1[200,0,10000]*background_chi1)");
+
+		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1.05, 1.00, 1.3])");
+		Ws.factory("RooHypatia2::chic2(rvmass, lambda, zeta, beta, mean2, sigma2,  aSig1,nSig1,aSig2,nSig2)");
+		Ws.factory("RooChebychev::background_chi2(rvmass, a1_chi2[0,-1.5,1.5])");
+		Ws.factory("SUM::nominalPdf_chi2(nsig_chi2[50,0,100000]*chic2, nbkg_chi2[200,0,10000]*background_chi2)");
+	}
+	else if (pdfName.compare("nominalPdfSimSingleCB") == 0)
+	{
+		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.01, 0.003, 0.034], alpha[1.85, 0.1, 50], n[2.7, 1.1, 50])");
 		Ws.factory("RooChebychev::background_chi1(rvmass, a1_chi1[0,-1.5,1.5])");
 		Ws.factory("SUM::nominalPdf_chi1(nsig_chi1[50,0,100000]*chic1, nbkg_chi1[200,0,10000]*background_chi1)");
 		
@@ -176,33 +253,96 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 
 
 
-bool RefreshModel(RooWorkspace& Ws) // attempt to prevent the fits in the differential bins to get stuck in a weird state when they stop converge properly
+bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fits in the differential bins to get stuck in a weird state when they stop converge properly
 {
+	if (pdfName.compare("nominalPdfSimDoubleCB") == 0)
+	{
+		Ws.var("mean1")->removeError();
+		Ws.var("sigma1")->removeError();
+		Ws.var("alpha")->removeError();
+		Ws.var("n")->removeError();
+		Ws.var("alphaH")->removeError();
+		Ws.var("nH")->removeError();
+		Ws.var("sigmaRatio")->removeError();
+		Ws.var("a1_chi1")->removeError();
+		Ws.var("a1_chi2")->removeError();
+		Ws.var("nsig_chi1")->removeError();
+		Ws.var("nsig_chi2")->removeError();
+		Ws.var("nbkg_chi1")->removeError();
+		Ws.var("nbkg_chi2")->removeError();
 
-	Ws.var("mean1")->removeError();
-	Ws.var("sigma1")->removeError();
-	Ws.var("alpha")->removeError();
-	Ws.var("n")->removeError();
-	Ws.var("sigmaRatio")->removeError();
-	Ws.var("a1_chi1")->removeError();
-	Ws.var("a1_chi2")->removeError();
-	Ws.var("nsig_chi1")->removeError();
-	Ws.var("nsig_chi2")->removeError();
-	Ws.var("nbkg_chi1")->removeError();
-	Ws.var("nbkg_chi2")->removeError();
+		Ws.var("mean1")->setVal(3.5107);
+		Ws.var("sigma1")->setVal(0.02);
+		Ws.var("alpha")->setVal(1.85);
+		Ws.var("n")->setVal(4.7);
+		Ws.var("alphaH")->setVal(1.85);
+		Ws.var("nH")->setVal(4.7);
+		Ws.var("sigmaRatio")->setVal(1.05);
+		Ws.var("a1_chi1")->setVal(0);
+		Ws.var("a1_chi2")->setVal(0);
+		Ws.var("nsig_chi1")->setVal(2000);
+		Ws.var("nsig_chi2")->setVal(1000);
+		Ws.var("nbkg_chi1")->setVal(200);
+		Ws.var("nbkg_chi2")->setVal(200);
+	}
+	else if (pdfName.compare("nominalPdfSimHypatia") == 0)
+	{
+		Ws.var("mean1")->removeError();
+		Ws.var("sigma1")->removeError();
+		//Ws.var("lambda")->removeError();
+		//Ws.var("zeta")->removeError();
+		//Ws.var("beta")->removeError();
+		////Ws.var("aSig1")->removeError();
+		//Ws.var("nSig1")->removeError();
+		Ws.var("sigmaRatio")->removeError();
+		//Ws.var("a1_chi1")->removeError();
+		//Ws.var("a1_chi2")->removeError();
+		Ws.var("nsig_chi1")->removeError();
+		Ws.var("nsig_chi2")->removeError();
+		Ws.var("nbkg_chi1")->removeError();
+		Ws.var("nbkg_chi2")->removeError();
 
-	Ws.var("mean1")->setVal(3.5107);
-	Ws.var("sigma1")->setVal(0.01);
-	Ws.var("alpha")->setVal(1.85);
-	Ws.var("n")->setVal(2.7);
-	Ws.var("sigmaRatio")->setVal(1.05);
-	Ws.var("a1_chi1")->setVal(0);
-	Ws.var("a1_chi2")->setVal(0);
-	Ws.var("nsig_chi1")->setVal(50);
-	Ws.var("nsig_chi2")->setVal(50);
-	Ws.var("nbkg_chi1")->setVal(200);
-	Ws.var("nbkg_chi2")->setVal(200);
+		Ws.var("mean1")->setVal(3.5107);
+		Ws.var("sigma1")->setVal(0.02);
+		//Ws.var("lambda")->setVal(-1);
+		//Ws.var("zeta")->setVal(0);
+		//Ws.var("beta")->setVal(0.01);
+		////Ws.var("aSig1")->setVal(50);
+		//Ws.var("nSig1")->setVal(2);
+		Ws.var("sigmaRatio")->setVal(1.05);
+	//	Ws.var("a1_chi1")->setVal(0);
+	//	Ws.var("a1_chi2")->setVal(0);
+		Ws.var("nsig_chi1")->setVal(2000);
+		Ws.var("nsig_chi2")->setVal(1000);
+		Ws.var("nbkg_chi1")->setVal(200);
+		Ws.var("nbkg_chi2")->setVal(200);
+	}
+	else if (pdfName.compare("nominalPdfSimSingleCB") == 0)
+	{
+		Ws.var("mean1")->removeError();
+		Ws.var("sigma1")->removeError();
+		Ws.var("alpha")->removeError();
+		Ws.var("n")->removeError();
+		Ws.var("sigmaRatio")->removeError();
+		Ws.var("a1_chi1")->removeError();
+		Ws.var("a1_chi2")->removeError();
+		Ws.var("nsig_chi1")->removeError();
+		Ws.var("nsig_chi2")->removeError();
+		Ws.var("nbkg_chi1")->removeError();
+		Ws.var("nbkg_chi2")->removeError();
 
+		Ws.var("mean1")->setVal(3.5107);
+		Ws.var("sigma1")->setVal(0.005);
+		Ws.var("alpha")->setVal(1.85);
+		Ws.var("n")->setVal(4.7);
+		Ws.var("sigmaRatio")->setVal(1.05);
+		Ws.var("a1_chi1")->setVal(0);
+		Ws.var("a1_chi2")->setVal(0);
+		Ws.var("nsig_chi1")->setVal(500);
+		Ws.var("nsig_chi2")->setVal(500);
+		Ws.var("nbkg_chi1")->setVal(200);
+		Ws.var("nbkg_chi2")->setVal(200);
+	}
 	return true;
 }
 
@@ -225,6 +365,11 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 	pad2->SetBottomMargin(0.67);
 	pad2->SetTicks(1, 1);
 
+	RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-8);
+	RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-8);
+
+	//RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-11);
+	//RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-11);
 
 	for (int i = 0; i < nbins; i++) {
 		cout << "Bins " << bins[i] << "  to  " << bins[i + 1] << endl;
@@ -240,7 +385,7 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 		RooDataSet* rdsDataBin = (RooDataSet*)Ws.data("rdsNominal_chicBoth")->reduce(strCut.c_str()); 
 
 		
-		RefreshModel(Ws);
+		RefreshModel(Ws, myPdfName);
 		cout << endl << "********* Starting Simutaneous Fit **************" << endl << endl;
 		RooFitResult* fitResultBin;
 		//if (i != 8) {
@@ -278,7 +423,7 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 			nBinSet = 2;
 		}
 
-		if (i != 2) {
+		//if (i != 2) {
 			RooArgList paramList = fitResultBin->floatParsFinal();
 			RooRealVar *par;
 			for (int j = 0; j < paramList.getSize(); j++)
@@ -299,7 +444,7 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 				// save as tgraphAsymmErrors
 				SetPointFromFit(gAsOutputArray[nBinSet][j], (string)par->getTitle(), Ws, i, bins);
 			}
-		}
+		//}
 		//if (binVarName.compare("rvpt") == 0) {
 		//	int nbin
 
@@ -465,8 +610,8 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 ////////////////////////////////////
 
 
-//void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_Constraint.root", const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
-void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9b-bothDir.root", const char* fileOut = "Chi_c_outConstr_MC9_NarrowRange.root", const char* fileRds = "rds_MC9_ConstraintNarrowRange.root", const char* fileConstraints = "Chi_c_constraints_MC9_NarrowRange.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
+void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v2-bothDir.root", const char* fileOut = "Chi_c_output_Officialv2_FullHypatia.root", const char* fileRds = "rds_Officialv2_ConstraintNarrowRange.root", const char* fileConstraints = "Chi_c_constraints_Officialv2_NarrowRangeHypatia.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
+//void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v2-bothDir.root", const char* fileOut = "Chi_c_output_Officialv2_FullDCB.root", const char* fileRds = "rds_Officialv2_ConstraintNarrowRange.root", const char* fileConstraints = "Chi_c_constraints_Officialv2_NarrowRangeDCB.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
 {
 
 	//gStyle->SetOptStat(1111);
@@ -543,38 +688,17 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 	gAsChic_mean1_nTrk = new TGraphAsymmErrors(nbins_nTrk);
 	gAsChic_mean1_nTrk->SetNameTitle("gAsChic_mean1_nTrk", "Chic mean1 ntrk dependence");
 
+
+
 	gAsOutputChi2_chic1 = new TGraph(nBinSets * 15); //assuming no more than 15 bins in each set, on average
 	gAsOutputChi2_chic2 = new TGraph(nBinSets * 15); //assuming no more than 15 bins in each set, on average
 	gAsOutputChi2_chic1->SetNameTitle("gAsOutputChi2_chic1", "Chi2/ndf for chic1");
 	gAsOutputChi2_chic2->SetNameTitle("gAsOutputChi2_chic2", "Chi2/ndf for chic2");
 
 
-	TH1D* hSignal = new TH1D("hSignal", "", 200, 3, 5);
-	TH1D* hSignal_SS = new TH1D("hSignal_SS", "", 200, 3, 5);
-	TH1D* hSignal_SB = new TH1D("hSignal_SB", "", 200, 3, 5);
-	TH1D* hSignal_rot = new TH1D("hSignal_rot", "", 200, 3, 5);
-	TH1D* hSignal_rotGamma = new TH1D("hSignal_rotGamma", "", 200, 3, 5);
-	TH1D* hSignal2 = new TH1D("hSignal2", "", 120, 3.2, 3.8);
-	TH1D* hSignal3 = new TH1D("hSignal3", "", 120, 3.2, 3.8);
-
-
-
-	TH1D* hdimuon_M = new TH1D("hdimuon_M", "", 300, 2, 5);
-	TH1D* hchic_M = new TH1D("hchic_M", "", 100, 2, 5);
-	TH1D* hphoton_M = new TH1D("hphoton_M", "", 1000, 0, 1);
-
-	TH1D* hdimuon_M_SS = new TH1D("hdimuon_M_SS", "", 300, 2, 5);
-	TH1D* hchic_M_SS = new TH1D("hchic_M_SS", "", 100, 2, 5);
-	TH1D* hdimuon_M_SB = new TH1D("hdimuon_M_SB", "", 300, 2, 5);
-	TH1D* hchic_M_SB = new TH1D("hchic_M_SB", "", 100, 2, 5);
-	TH1D* hdimuon_M_rot = new TH1D("hdimuon_M_rot", "", 300, 2, 5);
-	TH1D* hchic_M_rot = new TH1D("hchic_M_rot", "", 100, 2, 5);
-	TH1D* hchic_M_rotGamma = new TH1D("hchic_M_rotGamma", "", 100, 2, 5);
-
-
 
 		// Various
-	TH1D* hntracks_inEvent = new TH1D("hntracks_inEvent", "", 400, 0, 400);
+
 
 	TFile* f1 = new TFile(fileIn, "READ");
 
@@ -658,10 +782,9 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 			////////////////////////
 			//// V A R I O U S  ////
 			///////////////////////
-			hntracks_inEvent->Fill(ntracks_inEvent);
-			//cout << ntracks_inEvent << endl;
 
-			if (DimuonPassAllCutsMC(0) < 0 && ChiPassAllCutsMC(0) > -1) { cout << "SOMETHING WRONG, NO JPSI, BUT CHIC - SHOULD NOT HAPPEN"; } //test
+
+			//if (DimuonPassAllCutsMC(0) < 0 && ChiPassAllCutsMC(0) > -1) { cout << "SOMETHING WRONG, NO JPSI, BUT CHIC - SHOULD NOT HAPPEN"; } //test
 
 			//////////////
 			/// Jpsi ////
@@ -671,43 +794,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 			//{
 			int iJpsi = DimuonPassAllCutsMC(0); //assume just one gen
 			if (iJpsi < 0) continue; //no matched dimuon, won't have chic, done with the event
-			if (iJpsi > -1)
-			{
-
-				// Get Lorentz V
-				LVdimuon = (TLorentzVector*)dimuon_p4->At(iJpsi);
-
-				// Obtain yields
-
-				// fill dimuon stuff
-
-				double dimuonM = LVdimuon->M();
-
-				//roofit:
-				if (dimuonM > mass_windowJpsi_l && dimuonM < mass_windowJpsi_h) {
-					rvmassJpsi->setVal(dimuonM);
-					rvptJpsi->setVal(dimuon_pt->at(iJpsi));
-					rvrapJpsi->setVal(LVdimuon->Rapidity());
-					rvntrackJpsi->setVal(ntracks_inEvent); //for now using total
-
-					double accEff_Jpsi = hWeightJpsi->GetBinContent(hWeightJpsi->FindBin(abs(LVdimuon->Rapidity()), dimuon_pt->at(iJpsi)));
-					//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
-					if (accEff_Jpsi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
-						rvweightJpsi->setVal(1 / accEff_Jpsi);
-					}
-					else rvweightJpsi->setVal(1);
-
-					//rvweightJpsi->setVal(1); // no weights for now
-
-					if (isMC) {
-						rvweightJpsi->setVal(1); //no weights if MC
-					}
-
-					rdsNominalJpsi->add(*colsJpsi, rvweightJpsi->getVal());
-				}
-
-			} //end of Jpsi
-
+			
 
 			///////////////////////
 			/////   C H I C ///////
@@ -719,29 +806,10 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 			if (iChi > -1)
 			{
 				++nchicCounter;
-				//if (ChiSelectionPassMC(iChi, 0) == false)continue; //check it is matched and passed
-				// check Acceptance and Cuts
-				/*
-				//if (DimuonSelectionPass(dimuonPos) == false) continue;
-				passDimSel = DimuonSelectionPass(dimuonPos);
-				passDimSelTight = DimuonSelectionPassTight(dimuonPos);
-				// muon cuts
-				int muon1Pos = dimuon_muon1_position->at(dimuonPos);
-				int muon2Pos = dimuon_muon2_position->at(dimuonPos);
-				bool passedChiSel = true;
-				if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) passedChiSel = false;
-				if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) passedChiSel = false;
-				if (MuonSelectionPass(muon1Pos) == false) passedChiSel = false;
-				if (MuonSelectionPass(muon2Pos) == false) passedChiSel = false;
-				// photon
-				
-				if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) passedChiSel = false;
-				if (PhotSelectionPass(convPos) == false) passedChiSel = false;
-				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
-				*/
+
 
 				int dimuonPos = chi_daughterJpsi_position->at(iChi);
-				if (dimuonPos != iJpsi) { cout << "DIFFERENT JPSI" << endl; }
+			//	if (dimuonPos != iJpsi) { cout << "DIFFERENT JPSI" << endl; }
 				int convPos = chi_daughterConv_position->at(iChi);
 
 				// Get Lorentz V
@@ -755,30 +823,9 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 				double dimuonM = LVdimuon->M();
 				double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass
 
+				double pT_Jpsi = dimuon_pt->at(dimuonPos);
+				double rap_Jpsi = LVdimuon->Rapidity();
 
-
-				////////////////////////
-				////   refit     // comment out if not done
-				///////////////////////
-
-
-				double refit_vProb = 0, ctauPV = 0, ctauPVError = 0, ctauSig = 0, ctauPV3D = 0;
-
-				//if (chi_kinematicRefitFlag->at(iChi) == 1 || chi_kinematicRefitFlag->at(iChi) == 3) { //good refits
-
-				//	//cout << chi_refit_vprob->at(nRefitNumber) << endl;
-				//	//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
-				//	//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
-				//	//m_chi = chi_refitStored->at(iChi).mass();//use refit mass
-				//	ctauPV = chi_refit_ctauPV->at(iChi);
-				//	ctauPVError = chi_refit_ctauErrPV->at(iChi);
-				//	ctauSig = ctauPV / ctauPVError;
-				//	ctauPV3D = chi_refit_ctauPV3D->at(iChi);
-				//	refit_vProb = chi_refit_vprob->at(iChi);
-				//}
-				//else continue;//skip those that don't have it
-				//if (refit_vProb < 0.01) continue;
-				//Mdiff = chi_refitStored->at(iChi).mass();//use refit mass
 
 
 
@@ -789,11 +836,11 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 					//roofit:
 					if (Mdiff > mass_windowConstr_l && Mdiff < mass_windowConstr_h) {
 						rvmass->setVal(Mdiff);
-						rvpt->setVal(pT_chi);
-						rvrap->setVal(rap_chi);
-						rvntrack->setVal(ntracks_inEvent); //for now using total
+						rvpt->setVal(pT_Jpsi);
+						rvrap->setVal(rap_Jpsi);
+						rvntrack->setVal(pvtx_nTracks->at(dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos))); //for now using total
 						//rvweight->setVal(1); // no weights for now
-						double accEff_chi = hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
+						double accEff_chi = 1;// hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
 
 						if (isMC) {
 							rvweight->setVal(1); //no weights if MC
@@ -869,7 +916,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 		RooMsgService::instance().setGlobalKillBelow(RooFit::ERROR);
 		ROOT::Math::MinimizerOptions::SetDefaultPrintLevel(0);
-		
+
 		cout << "nEntries: " << rdsNominal->numEntries() << endl;
 		rdsNominal = (RooDataSet*)rdsNominal->reduce(mass_windowFitConstr.c_str());
 		rdsNominal_chicOne = (RooDataSet*)rdsNominal_chicOne->reduce(mass_windowFitConstr.c_str());
@@ -898,7 +945,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 		////////////////////////////
 
 
-		string myPdfName = "nominalPdfSim";
+		
 		CreateModelPdf(myWs, myPdfName);
 
 
@@ -930,7 +977,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 
 		cout << endl << "********* Starting Simutaneous Fit **************" << endl << endl;
-		RooFitResult* fitResSim = myWs.pdf("simPdfChi")->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), Save(true));
+		//RooFitResult* fitResSim = myWs.pdf("simPdfChi")->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), Save(true));
 		//myWs.pdf("simPdfChi")->fitTo(*rdsDataBin, Extended(true), SumW2Error(true), NumCPU(1), Save(true));
 		cout << endl << "********* Finished Simutaneous Fit **************" << endl << endl;
 		//cout << endl << "Importing fit result..." << endl;
@@ -993,58 +1040,15 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 		cTest->SaveAs("CanvasCTest_RW3.png");
 		//*/
-		
 
-
-
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-2.4 && rvrap <2.4", "all");
 		FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6.5 && rvpt <30", "all");
-		
 		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
 		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap<-1 || rvrap >1)", "fwdrap");
+		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-2.4 && rvrap <2.4", "all");
 		FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "midrap");
-
-		//////////////
-		////   OLD  ///
-		////////////////
+		
 
 
-		// pT fitting
-		/*
-		for (int i = 0; i < nbins_pT; i++) {
-			RooPlot *massframeBin = rvmass->frame(mass_windowFitConstr_l, mass_windowFitConstr_h, nMassBinsConstr);
-			massframeBin->SetTitle("mass");
-			cout << bins_pT[i] << endl;
-			TString TstrCut = TString::Format("rvpt > %f", bins_pT[i]) + " && " + TString::Format("rvpt < %f", bins_pT[i + 1]) + " && rvrap>-1 && rvrap <1";
-			cout << TstrCut << endl;
-			string strCut = TstrCut.Data();
-			RooDataSet* rdsDataBin = (RooDataSet*)myWs.data("rdsNominal")->reduce(strCut.c_str());
-			rdsDataBin->plotOn(massframeBin);
-
-
-			RooFitResult* fitResultBin = myWs.pdf(myPdfName.c_str())->fitTo(*rdsDataBin, SumW2Error(true));// , Extended(true), SumW2Error(true), Range(mass_windowFitConstr_l, mass_windowFitConstr_h), NumCPU(1), Save(true));
-			//fitResultBin->Print("v");
-			//myWs.import(*fitResultBin, TString::Format("fitResult_%s", myPdfNameBin.c_str()));
-			cout << "signal " << myWs.var("nsig")->getValV() << endl;
-			gAsChic_pT->SetPoint(i, ((bins_pT[i] + bins_pT[i + 1]) / 2.0), myWs.var("nsig")->getValV()); //placing the point in the middle of the bin
-			gAsChic_pT->SetPointEYhigh(i, myWs.var("nsig")->getErrorHi());
-			gAsChic_pT->SetPointEYlow(i, -(myWs.var("nsig")->getErrorLo()));
-
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin);
-			myWs.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen+2));
-
-
-			massframeBin->Draw();
-			cTest->SaveAs(Form("CanvasCTest_RW3_pT_%.1f_%.1f.png", bins_pT[i], bins_pT[i + 1]));
-
-		}*/
-
-		//FitRooDataSet(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", intConstrainedFit);
-		//FitRooDataSet(gAsChic_y, bins_y, nbins_y, rvmass, myWs, false, "rvrap", myPdfName.c_str(), " && rvpt>6 && rvpt <30", "all", intConstrainedFit);
-		//FitRooDataSet(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", intConstrainedFit);
 
 
 	}
@@ -1056,17 +1060,7 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 
 	if (flagRunFits == true)
 	{
-		gAsChic_pT->Write();
-		gAsJpsi_pT->Write();
-		gAsRatio_pT->Write();
-		//can_pT->Write();
-		gAsChic_y->Write();
-		gAsJpsi_y->Write();
-		gAsRatio_y->Write();
-		//can_y->Write();
-		gAsChic_nTrk->Write();
-		gAsJpsi_nTrk->Write();
-		gAsRatio_nTrk->Write();
+
 		gAsOutputChi2_chic1->Write();
 		gAsOutputChi2_chic2->Write();
 	}
@@ -1127,3 +1121,267 @@ void ConstraintProducer(bool flagGenerateRds = true, bool flagRunFits = true, co
 }
 
 
+RooDoubleCB::RooDoubleCB(const char *name, const char *title,
+	RooAbsReal& _x,
+	RooAbsReal& _mu,
+	RooAbsReal& _sig,
+	RooAbsReal& _a1,
+	RooAbsReal& _n1,
+	RooAbsReal& _a2,
+	RooAbsReal& _n2) :
+	RooAbsPdf(name, title),
+	x("x", "x", this, _x),
+	mu("mu", "mu", this, _mu),
+	sig("sig", "sig", this, _sig),
+	a1("a1", "a1", this, _a1),
+	n1("n1", "n1", this, _n1),
+	a2("a2", "a2", this, _a2),
+	n2("n2", "n2", this, _n2)
+{
+}
+
+
+RooDoubleCB::RooDoubleCB(const RooDoubleCB& other, const char* name) :
+	RooAbsPdf(other, name),
+	x("x", this, other.x),
+	mu("mu", this, other.mu),
+	sig("sig", this, other.sig),
+	a1("a1", this, other.a1),
+	n1("n1", this, other.n1),
+	a2("a2", this, other.a2),
+	n2("n2", this, other.n2)
+{
+}
+
+
+
+Double_t RooDoubleCB::evaluate() const
+{
+	double u = (x - mu) / sig;
+	double A1 = TMath::Power(n1 / TMath::Abs(a1), n1)*TMath::Exp(-a1 * a1 / 2);
+	double A2 = TMath::Power(n2 / TMath::Abs(a2), n2)*TMath::Exp(-a2 * a2 / 2);
+	double B1 = n1 / TMath::Abs(a1) - TMath::Abs(a1);
+	double B2 = n2 / TMath::Abs(a2) - TMath::Abs(a2);
+
+	double result(1);
+	if (u < -a1) result *= A1 * TMath::Power(B1 - u, -n1);
+	else if (u < a2)  result *= TMath::Exp(-u * u / 2);
+	else            result *= A2 * TMath::Power(B2 + u, -n2);
+	return result;
+}
+
+
+
+
+/// \param[in] n2 Shape parameter of right tail (\f$ n2 \ge 0 \f$). With \f$ n2 = 0 \f$, the function is constant.
+RooHypatia2::RooHypatia2(const char *name, const char *title, RooAbsReal& x, RooAbsReal& lambda,
+	RooAbsReal& zeta, RooAbsReal& beta, RooAbsReal& sigm, RooAbsReal& mu, RooAbsReal& a,
+	RooAbsReal& n, RooAbsReal& a2, RooAbsReal& n2) :
+	RooAbsPdf(name, title),
+	_x("x", "x", this, x),
+	_lambda("lambda", "Lambda", this, lambda),
+	_zeta("zeta", "zeta", this, zeta),
+	_beta("beta", "Asymmetry parameter beta", this, beta),
+	_sigma("sigma", "Width parameter sigma", this, sigm),
+	_mu("mu", "Location parameter mu", this, mu),
+	_a("a", "Left tail location a", this, a),
+	_n("n", "Left tail parameter n", this, n),
+	_a2("a2", "Right tail location a2", this, a2),
+	_n2("n2", "Right tail parameter n2", this, n2)
+{
+//	RooHelpers::checkRangeOfParameters(this, { &sigm }, 0.);
+//	RooHelpers::checkRangeOfParameters(this, { &zeta, &n, &n2, &a, &a2 }, 0., std::numeric_limits<double>::max(), true);
+//	if (zeta.getVal() == 0. && zeta.isConstant()) {
+//		RooHelpers::checkRangeOfParameters(this, { &lambda }, -std::numeric_limits<double>::max(), 0., false,
+//			std::string("Lambda needs to be negative when ") + _zeta.GetName() + " is zero.");
+//	}
+//
+//#ifndef R__HAS_MATHMORE
+//	throw std::logic_error("RooHypatia2 needs ROOT with mathmore enabled to access gsl functions.");
+//#endif
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// Copy a new Hypatia2 PDF.
+/// \param[in] other Original to copy from.
+/// \param[in] name Optional new name.
+RooHypatia2::RooHypatia2(const RooHypatia2& other, const char* name) :
+	RooAbsPdf(other, name),
+	_x("x", this, other._x),
+	_lambda("lambda", this, other._lambda),
+	_zeta("zeta", this, other._zeta),
+	_beta("beta", this, other._beta),
+	_sigma("sigma", this, other._sigma),
+	_mu("mu", this, other._mu),
+	_a("a", this, other._a),
+	_n("n", this, other._n),
+	_a2("a2", this, other._a2),
+	_n2("n2", this, other._n2)
+{
+#ifndef R__HAS_MATHMORE
+	throw std::logic_error("RooHypatia2 needs ROOT with mathmore enabled to access gsl functions.");
+#endif
+}
+
+namespace {
+	const double sq2pi_inv = 1. / std::sqrt(TMath::TwoPi());
+	const double logsq2pi = std::log(std::sqrt(TMath::TwoPi()));
+	const double ln2 = std::log(2.);
+
+	double low_x_BK(double nu, double x) {
+		return TMath::Gamma(nu)*std::pow(2., nu - 1.)*std::pow(x, -nu);
+	}
+
+	double low_x_LnBK(double nu, double x) {
+		return std::log(TMath::Gamma(nu)) + ln2 * (nu - 1.) - std::log(x) * nu;
+	}
+
+	double besselK(double ni, double x) {
+		const double nu = std::fabs(ni);
+		if ((x < 1.e-06 && nu > 0.) ||
+			(x < 1.e-04 && nu > 0. && nu < 55.) ||
+			(x < 0.1 && nu >= 55.))
+			return low_x_BK(nu, x);
+
+#ifdef R__HAS_MATHMORE
+		return ROOT::Math::cyl_bessel_k(nu, x);
+#else
+		return std::numeric_limits<double>::signaling_NaN();
+#endif
+
+	}
+
+	double LnBesselK(double ni, double x) {
+		const double nu = std::fabs(ni);
+		if ((x < 1.e-06 && nu > 0.) ||
+			(x < 1.e-04 && nu > 0. && nu < 55.) ||
+			(x < 0.1 && nu >= 55.))
+			return low_x_LnBK(nu, x);
+
+#ifdef R__HAS_MATHMORE
+		return std::log(ROOT::Math::cyl_bessel_k(nu, x));
+#else
+		return std::numeric_limits<double>::signaling_NaN();
+#endif
+	}
+
+
+	double LogEval(double d, double l, double alpha, double beta, double delta) {
+		const double gamma = alpha;//std::sqrt(alpha*alpha-beta*beta);
+		const double dg = delta * gamma;
+		const double thing = delta * delta + d * d;
+		const double logno = l * std::log(gamma / delta) - logsq2pi - LnBesselK(l, dg);
+
+		return std::exp(logno + beta * d
+			+ (0.5 - l)*(std::log(alpha) - 0.5*std::log(thing))
+			+ LnBesselK(l - 0.5, alpha*std::sqrt(thing)));// + std::log(std::fabs(beta)+0.0001) );
+
+	}
+
+
+	double diff_eval(double d, double l, double alpha, double beta, double delta) {
+		const double gamma = alpha;
+		const double dg = delta * gamma;
+
+		const double thing = delta * delta + d * d;
+		const double sqrthing = std::sqrt(thing);
+		const double alphasq = alpha * sqrthing;
+		const double no = std::pow(gamma / delta, l) / besselK(l, dg)*sq2pi_inv;
+		const double ns1 = 0.5 - l;
+
+		return no * std::pow(alpha, ns1) * std::pow(thing, l / 2. - 1.25)
+			* (-d * alphasq * (besselK(l - 1.5, alphasq)
+				+ besselK(l + 0.5, alphasq))
+				+ (2.*(beta*thing + d * l) - d) * besselK(ns1, alphasq))
+			* std::exp(beta*d) * 0.5;
+	}
+
+	/*
+	double Gauss2F1(double a, double b, double c, double x){
+	  if (fabs(x) <= 1.) {
+		return ROOT::Math::hyperg(a, b, c, x);
+	  } else {
+		return ROOT::Math::hyperg(c-a, b, c, 1-1/(1-x))/std::pow(1-x, b);
+	  }
+	}
+
+	double stIntegral(double d1, double delta, double l){
+	  return d1 * Gauss2F1(0.5, 0.5-l, 3./2, -d1*d1/(delta*delta));
+	}
+	*/
+}
+
+double RooHypatia2::evaluate() const
+{
+	const double d = _x - _mu;
+	const double cons0 = std::sqrt(_zeta);
+	const double asigma = _a * _sigma;
+	const double a2sigma = _a2 * _sigma;
+	const double beta = _beta;
+	double out = 0.;
+
+	if (_zeta > 0.) {
+		// careful if zeta -> 0. You can implement a function for the ratio,
+		// but careful again that |nu + 1 | != |nu| + 1 so you have to deal with the signs
+		const double phi = besselK(_lambda + 1., _zeta) / besselK(_lambda, _zeta);
+		const double cons1 = _sigma / std::sqrt(phi);
+		const double alpha = cons0 / cons1;
+		const double delta = cons0 * cons1;
+
+		if (d < -asigma) {
+			const double k1 = LogEval(-asigma, _lambda, alpha, beta, delta);
+			const double k2 = diff_eval(-asigma, _lambda, alpha, beta, delta);
+			const double B = -asigma + _n * k1 / k2;
+			const double A = k1 * std::pow(B + asigma, _n);
+
+			out = A * std::pow(B - d, -_n);
+		}
+		else if (d > a2sigma) {
+			const double k1 = LogEval(a2sigma, _lambda, alpha, beta, delta);
+			const double k2 = diff_eval(a2sigma, _lambda, alpha, beta, delta);
+			const double B = -a2sigma - _n2 * k1 / k2;
+			const double A = k1 * std::pow(B + a2sigma, _n2);
+
+			out = A * std::pow(B + d, -_n2);
+		}
+		else {
+			out = LogEval(d, _lambda, alpha, beta, delta);
+		}
+	}
+	else if (_zeta < 0.) {
+		coutE(Eval) << "The parameter " << _zeta.GetName() << " of the RooHypatia2 " << GetName() << " cannot be < 0." << std::endl;
+	}
+	else if (_lambda < 0.) {
+		const double delta = _sigma;
+
+		if (d < -asigma) {
+			const double cons1 = std::exp(-beta * asigma);
+			const double phi = 1. + _a * _a;
+			const double k1 = cons1 * std::pow(phi, _lambda - 0.5);
+			const double k2 = beta * k1 - cons1 * (_lambda - 0.5) * std::pow(phi, _lambda - 1.5) * 2.*_a / delta;
+			const double B = -asigma + _n * k1 / k2;
+			const double A = k1 * std::pow(B + asigma, _n);
+
+			out = A * std::pow(B - d, -_n);
+		}
+		else if (d > a2sigma) {
+			const double cons1 = std::exp(beta*a2sigma);
+			const double phi = 1. + _a2 * _a2;
+			const double k1 = cons1 * std::pow(phi, _lambda - 0.5);
+			const double k2 = beta * k1 + cons1 * (_lambda - 0.5) * std::pow(phi, _lambda - 1.5) * 2.*_a2 / delta;
+			const double B = -a2sigma - _n2 * k1 / k2;
+			const double A = k1 * std::pow(B + a2sigma, _n2);
+
+			out = A * std::pow(B + d, -_n2);
+		}
+		else {
+			out = std::exp(beta*d) * std::pow(1. + d * d / (delta*delta), _lambda - 0.5);
+		}
+	}
+	else {
+		coutE(Eval) << "zeta = 0 only supported for lambda < 0. lambda = " << double(_lambda) << std::endl;
+	}
+
+	return out;
+}

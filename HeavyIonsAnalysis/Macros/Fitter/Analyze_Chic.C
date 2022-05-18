@@ -20,6 +20,8 @@
 #include "TCanvas.h"
 #include "TAxis.h"
 #include "TLegend.h"
+#include "TPaveText.h"
+#include "TRandom3.h"
 #include "TF1.h"
 #include "TClonesArray.h"
 
@@ -43,9 +45,12 @@
 #include <RooChebychev.h>
 #include <RooPolynomial.h>
 #include "RooDataHist.h"
+#include "RooHist.h"
 #include "RooCategory.h"
 #include "RooSimultaneous.h"
 #include "RooMsgService.h"
+
+
 
 #include "../tdrstyle.C"
 #include "../CMS_lumi.C"
@@ -60,6 +65,40 @@
 #include "TMVA/MethodCuts.h"
 #endif
 
+class RooDoubleCB : public RooAbsPdf {  //double sided cb, taken from Alberto's code
+public:
+	RooDoubleCB() {};
+	RooDoubleCB(const char *name, const char *title,
+		RooAbsReal& _x,
+		RooAbsReal& _mu,
+		RooAbsReal& _sig,
+		RooAbsReal& _a1,
+		RooAbsReal& _n1,
+		RooAbsReal& _a2,
+		RooAbsReal& _n2);
+	RooDoubleCB(const RooDoubleCB& other, const char* name = 0);
+	virtual TObject* clone(const char* newname) const { return new RooDoubleCB(*this, newname); }
+	inline virtual ~RooDoubleCB() { }
+
+protected:
+
+	RooRealProxy x;
+	RooRealProxy mu;
+	RooRealProxy sig;
+	RooRealProxy a1;
+	RooRealProxy n1;
+	RooRealProxy a2;
+	RooRealProxy n2;
+
+	Double_t evaluate() const;
+
+private:
+
+	ClassDef(RooDoubleCB, 1) 
+};
+
+
+
 
 
 using namespace std;
@@ -68,18 +107,19 @@ using namespace RooFit;
 ofstream file_log;
 
 
-// constraints
 
+///*
 TGraphAsymmErrors* gAsChic_alpha_pT, *gAsChic_alpha_y, *gAsChic_alpha_nTrk;
 TGraphAsymmErrors* gAsChic_n_pT, *gAsChic_n_y, *gAsChic_n_nTrk;
 TGraphAsymmErrors* gAsChic_sigmaRat_pT, *gAsChic_sigmaRat_y, *gAsChic_sigmaRat_nTrk;
 TGraphAsymmErrors* gAsChic_sigma1_pT, *gAsChic_sigma1_y, *gAsChic_sigma1_nTrk;
 TGraphAsymmErrors* gAsChic_mean1_pT, *gAsChic_mean1_y, *gAsChic_mean1_nTrk;
-
+//*/
 
 TLorentzVector* LVchic, *LVdimuon, *LVconv, *LVmuon1, *LVmuon2;
 TLorentzVector* LVchic_rot, *LVchic_rotGamma, *LVdimuon_rot, *LVconv_rot, *LVmuon1_rot, *LVmuon2_rot;
 TLorentzVector LVaux;
+
 
 int GetRatio (TGraphAsymmErrors* gAsResult, TGraphAsymmErrors* gAsNum, TGraphAsymmErrors* gAsDen) // dependent on root version, this is prior 6.20
 {
@@ -109,6 +149,27 @@ int GetRatio (TGraphAsymmErrors* gAsResult, TGraphAsymmErrors* gAsNum, TGraphAsy
 	return 0;
 }
 
+int GetCorrectedRatio(TGraphAsymmErrors* gAsResult, TGraphAsymmErrors* gAsNum, TGraphAsymmErrors* gAsDen, const char* fileCorrection, const char* corrName)
+{
+	GetRatio(gAsResult, gAsNum, gAsDen);
+	TFile* fCor = new TFile(fileCorrection, "READ");
+	cout << "Opening correction: "<< corrName << endl;
+	TH1D* hCor = (TH1D*)fCor->Get(corrName);
+	cout << "Opened" << endl;
+	for (int i = 0; i < hCor->GetNbinsX(); i++)
+	{
+		double corr = hCor->GetBinContent(i + 1); //TH1 numbering offset by 1
+		cout << corr << endl;
+		gAsResult->GetY()[i] *= (1 / corr);
+		gAsResult->SetPointEYhigh(i, gAsResult->GetErrorYhigh(i) / corr);
+		gAsResult->SetPointEYlow(i, gAsResult->GetErrorYlow(i) / corr);
+	}
+	cout << "DoneCorrecting" << endl;
+	fCor->Close();
+	return 0;
+}
+
+
 int SetPointFromFit(TGraphAsymmErrors* gAsResult, string fitVarName, RooWorkspace& Ws, int i, double* bins)
 {
 	gAsResult->SetPoint(i, ((bins[i] + bins[i + 1]) / 2.0), Ws.var(fitVarName.c_str())->getValV()); //placing the point in the middle of the bin
@@ -121,36 +182,158 @@ int SetPointFromFit(TGraphAsymmErrors* gAsResult, string fitVarName, RooWorkspac
 bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = false)
 {
 
-	//RooRealVar erf_offset("erf_offset", "erf_offset", 3.3, 3.1, 3.5);
-	//RooRealVar erf_sigma("erf_sigma", "erf_sigma", 0.1, 0.04, 0.2);
-	//RooGenericPdf *ErfPdf = new RooGenericPdf("ErfPdf", "Error Function with offset and mean", "(TMath::Erf((@0-@1)/(TMath::Sqrt(2)*@2))+1)*0.5", RooArgList(*(Ws.var("rvmass")), erf_offset, erf_sigma));
-	//Ws.import(*ErfPdf);
+	if (pdfName.compare("DoubleSidedCB_BPHOffset") == 0 || pdfName.compare("nominalPdf") == 0)
+	{
+		Ws.factory("RooDoubleCB::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50], alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 50])");
+		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+		Ws.factory("RooDoubleCB::chic2(rvmass, mean2, sigma2, alpha, n, alphaH, nH)");
+		Ws.factory("SUM::signal(chic1, c2ratio[0.3,0.1,1.0]*chic2)");
 
-	//RooRealVar exp_lambda("exp_lambda", "exp_lambda", -0.1, -0.2, 0.0);
-	//RooRealVar exp_const("exp_const", "exp_const", 0.8, 0.01, 1.0);
-	//Ws.import(exp_lambda);
-	//Ws.import(exp_const);
-	//Ws.factory("EXPR::expConst('exp(exp_lambda * rvmass) + exp_const', rvmass, exp_lambda, exp_const)");
-	//
-	//= new RooGenericPdf("ErfPdf", "Error Function with offset and mean", "(TMath::Erf((@0-@1)/(TMath::Sqrt(2)*@2))+1)*0.5", RooArgList(*(Ws.var("rvmass")), erf_offset, erf_sigma));
-	//Ws.import(*ErfPdf);
+		Ws.factory("expr::delta('rvmass-qzero', rvmass, qzero[3.2])");
+		Ws.factory("expr::b1('beta_bkg*(rvmass-qzero)', rvmass, qzero, beta_bkg[-2, -3.3, -0.5])");
+		Ws.factory("EXPR::background('pow(delta,alpha_bkg)*exp(b1)',delta, b1, alpha_bkg[0.2, 0.1, 0.8])");
 
+		if (bConstrainedFit == true) {
 
+			Ws.var("alpha")->setConstant(true);
+			Ws.var("n")->setConstant(true);
+			Ws.var("alphaH")->setConstant(true);
+			Ws.var("nH")->setConstant(true);
+			Ws.var("sigmaRatio")->setConstant(true);
+			Ws.var("sigma1")->setConstant(true);
+			Ws.var("mean1")->setConstant(true);
+		}
 
-	//if (pdfName.find("nominalPdf") != string::npos)
-	if (pdfName.compare("nominalPdf") == 0)
+		Ws.factory("SUM::nominalPdf(nsig[5000,20,10000]*signal, nbkg[2000,0,10000]*background)");
+
+	}
+	if (pdfName.compare("DoubleSidedCB_D0BG") == 0)
+	{
+		//Update//Ws.factory("CBShape::signal(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
+		////Ws.factory("RooCrystalBall::signal(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50], alpha, n)");
+		//Ws.factory("RooDstD0BG::background(rvmass, massOffset[3.15,3.1,3.2], A_bkg[0.04,0.015,0.4], B_bkg[0], C_bkg[2,-4,4])");
+		//Ws.factory("SUM::nominalPdf(nsig[5000,20,10000]*signal, nbkg[2000,0,10000]*background)");
+	}
+
+	if (pdfName.compare("SingleCB_BPHOffset") == 0)
 	{
 		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
 		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
 		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
 		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
-		Ws.factory("SUM::signal(c2toc1[0.4,0.1,1.]*chic2, chic1)");
+		Ws.factory("SUM::signal(chic1, c2ratio[0.3,0.1,1.0]*chic2)");
+
+		Ws.factory("expr::delta('rvmass-qzero', rvmass, qzero[3.2])");
+		Ws.factory("expr::b1('beta_bkg*(rvmass-qzero)', rvmass, qzero, beta_bkg[-2, -3.3, -0.5])");
+		Ws.factory("EXPR::background('pow(delta,alpha_bkg)*exp(b1)',delta, b1, alpha_bkg[0.2, 0.1, 0.8])");
+
+		if (bConstrainedFit == true) {
+
+			Ws.var("alpha")->setConstant(true);
+			Ws.var("n")->setConstant(true);
+			Ws.var("sigmaRatio")->setConstant(true);
+			Ws.var("sigma1")->setConstant(true);
+			Ws.var("mean1")->setConstant(true);
+		}
+
+		Ws.factory("SUM::nominalPdf(nsig[5000,20,10000]*signal, nbkg[2000,0,10000]*background)");
+
+	}
+	if (pdfName.compare("SingleCB_D0BG") == 0)
+	{
+		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
+		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
+		Ws.factory("SUM::signal(chic1, c2ratio[0.3,0.1,1.0]*chic2)");
+		Ws.factory("RooDstD0BG::background(rvmass, massOffset[3.15,3.1,3.2], A_bkg[0.04,0.015,0.4], B_bkg[0], C_bkg[2,-4,4])");
+
+		if (bConstrainedFit == true) {
+
+			Ws.var("alpha")->setConstant(true);
+			Ws.var("n")->setConstant(true);
+			Ws.var("sigmaRatio")->setConstant(true);
+			Ws.var("sigma1")->setConstant(true);
+			Ws.var("mean1")->setConstant(true);
+		}
+
+		Ws.factory("SUM::nominalPdf(nsig[5000,20,10000]*signal, nbkg[2000,0,10000]*background)");
+
+	}
+
+	//if (pdfName.compare("nominalPdf") == 0)
+	//{
+	////	Ws.factory("RooDoubleCB::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50],alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 50])");
+	////	Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+	////	Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+	////	Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
+	////	Ws.factory("SUM::signal(chic1, c2ratio[0.3,0.1,1.0]*chic2)");
+	////	//Ws.factory("SUM::signal(c2ratio[0.99,0.98,1.]*chic2, chic1)");
+	////	//Ws.factory("SUM::signal(chic2, chic1)");
+	////	//Ws.factory("Exponential::expbkg(rvmass,e_1[-0.2,-0.5,0])");
+	////	//Ws.factory("Uniform::one(rvmass)");
+	////	//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
+	////	//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
+	////	//Ws.factory("expr::massOffset('rvmass-qzero', rvmass, qzero[3.2])");
+	////	////Ws.factory("expr::massOffset('pow(rvmass,qzero)', rvmass, qzero[3.2])");
+	////	////"RooFormulaVar::sigma2('@0*@1',{fracS[1.8,1.2,2.4],sigma1})",
+	////	//Ws.factory("Exponential::expbkg(massOffset,beta_1[-1.0,-3,0])");
+	////	//Ws.factory("EXPR::background('pow(massOffset,alpha_1)*expbkg',massOffset,expbkg, alpha_1[2,0.01,10])");
+	////	////Ws.factory("RooChebychev::background(rvmass, a1[0,-10,10])");
+	////	////////////not done 
+	////	//Ws.factory("PROD::background(expbkg, EXPR::powerLaw('pow(massOffset,alpha_1)', massOffset, alpha_1[0.5,0.01,2]))");
+	////	//w->factory("PROD::bkg(  Decay::bkg_t( dt, tau, gm, DoubleSided),"
+	////		//"ArgusBG::bkg_m( mes, 5.291, k[-100,-10]))");
+
+
+	////	//RooAbsPdf *bkg1 = 0;
+
+	////	//RooRealVar alpha_1("alpha_1", "alpha_1", 0.2, 0.1, 0.8);
+	////	//RooRealVar beta("beta", "beta", -2., -3.3, -0.5);
+	////	//RooRealVar q0("q0", "q0", 3.2);
+	////	//infM = 3.2
+	//////	RooFormulaVar delta("delta", "(@0-@1)", RooArgList(rvmass, q0));
+	////	//RooFormulaVar b1("b1", "@0*(@1-@2)", RooArgList(beta, rvmass, q0));
+	////	//bkg1 = new RooGenericPdf("bkg1", "Background", "pow(@0,@1)*exp(@2)", RooArgList(delta, alpha_1, b1));
+
+	////	Ws.factory("expr::delta('rvmass-qzero', rvmass, qzero[3.15,3,3.2])");
+	////	Ws.factory("expr::b1('beta*(rvmass-qzero)', rvmass, qzero, beta[-2, -3.3, -0.5])");
+
+	////	Ws.factory("EXPR::background('pow(delta,alpha_1)*exp(b1)',delta, b1, alpha_1[0.2, 0.1, 0.8])");
+
+	////	if (bConstrainedFit == true) {
+
+	////		Ws.var("alpha")->setConstant(true);
+	////		Ws.var("n")->setConstant(true);
+	////		Ws.var("sigmaRatio")->setConstant(true);
+	////		Ws.var("sigma1")->setConstant(true);
+	////		Ws.var("mean1")->setConstant(true);
+	////	}
+	////	//Ws.var("mean1")->setConstant(true);
+	////	//Ws.var("mean2")->setConstant(true);
+	////	//Ws.var("erf_offset")->setConstant(true);
+	////	//Ws.var("erf_sigma")->setConstant(true);
+	////	//Ws.factory("")
+
+	////	Ws.factory("SUM::nominalPdf(nsig[5000,20,10000]*signal, nbkg[2000,0,10000]*background)");
+
+	//
+	//}
+
+	if (pdfName.compare("nominalFlatBkg") == 0)
+	{
+		Ws.factory("CBShape::chic1(rvmass, mean1[3.5107, 3.48, 3.52], sigma1[0.005, 0.003, 0.08], alpha[1.85, 0.1, 50], n[1.7, 0.2, 50])");
+		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
+		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
+		Ws.factory("CBShape::chic2(rvmass, mean2, sigma2, alpha, n)");
+		Ws.factory("SUM::signal(c2ratio[0.4,0.1,1.]*chic2, chic1)");
 		//Ws.factory("Exponential::expbkg(rvmass,e_1[-0.2,-0.5,0])");
 		//Ws.factory("Uniform::one(rvmass)");
 		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
 		//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
 		Ws.factory("RooChebychev::background(rvmass, a1[0,-10,10])");
-		
+
 		if (bConstrainedFit == true) {
 
 			Ws.var("alpha")->setConstant(true);
@@ -172,14 +355,14 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 		//Ws.factory("CBShape::signalJpsi(rvmassJpsi, mean1Jpsi[3.097, 3.05, 3.15], sigma1Jpsi[0.03, 0.003, 0.08], alphaJpsi[1.85, 0.1, 50], nJpsi[1.7, 0.2, 50])");
 		Ws.factory("CBShape::Jpsi1(rvmassJpsi, mean1Jpsi[3.097, 3.05, 3.15], sigma1Jpsi[0.03, 0.003, 0.08], alphaJpsi[1.85, 0.1, 50], nJpsi[1.7, 0.2, 50])");
 		Ws.factory("CBShape::Jpsi2(rvmassJpsi, mean1Jpsi, sigma2Jpsi[0.03, 0.003, 0.08], alphaJpsi, nJpsi)");
-		Ws.factory("CBShape::psi2(rvmassJpsi, mean2Jpsi[3.686, 3.50, 3.75], sigma1Jpsi, alphaJpsi, nJpsi)");
-		Ws.factory("SUM::Jpsi(ratioJpsi[0.5,0.00,1.0]*Jpsi1, Jpsi2)");
-		Ws.factory("SUM::signalJpsi(ratioPsi[0.1,0.00,2.0]*psi2, Jpsi)");
+		//Ws.factory("CBShape::psi2(rvmassJpsi, mean2Jpsi[3.686, 3.50, 3.75], sigma3Jpsi[0.03, 0.003, 0.08], alphaJpsi, nJpsi)");
+		Ws.factory("SUM::signalJpsi(ratioJpsi[0.5,0.00,1.0]*Jpsi1, Jpsi2)");
+		//Ws.factory("SUM::signalJpsi(ratioPsi[0.1,0.00,2.0]*psi2, Jpsi)");
 
 		//Ws.factory("Uniform::one(rvmass)");
 		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
 		//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
-		Ws.factory("Exponential::backgroundJpsi(rvmassJpsi,e_1Jpsi[-0.2,-2.5,0])");
+		Ws.factory("Exponential::backgroundJpsi(rvmassJpsi,e_1Jpsi[-0.2,-0.7,0])");
 		//Ws.factory("RooChebychev::backgroundJpsi(rvmassJpsi, a1Jpsi[-0.05,-40.0, 40.0])");
 		//Ws.var("alphaJpsi")->setConstant(true);
 		//Ws.var("nJpsi")->setConstant(true);
@@ -195,7 +378,7 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 		Ws.factory("prod::mean2(mean1, massRatioPDG[1.01296])");
 		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1, 0.95,1.2])");
 		Ws.factory("RooHypatia2::chic2(rvmass, mean2, sigma2, lambda, zeta, beta, aSig1, nSig1, aSig2, nSig2)");
-		Ws.factory("SUM::signal(c2toc1[0.4,0.1,1.]*chic2, chic1)");
+		Ws.factory("SUM::signal(c2ratio[0.4,0.1,1.]*chic2, chic1)");
 		//Ws.factory("Exponential::expbkg(rvmass,e_1[-0.2,-0.5,0])");
 		//Ws.factory("Uniform::one(rvmass)");
 		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
@@ -234,6 +417,7 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 
 bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to prevent the fits in the differential bins to get stuck in a weird state when they stop converging properly (empty bins making errors too small, and those errors used to determine range in the next bin)
 {
+	cout << "Refreshing model...";
 	if (isJpsi == true) {
 		file_log << Ws.var("mean1Jpsi")->getError() << endl;
 		file_log << Ws.var("sigma1Jpsi")->getError() << endl;
@@ -242,7 +426,7 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to p
 		Ws.var("sigma1Jpsi")->removeError();
 		Ws.var("alphaJpsi")->removeError();
 		Ws.var("nJpsi")->removeError();
-		//Ws.var("a1Jpsi")->removeError();
+		//Ws.var("sigma3Jpsi")->removeError();
 		Ws.var("e_1Jpsi")->removeError();
 		Ws.var("nsigJpsi")->removeError();
 		Ws.var("nbkgJpsi")->removeError();
@@ -251,28 +435,116 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to p
 		Ws.var("sigma1Jpsi")->setVal(0.03);
 		Ws.var("alphaJpsi")->setVal(1.85);
 		Ws.var("nJpsi")->setVal(1.7);
-		//Ws.var("a1Jpsi")->setVal(-0.05);
-		Ws.var("e_1Jpsi")->setVal(-0.2);
-		Ws.var("nsigJpsi")->setVal(5000);
+		//Ws.var("sigma3Jpsi")->setVal(0.03);
+		Ws.var("e_1Jpsi")->setVal(-0.4);
+		Ws.var("nsigJpsi")->setVal(50000);
 		Ws.var("nbkgJpsi")->setVal(2000);
 
 	}
 	else
 	{
-		Ws.var("c2toc1")->removeError();
-		Ws.var("sigma1")->removeError();
-		Ws.var("a1")->removeError();
-		Ws.var("nsig")->removeError();
-		Ws.var("nbkg")->removeError();
+		if (pdfName.compare("DoubleSidedCB_BPHOffset") == 0 || pdfName.compare("nominalPdf") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("alpha_bkg")->removeError();
+			Ws.var("beta_bkg")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
 
-		Ws.var("c2toc1")->setVal(0.4);
-		Ws.var("sigma1")->setVal(0.005);
-		Ws.var("a1")->setVal(0);
-		Ws.var("nsig")->setVal(50);
-		Ws.var("nbkg")->setVal(2000);
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.005);
+			Ws.var("alpha_bkg")->setVal(0.2);
+			Ws.var("beta_bkg")->setVal(-2);
+			Ws.var("nsig")->setVal(500);
+			Ws.var("nbkg")->setVal(2000);
+		}
+		if (pdfName.compare("DoubleSidedCB_D0BG") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("A_bkg")->removeError();
+			//Ws.var("B_bkg")->removeError();
+			Ws.var("C_bkg")->removeError();
+			Ws.var("massOffset")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
+
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.005);
+			Ws.var("A_bkg")->setVal(0.04);
+			//Ws.var("B_bkg")->setVal(-2);
+			Ws.var("C_bkg")->setVal(0);
+			Ws.var("massOffset")->setVal(3.15);
+			Ws.var("nsig")->setVal(500);
+			Ws.var("nbkg")->setVal(2000);
+		}
+		if (pdfName.compare("SingleCB_BPHOffset") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("alpha_bkg")->removeError();
+			Ws.var("beta_bkg")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
+
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.01);
+			Ws.var("alpha_bkg")->setVal(0.2);
+			Ws.var("beta_bkg")->setVal(-2);
+			Ws.var("nsig")->setVal(500);
+			Ws.var("nbkg")->setVal(2000);
+		}
+		if (pdfName.compare("SingleCB_D0BG") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("A_bkg")->removeError();
+			//Ws.var("B_bkg")->removeError();
+			Ws.var("C_bkg")->removeError();
+			Ws.var("massOffset")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
+
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.005);
+			Ws.var("A_bkg")->setVal(0.04);
+			//Ws.var("B_bkg")->setVal(-2);
+			Ws.var("C_bkg")->setVal(0);
+			Ws.var("massOffset")->setVal(3.15);
+			Ws.var("nsig")->setVal(500);
+			Ws.var("nbkg")->setVal(2000);
+		}
+		if (pdfName.compare("NominalPdf") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
+
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.005);
+			Ws.var("nsig")->setVal(500);
+			Ws.var("nbkg")->setVal(2000);
+		}
+		
+		if (pdfName.compare("nominalPdfFlatBkg") == 0)
+		{
+			Ws.var("c2ratio")->removeError();
+			Ws.var("sigma1")->removeError();
+			Ws.var("a1")->removeError();
+			Ws.var("nsig")->removeError();
+			Ws.var("nbkg")->removeError();
+
+			Ws.var("c2ratio")->setVal(0.4);
+			Ws.var("sigma1")->setVal(0.005);
+			Ws.var("a1")->setVal(0);
+			Ws.var("nsig")->setVal(50);
+			Ws.var("nbkg")->setVal(2000);
+		}
 	}
 
-
+	cout << " Done" << endl;
 
 
 	return true;
@@ -294,7 +566,7 @@ int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = 
 		{
 			binNaming = "pt_mid";
 		}
-		if (regionName.compare("fwdrap") == 0)
+		if (regionName.compare("fwdrap") == 0 || regionName.compare("fwdOnly") == 0 || regionName.compare("bkwOnly") == 0)
 		{
 			binNaming = "pt_fwd";
 		}
@@ -304,9 +576,45 @@ int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = 
 	}
 	else if (binVarName.compare("rvntrack") == 0) {
 		binNaming = "nTrack";
-		if (bin > 3) bin = 3; //WARNING - for now bin 3 used for higher ntracks bins (those constraints are bad due to stats)
+		if (bin > 3) bin = 3; //WARNING - for now bin 3 used for higher ntracks bins (those constraints are bad due to stats) // we don't use that bin anyway
 	}
-	if (pdfName.compare("nominalPdf") == 0)
+	if (pdfName.compare("DoubleSidedCB_BPHOffset") == 0 || pdfName.compare("DoubleSidedCB_D0BG") == 0 || pdfName.compare("nominalPdf") == 0)
+	{
+		TGraphAsymmErrors* gAsChic_sigma1 = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_sigma1_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_mean1 = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_mean1_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_alpha = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_alpha_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_n = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_n_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_sigmaRatio = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_sigmaRatio_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_alphaH = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_alphaH_" + binNaming).c_str());
+		TGraphAsymmErrors* gAsChic_nH = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_nH_" + binNaming).c_str());
+
+		double xVal, yVal;
+		gAsChic_sigma1->GetPoint(bin, xVal, yVal);
+		if (std::abs(xVal - (bins[bin] + bins[bin + 1]) / 2.0) > 0.01) cout << endl << "WARNING: x values of binning between fit and constraints don't agree! " << xVal << "   " << (bins[bin] + bins[bin + 1]) / 2.0 << endl << endl;
+		cout << "sigma1 " << yVal << endl;
+		Ws.var("sigma1")->setVal(yVal);
+		gAsChic_mean1->GetPoint(bin, xVal, yVal);
+		Ws.var("mean1")->setVal(yVal);
+		gAsChic_alpha->GetPoint(bin, xVal, yVal);
+		Ws.var("alpha")->setVal(yVal);
+		gAsChic_n->GetPoint(bin, xVal, yVal);
+		Ws.var("n")->setVal(yVal);
+		gAsChic_sigmaRatio->GetPoint(bin, xVal, yVal);
+		Ws.var("sigmaRatio")->setVal(yVal);
+		gAsChic_alphaH->GetPoint(bin, xVal, yVal);
+		Ws.var("alphaH")->setVal(yVal);
+		gAsChic_nH->GetPoint(bin, xVal, yVal);
+		Ws.var("nH")->setVal(yVal);
+
+		Ws.var("alpha")->setConstant(true);
+		Ws.var("n")->setConstant(true);
+		Ws.var("alphaH")->setConstant(true);
+		Ws.var("nH")->setConstant(true);
+		Ws.var("sigmaRatio")->setConstant(true);
+		Ws.var("sigma1")->setConstant(true);
+		Ws.var("mean1")->setConstant(true);
+	}
+	if (pdfName.compare("SingleCB_BPHOffset") == 0 || pdfName.compare("SingleCB_D0BG") == 0)
 	{
 		TGraphAsymmErrors* gAsChic_sigma1 = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_sigma1_" + binNaming).c_str());
 		TGraphAsymmErrors* gAsChic_mean1 = (TGraphAsymmErrors*)fileConstr->Get(("gAsChic_Output_mean1_" + binNaming).c_str());
@@ -348,16 +656,19 @@ int SetConstraints(RooWorkspace& Ws, double* bins, int bin, string binVarName = 
 
 int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooRealVar* rvmass, RooWorkspace& Ws, bool isJpsi = false, string binVarName = "", string myPdfName = "", string extraCut = "", string regionName = "", bool bConstrainedFit = false, const char* fileConstraints = "") { //uses global variables
 	cout << endl << "IN FITTING " << binVarName << "   " << nbins << endl << endl;
-	TCanvas *cFit = new TCanvas("cFit", "cFit", 1000, 1000);
+	TCanvas *cFit = new TCanvas("cFit", "cFit", 1000, 800);
 	//gPad->SetLeftMargin(0.15);
 	cFit->cd();
 	//cFit->Divide(1, 2);
-	TPad *pad1 = new TPad("pad1", "pad1", 0, 0.16, 0.98, 1.0);
+	TPad *pad1 = new TPad("pad1", "pad1", 0, 0.275, 0.98, 1.0);
 	pad1->SetTicks(1, 1);
 	pad1->Draw();
 
+	//RooAbsReal::defaultIntegratorConfig()->setEpsAbs(1e-10);
+	//RooAbsReal::defaultIntegratorConfig()->setEpsRel(1e-10);
+
 	//pull pad
-	TPad *pad2 = new TPad("pad2", "pad2", 0, 0.006, 0.98, 0.260);
+	TPad *pad2 = new TPad("pad2", "pad2", 0, 0.006, 0.98, 0.360);
 	pad2->SetTopMargin(0); // Upper and lower plot are joined
 	pad2->SetBottomMargin(0.67);
 	pad2->SetTicks(1, 1);
@@ -401,7 +712,6 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		}
 
 		rdsDataBin->plotOn(massframeBin, Name("dataHist"));
-		cout << endl << endl << endl << rdsDataBin->GetName() << endl << endl;
 
 		if (bConstrainedFit == true) {
 			SetConstraints(Ws, bins, i, binVarName, regionName, myPdfName, fileConstraints);
@@ -463,16 +773,36 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		}
 		else {
 			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("backgroundJpsi"), LineStyle(kDashed));
-			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
-			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
+			Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("signalJpsi"), LineStyle(kDashed), LineColor(kRed));
+			//Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
 
 		}
 
 		Ws.pdf(myPdfName.c_str())->plotOn(massframeBin, Name("FullPdf"));
-		Ws.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
+		if (isJpsi == false) { Ws.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.65, 0.95)); }
+		else{ Ws.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.20, 0.55)); }
 		massframeBin->GetXaxis()->SetTitleSize(0);
 		massframeBin->GetXaxis()->SetLabelSize(0);
 		massframeBin->Draw();
+
+		//chi2
+
+		int numFitPar = fitResultBin->floatParsFinal().getSize();
+		//cout << "Npar: " << numFitPar << endl;
+		double chi2_fit = massframeBin->chiSquare("FullPdf", "dataHist", numFitPar);
+		TPaveText *textchi = new TPaveText(.23, .75, .38, .83, "brNDC");
+		if (isJpsi == true) { 
+			textchi->SetX1(.68); //move the text to the right
+			textchi->SetX2(.88);	
+		}
+		textchi->SetFillColor(kWhite);
+		textchi->SetTextColor(kBlue);
+		textchi->SetTextSize(0.05);
+		textchi->SetBorderSize(0);
+		string txtchi = "#chi^{2}/ndf: " + to_string(chi2_fit);
+		textchi->AddText(txtchi.c_str());
+		textchi->Draw();
+
 
 		//PULLS
 
@@ -491,7 +821,8 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		pullFrame->GetYaxis()->SetNdivisions(502, kTRUE);
 		pullFrame->GetYaxis()->CenterTitle();
 		pullFrame->GetXaxis()->SetLabelSize(0.20);
-		pullFrame->GetXaxis()->SetTitle("#mu#mu#gamma - #mu#mu + 3.097 [GeV/c^{2}]");
+		if (isJpsi == false) { pullFrame->GetXaxis()->SetTitle("M (#mu#mu#gamma - #mu#mu + 3.097) [GeV/c^{2}]"); }
+		else { pullFrame->GetXaxis()->SetTitle("M(#mu#mu)[GeV/c^{2}]"); }
 		pullFrame->GetXaxis()->SetTitleOffset(1.05);
 		pullFrame->GetXaxis()->SetTitleSize(0.20);
 		pullFrame->Draw();
@@ -509,7 +840,7 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		pad2->Update();
 
 		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi?"Jpsi_":"Chic_") + regionName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
-
+		if (isJpsi == true) cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + regionName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.root", bins[i], bins[i + 1])).c_str());
 	}
 
 	delete cFit;
@@ -526,7 +857,7 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 
 ////////////////////////////////////
 
-void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-bothDirRW7.root", const char* fileOut = "Chi_c_output_RW7_Test.root", const char* fileRds = "rds_RW7_Test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_MC9_moreBinsNarrow.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
+void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal1-bothDir.root", const char* fileOut = "Chi_c_output_Nominal1-bothDirJpsiVal_DCB.root", const char* fileRds = "rds_Nominal_fullJpsiVal.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_Officialv2_NarrowRangeDCB.root", const char* fileCorrection = "Chi_c_WeightsMC_Official-bothDirJpsiVal_v1Update.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_pPb8TeV-Comp285993.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285993.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = false,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/PADoubleMuon/crab_Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/211202_000528/0000/Chi_c_pPb8TeV-PbpCompTest.root", const char* fileOut = "Chi_c_output_RW4_testCutTightRefitAlberto2.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTightRefitAlberto.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
@@ -537,6 +868,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	//gStyle->SetOptStat(0);
 	setTDRStyle();
 	
+	
+
 
 	file_log.open("TestLog.txt", ios::app);
 	file_log << endl << endl << "N E W   R U N " << endl << endl;
@@ -550,11 +883,33 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	TGraphAsymmErrors* gAsChic_pT_mid = new TGraphAsymmErrors(nbins_pT);
 	gAsChic_pT_mid->SetNameTitle("gAsChic_pT_mid", "Chic pT dependence - midrapidity");
 	TGraphAsymmErrors* gAsChic_pT_fwd = new TGraphAsymmErrors(nbins_pT);
-	gAsChic_pT_fwd->SetNameTitle("gAsChic_pT_fwd", "Chic pT dependence - forward rapidity");
+	gAsChic_pT_fwd->SetNameTitle("gAsChic_pT_fwd", "Chic pT dependence - forward + backward rapidity");
+	TGraphAsymmErrors* gAsChic_pT_fwdOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsChic_pT_fwdOnly->SetNameTitle("gAsChic_pT_fwdOnly", "Chic pT dependence - forward rapidity");
+	TGraphAsymmErrors* gAsChic_pT_bkwOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsChic_pT_bkwOnly->SetNameTitle("gAsChic_pT_bkwOnly", "Chic pT dependence - backward rapidity");
+
 	TGraphAsymmErrors* gAsJpsi_pT = new TGraphAsymmErrors(nbins_pT);
 	gAsJpsi_pT->SetNameTitle("gAsJpsi_pT", "Jpsi pT dependence");
+	TGraphAsymmErrors* gAsJpsi_pT_mid = new TGraphAsymmErrors(nbins_pT);
+	gAsJpsi_pT_mid->SetNameTitle("gAsJpsi_pT_mid", "Jpsi pT dependence - midrapidity");
+	TGraphAsymmErrors* gAsJpsi_pT_fwd = new TGraphAsymmErrors(nbins_pT);
+	gAsJpsi_pT_fwd->SetNameTitle("gAsJpsi_pT_fwd", "Jpsi pT dependence - forward + backward rapidity");
+	TGraphAsymmErrors* gAsJpsi_pT_fwdOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsJpsi_pT_fwdOnly->SetNameTitle("gAsJpsi_pT_fwdOnly", "Jpsi pT dependence - forward rapidity");
+	TGraphAsymmErrors* gAsJpsi_pT_bkwOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsJpsi_pT_bkwOnly->SetNameTitle("gAsJpsi_pT_bkwOnly", "Jpsi pT dependence - backward rapidity");
+
 	TGraphAsymmErrors* gAsRatio_pT = new TGraphAsymmErrors(nbins_pT);
 	gAsRatio_pT->SetNameTitle("gAsRatio_pT", "Ratio pT dependence");
+	TGraphAsymmErrors* gAsRatio_pT_mid = new TGraphAsymmErrors(nbins_pT);
+	gAsRatio_pT_mid->SetNameTitle("gAsRatio_pT_mid", "Ratio pT dependence - midrapidity");
+	TGraphAsymmErrors* gAsRatio_pT_fwd = new TGraphAsymmErrors(nbins_pT);
+	gAsRatio_pT_fwd->SetNameTitle("gAsRatio_pT_fwd", "Ratio pT dependence - forward + backward rapidity");
+	TGraphAsymmErrors* gAsRatio_pT_fwdOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsRatio_pT_fwdOnly->SetNameTitle("gAsRatio_pT_fwdOnly", "Ratio pT dependence - forward rapidity");
+	TGraphAsymmErrors* gAsRatio_pT_bkwOnly = new TGraphAsymmErrors(nbins_pT);
+	gAsRatio_pT_bkwOnly->SetNameTitle("gAsRatio_pT_bkwOnly", "Ratio pT dependence - backward rapidity");
 
 	TGraphAsymmErrors* gAsChic_y = new TGraphAsymmErrors(nbins_y);
 	gAsChic_y->SetNameTitle("gAsChic_y", "Chic y dependence");
@@ -686,7 +1041,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	if (flagGenerateRds == true) {
 
 
-		file_log << "index runNumber  eventNumber  (chiCandPerEvent-ignore)  rap_chi  pT_chi  Mass (refit) muon1_eta muon1_pt  muon2_eta muon2_pt muon1_pass muon2_pass (conv position) conv_eta conv_pt vProb Conversion cuts: convHP  convGT  conv_rho  convSig1  convSig2  conv_IHits  conv_vProb  convDOF1  convDOF2  convChi1  convChi2  convDOA ctau/ctauErr ctau3D ctauErr significance(Jpsi) ctauJpsi ctauErr vertexNumber Conv_duplicity_status" << endl;
+		//file_log << "index runNumber  eventNumber  (chiCandPerEvent-ignore)  rap_chi  pT_chi  Mass (refit) muon1_eta muon1_pt  muon2_eta muon2_pt muon1_pass muon2_pass (conv position) conv_eta conv_pt vProb Conversion cuts: convHP  convGT  conv_rho  convSig1  convSig2  conv_IHits  conv_vProb  convDOF1  convDOF2  convChi1  convChi2  convDOA ctau/ctauErr ctau3D ctauErr significance(Jpsi) ctauJpsi ctauErr vertexNumber Conv_duplicity_status" << endl;
+		
 		//TMVA 
 		#ifdef UsesTMVA
 
@@ -733,7 +1089,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		bool passDimSel = false;
 		bool passDimSelTight = false;
 		Long64_t nentries = event_tree->GetEntries();
-		if (nentries > 100000) { nentries = 100000; }
+		//if (nentries > 100000) { nentries = 100000; }
 		cout << nentries << endl;
 		for (Long64_t i = 0; i < nentries; i++)
 		{
@@ -769,6 +1125,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 			for (int iChi = 0; iChi < chi_p4->GetEntriesFast(); iChi++)
 			{
 				++nchicCounter;
+				/*
 				// check Acceptance and Cuts
 				int dimuonPos = chi_daughterJpsi_position->at(iChi);
 				//if (DimuonSelectionPass(dimuonPos) == false) continue;
@@ -817,13 +1174,26 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 				if (PhotSelectionPass(convPos) == false) continue;
 
 				if (passDimSel == true) { ++nchicCounterPass; } // SelectionsPassed
+				
+				//*/												
+				
+
+				if (ChiPassAllCuts(iChi) == false) { continue; }
+				++nchicCounterPass;
+				int dimuonPos = chi_daughterJpsi_position->at(iChi);
+				int convPos = chi_daughterConv_position->at(iChi);
+
 				// Get Lorentz V
 				LVchic = (TLorentzVector*)chi_p4->At(iChi);
 				LVdimuon = (TLorentzVector*)dimuon_p4->At(dimuonPos);
 				LVconv = (TLorentzVector*)conv_p4->At(convPos);
+				double pT_Jpsi = dimuon_pt->at(dimuonPos);
+				double rap_Jpsi = LVdimuon->Rapidity();
+				if (runNumber < 285833) rap_Jpsi = -rap_Jpsi; //flip Pbp direction
 
 				double pT_chi = chi_pt->at(iChi);
 				double rap_chi = LVchic->Rapidity();
+				if (runNumber < 285833) rap_chi = -rap_chi; //flip Pbp direction
 				double m_chi = LVchic->M();
 
 				double dimuonM = LVdimuon->M();
@@ -853,260 +1223,285 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 				//if (refit_vProb < 0.01) continue;
 				//Mdiff = chi_refitStored->at(iChi).mass();//use refit mass
 
+				//////////////
+				/// Nominal
+				//////////////
 
+				if (dimuonM > mass_cutoffJpsi_l && dimuonM<mass_cutoffJpsi_h && Mdiff > mass_window_l && Mdiff < mass_window_h)
+				{
+					++nchicCounterPassMass;
 
+				//roofit:
+					rvmass->setVal(Mdiff);
+					rvpt->setVal(pT_Jpsi);
+					rvrap->setVal(rap_Jpsi);
+					rvntrack->setVal(pvtx_nTracks->at(dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos))); //for now using total
+					//rvweight->setVal(1); // no weights for now
+					double accEff_chi = 1;// hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
+					//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
+					if (accEff_chi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
+						//rvweight->setVal(1 / accEff_chi);
+						rvweight->setVal(1); //switch off weights
+					}
+					else rvweight->setVal(1);
+					if (isMC) {
+						rvweight->setVal(1); //no weights if MC
+					}
+
+					rdsNominal->add(*cols, rvweight->getVal());
+
+				}
 				////////
 							   
 
 
 
-
-
-				//if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
-				if (passDimSel == true && dimuonM > mass_cutoffJpsi_l && dimuonM<mass_cutoffJpsi_h && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
-
-
-				//////// Rotational bkg   /////
-				LVmuon1_rot = (TLorentzVector*)muon_p4->At(muon1Pos);
-				LVmuon2_rot = (TLorentzVector*)muon_p4->At(muon2Pos);
-				LVconv_rot = new TLorentzVector(*(TLorentzVector*)conv_p4->At(convPos));
-				LVconv_rot->RotateZ(TMath::Pi());
-				//if (muon_pt->at(muon1Pos) > muon_pt->at(muon2Pos)) { muon1ptCounter++; } //crosscheck that they have ordering
-				//else muon2ptCounter++;
-				if (rand->Uniform(0, 1) < 0.5) { LVmuon1_rot->RotateZ(TMath::Pi()); }
-				else { LVmuon2_rot->RotateZ(TMath::Pi()); }
-				LVdimuon_rot = new TLorentzVector(*LVmuon1_rot + *LVmuon2_rot);
-				//cout << LVdimuon_rot->Pt() << endl;
-				LVchic_rot = new TLorentzVector(*LVdimuon_rot + *LVconv);
-				LVchic_rotGamma = new TLorentzVector(*LVdimuon + *LVconv_rot);
-
-
-
-
-				// Obtain yields
-
-				// fill dimuon stuff
-
-				
-				if (passDimSel == true) {
-					hdimuon_M->Fill(dimuonM);
-					hdimuon_M_rot->Fill(LVdimuon_rot->M());
-				}
-				if (dimuon_charge->at(dimuonPos) != 0) {
-					hdimuon_M_SS->Fill(dimuonM);
-				}
-
-
-				// Rotational bkg
-				if (LVdimuon_rot->M() > 2.95 && LVdimuon_rot->M() < 3.2) {
-					if (passDimSel == true) {
-						hchic_M_rot->Fill(LVchic_rot->M());
-						hSignal_rot->Fill(LVchic_rot->M() - LVdimuon_rot->M() + 3.097);
-					}
-				}
-				// Side-band
-				if (((dimuonM > 2.5 && dimuonM < 2.75) || (dimuonM > 3.4 && dimuonM < 3.7)) && passDimSel == true) {
-					hchic_M_SB->Fill(m_chi);
-					hSignal_SB->Fill(m_chi - dimuonM + 3.097);
-				}
-
-
-				if (dimuonM<mass_cutoffJpsi_l || dimuonM>mass_cutoffJpsi_h) continue; //require narrow dimuon mass
-
-				if (passDimSel == true) {
-					hchic_M->Fill(m_chi); // just raw M
-					hchic_M_rotGamma->Fill(LVchic_rotGamma->M());
-				}
-				if (dimuon_charge->at(dimuonPos) != 0) {
-					hchic_M_SS->Fill(m_chi);
-				}
-
-
-				// nominal
-
-				if (passDimSel == true) {
-					hSignal->Fill(Mdiff);
-					hSignal_rotGamma->Fill(LVchic_rotGamma->M() - LVdimuon->M() + 3.097);
-					//cout << nchicCounterPass << endl;
-
-					//roofit:
-					if (Mdiff > mass_window_l && Mdiff < mass_window_h) {
-						rvmass->setVal(Mdiff);
-						rvpt->setVal(pT_chi);
-						rvrap->setVal(rap_chi);
-						rvntrack->setVal(ntracks_inEvent); //for now using total
-						//rvweight->setVal(1); // no weights for now
-						double accEff_chi = hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
-						//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
-						if (accEff_chi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
-							//rvweight->setVal(1 / accEff_chi);
-							rvweight->setVal(1); //switch off weights
-						}
-						else rvweight->setVal(1); 
-						if (isMC) {
-							rvweight->setVal(1); //no weights if MC
-						}
-
-						rdsNominal->add(*cols, rvweight->getVal());
-
-						///////////////////
-						// crosschecks
-						/////////////////
-						
-						if (muonIsHLTDoubleMuOpen->at(muon1Pos) != 1 /*|| muonIsHLTDoubleMuOpen->at(muon2Pos) != 1*/) {
-							//cout << "This is the event I want: " << runNumber << "  " << eventNumber << endl; 
-							//file_log << "This is the event I want: " << runNumber << "  " << eventNumber << endl;
-						}
-
-						TVector3* TVconv1 = (TVector3*)conv_vtx->At(convPos);
-						//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) 
-							//<< " Muon Pass:" << MuonSelectionPass(muon1Pos) << MuonSelectionPass(muon2Pos) << " Trig " << muonIsHLTDoubleMuOpen->at(muon1Pos) << muonIsHLTDoubleMuOpen->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " Refit_v prob: " << refit_vProb
-							//<< " Conversion cut values: "<< convHP <<  convGT <<  conv_rho <<  convSig1 <<  convSig2 <<  conv_IHits <<  conv_vProb <<  convDOF1 <<  convDOF2 <<  convChi1 <<  convChi2 <<  convDOA
-							//<< " ctau/ctauErr: " << ctauSig<< " "<< ctauPV3D << " " << ctauPVError << " " << (dimuon_ctpv->at(dimuonPos)/ dimuon_ctpvError->at(dimuonPos)) << " " << dimuon_ctpv->at(dimuonPos) << " " << dimuon_ctpvError->at(dimuonPos) << " PVindex: " << dimuon_pvtx_index->at(dimuonPos) << " " << dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos)<< " ConvDuplicity: " << conv_duplicityStatus->at(convPos) << endl;
-/*
-						int nRefitNumber2 = -1;
-
-						// check the conversions - if they are many identical ones
-						for (int iChi2 = 0; iChi2 < iChi; iChi2++)
-						{
-							int dimuonPos2 = chi_daughterJpsi_position->at(iChi2);
-							double passDimSel2 = DimuonSelectionPass(dimuonPos2);
-							double passDimSelTight2 = DimuonSelectionPassTight(dimuonPos2, ((TLorentzVector*)dimuon_p4->At(dimuonPos2))->Rapidity());
-							// muon cuts
-							int muon1Pos2 = dimuon_muon1_position->at(dimuonPos2);
-							int muon2Pos2 = dimuon_muon2_position->at(dimuonPos2);
-							if (MuonAcceptanceTight(muon_eta->at(muon1Pos2), muon_pt->at(muon1Pos2)) == false) continue;
-							if (MuonAcceptanceTight(muon_eta->at(muon2Pos2), muon_pt->at(muon2Pos2)) == false) continue;
-							if (MuonSelectionPass(muon1Pos2) == false) continue;
-							if (MuonSelectionPass(muon2Pos2) == false) continue;
-							// photon
-							int convPos2 = chi_daughterConv_position->at(iChi2);
-							if (PhotAcceptance(conv_eta->at(convPos2), conv_pt->at(convPos2)) == false) continue;
-							if (PhotSelectionPassTight(convPos2) == false) continue;
-							passDimSel2 = passDimSelTight2;
-
-							TLorentzVector* LVchic2 = (TLorentzVector*)chi_p4->At(iChi2);
-							TLorentzVector* LVdimuon2 = (TLorentzVector*)dimuon_p4->At(dimuonPos2);
-
-							double pT_chi2 = chi_pt->at(iChi2);
-							double rap_chi2 = LVchic2->Rapidity();
-							double m_chi2 = LVchic2->M();
-							double refit_vProb2 = 0;
-							/////////
-							//refit
-							if (chi_kinematicRefitFlag->at(iChi2) == 1 || chi_kinematicRefitFlag->at(iChi2) == 3) { //good refits
-								nRefitNumber2++; //needed for RW4 only, fix to non-ideal storing of info
-								nRefitNumber2 = iChi2; //overwrite previous line
-
-								//cout << chi_refit_vprob->at(nRefitNumber) << endl;
-								//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
-								//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
-								m_chi2 = chi_refitStored->at(nRefitNumber2).mass();//use refit mass
-								//refit_vProb = chi_refit_vprob->at(nRefitNumber);
-								refit_vProb2 = chi_refit_vprob->at(iChi2);
-							}
-							else continue;//skip those that don't have it
-							if (refit_vProb2 < 0.01) continue;
-							////////
-
-
-							double dimuonM2 = LVdimuon2->M();
-							double Mdiff2 = m_chi2;// -dimuonM2 + 3.097;// Assume J/psi mass
-							if (passDimSel2 == true && dimuonM2 > 2.9 && dimuonM2<3.3 && Mdiff2 > mass_window_l && Mdiff < mass_window_h)
-
-							{
-									double deltaEta = abs(conv_eta->at(iChi) - conv_eta->at(iChi2));
-									double deltapT = abs(conv_pt->at(iChi) - conv_pt->at(iChi2));
-
-
-									nConvCounterPeak++;
-									TVector3* TVconv1 = (TVector3*)conv_vtx->At(iChi);
-									TVector3* TVconv2 = (TVector3*)conv_vtx->At(iChi2);
-									double convVtx_deltaX = abs(TVconv1->X() - TVconv2->X());
-									double convVtx_deltaY = abs(TVconv1->Y() - TVconv2->Y());
-									double convVtx_deltaZ = abs(TVconv1->Z() - TVconv2->Z());
-
-									if (deltaEta < 0.02 && deltapT < 0.2 && convVtx_deltaX < 2.0 && convVtx_deltaY < 2.0 && convVtx_deltaZ < 2.0) {
-										//TLorentzVector* LVconv1 = (TLorentzVector*)conv_p4->At(iChi);
-										//TLorentzVector* LVconv2 = (TLorentzVector*)conv_p4->At(iChi2);
-										//TLorentzVector LVconvTot = *LVconv1;
-										//LVconvTot += *LVconv2;
-										//hconv_m->Fill(LVconvTot.M());
-										nConvSplitCounterPeak++;
-										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
-										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi2 << " " << pT_chi2 << " " << Mdiff2 << " m1 " << muon_eta->at(muon1Pos2) << " " << muon_pt->at(muon1Pos2) << " m2 " << muon_eta->at(muon2Pos2) << " " << muon_pt->at(muon2Pos2) << " conv " << convPos2 << " " << conv_eta->at(convPos2) << " " << conv_pt->at(convPos2) << " " << conv_vertexPositionRho->at(convPos2) << " " << TVconv2->X() << " " << TVconv2->Y() << " " << TVconv2->Z() << endl << endl;
-
-									}
-
-								
-							}
-
-						}
-
-
-						*/
-
-
-
-
-
-
-					}
-
-				}
-				if (dimuon_charge->at(dimuonPos) != 0) { hSignal_SS->Fill(Mdiff); }
+//				/*
+//
+//				//if (passDimSel == true && dimuonM>2.95 && dimuonM<3.2 && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
+//				if (passDimSel == true && dimuonM > mass_cutoffJpsi_l && dimuonM<mass_cutoffJpsi_h && Mdiff > mass_window_l && Mdiff < mass_window_h) ++nchicCounterPassMass;
+//
+//
+//				//////// Rotational bkg   /////
+//				LVmuon1_rot = (TLorentzVector*)muon_p4->At(muon1Pos);
+//				LVmuon2_rot = (TLorentzVector*)muon_p4->At(muon2Pos);
+//				LVconv_rot = new TLorentzVector(*(TLorentzVector*)conv_p4->At(convPos));
+//				LVconv_rot->RotateZ(TMath::Pi());
+//				//if (muon_pt->at(muon1Pos) > muon_pt->at(muon2Pos)) { muon1ptCounter++; } //crosscheck that they have ordering
+//				//else muon2ptCounter++;
+//				if (rand->Uniform(0, 1) < 0.5) { LVmuon1_rot->RotateZ(TMath::Pi()); }
+//				else { LVmuon2_rot->RotateZ(TMath::Pi()); }
+//				LVdimuon_rot = new TLorentzVector(*LVmuon1_rot + *LVmuon2_rot);
+//				//cout << LVdimuon_rot->Pt() << endl;
+//				LVchic_rot = new TLorentzVector(*LVdimuon_rot + *LVconv);
+//				LVchic_rotGamma = new TLorentzVector(*LVdimuon + *LVconv_rot);
+//
+//
+//
+//
+//				// Obtain yields
+//
+//				// fill dimuon stuff
+//
+//				
+//				if (passDimSel == true) {
+//					hdimuon_M->Fill(dimuonM);
+//					hdimuon_M_rot->Fill(LVdimuon_rot->M());
+//				}
+//				if (dimuon_charge->at(dimuonPos) != 0) {
+//					hdimuon_M_SS->Fill(dimuonM);
+//				}
+//
+//
+//				// Rotational bkg
+//				if (LVdimuon_rot->M() > 2.95 && LVdimuon_rot->M() < 3.2) {
+//					if (passDimSel == true) {
+//						hchic_M_rot->Fill(LVchic_rot->M());
+//						hSignal_rot->Fill(LVchic_rot->M() - LVdimuon_rot->M() + 3.097);
+//					}
+//				}
+//				// Side-band
+//				if (((dimuonM > 2.5 && dimuonM < 2.75) || (dimuonM > 3.4 && dimuonM < 3.7)) && passDimSel == true) {
+//					hchic_M_SB->Fill(m_chi);
+//					hSignal_SB->Fill(m_chi - dimuonM + 3.097);
+//				}
+//
+//
+//				if (dimuonM<mass_cutoffJpsi_l || dimuonM>mass_cutoffJpsi_h) continue; //require narrow dimuon mass
+//
+//				if (passDimSel == true) {
+//					hchic_M->Fill(m_chi); // just raw M
+//					hchic_M_rotGamma->Fill(LVchic_rotGamma->M());
+//				}
+//				if (dimuon_charge->at(dimuonPos) != 0) {
+//					hchic_M_SS->Fill(m_chi);
+//				}
+//				*/
+//
+//				// nominal
+//
+//				if (passDimSel == true) {
+//					hSignal->Fill(Mdiff);
+//					//hSignal_rotGamma->Fill(LVchic_rotGamma->M() - LVdimuon->M() + 3.097);
+//					//cout << nchicCounterPass << endl;
+//
+//					//roofit:
+//					if (Mdiff > mass_window_l && Mdiff < mass_window_h) {
+//						rvmass->setVal(Mdiff);
+//						rvpt->setVal(pT_chi);
+//						rvrap->setVal(rap_chi);
+//						rvntrack->setVal(ntracks_inEvent); //for now using total
+//						//rvweight->setVal(1); // no weights for now
+//						double accEff_chi = hWeightChic->GetBinContent(hWeightChic->FindBin(abs(rap_chi), pT_chi));
+//						//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
+//						if (accEff_chi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
+//							//rvweight->setVal(1 / accEff_chi);
+//							rvweight->setVal(1); //switch off weights
+//						}
+//						else rvweight->setVal(1); 
+//						if (isMC) {
+//							rvweight->setVal(1); //no weights if MC
+//						}
+//
+//						rdsNominal->add(*cols, rvweight->getVal());
+//
+//						///////////////////
+//						// crosschecks
+//						/////////////////
+//						
+//						if (muonIsHLTDoubleMuOpen->at(muon1Pos) != 1 /*|| muonIsHLTDoubleMuOpen->at(muon2Pos) != 1*/) {
+//							//cout << "This is the event I want: " << runNumber << "  " << eventNumber << endl; 
+//							//file_log << "This is the event I want: " << runNumber << "  " << eventNumber << endl;
+//						}
+//
+//						TVector3* TVconv1 = (TVector3*)conv_vtx->At(convPos);
+//						//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) 
+//							//<< " Muon Pass:" << MuonSelectionPass(muon1Pos) << MuonSelectionPass(muon2Pos) << " Trig " << muonIsHLTDoubleMuOpen->at(muon1Pos) << muonIsHLTDoubleMuOpen->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " Refit_v prob: " << refit_vProb
+//							//<< " Conversion cut values: "<< convHP <<  convGT <<  conv_rho <<  convSig1 <<  convSig2 <<  conv_IHits <<  conv_vProb <<  convDOF1 <<  convDOF2 <<  convChi1 <<  convChi2 <<  convDOA
+//							//<< " ctau/ctauErr: " << ctauSig<< " "<< ctauPV3D << " " << ctauPVError << " " << (dimuon_ctpv->at(dimuonPos)/ dimuon_ctpvError->at(dimuonPos)) << " " << dimuon_ctpv->at(dimuonPos) << " " << dimuon_ctpvError->at(dimuonPos) << " PVindex: " << dimuon_pvtx_index->at(dimuonPos) << " " << dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos)<< " ConvDuplicity: " << conv_duplicityStatus->at(convPos) << endl;
+///*
+//						int nRefitNumber2 = -1;
+//
+//						// check the conversions - if they are many identical ones
+//						for (int iChi2 = 0; iChi2 < iChi; iChi2++)
+//						{
+//							int dimuonPos2 = chi_daughterJpsi_position->at(iChi2);
+//							double passDimSel2 = DimuonSelectionPass(dimuonPos2);
+//							double passDimSelTight2 = DimuonSelectionPassTight(dimuonPos2, ((TLorentzVector*)dimuon_p4->At(dimuonPos2))->Rapidity());
+//							// muon cuts
+//							int muon1Pos2 = dimuon_muon1_position->at(dimuonPos2);
+//							int muon2Pos2 = dimuon_muon2_position->at(dimuonPos2);
+//							if (MuonAcceptanceTight(muon_eta->at(muon1Pos2), muon_pt->at(muon1Pos2)) == false) continue;
+//							if (MuonAcceptanceTight(muon_eta->at(muon2Pos2), muon_pt->at(muon2Pos2)) == false) continue;
+//							if (MuonSelectionPass(muon1Pos2) == false) continue;
+//							if (MuonSelectionPass(muon2Pos2) == false) continue;
+//							// photon
+//							int convPos2 = chi_daughterConv_position->at(iChi2);
+//							if (PhotAcceptance(conv_eta->at(convPos2), conv_pt->at(convPos2)) == false) continue;
+//							if (PhotSelectionPassTight(convPos2) == false) continue;
+//							passDimSel2 = passDimSelTight2;
+//
+//							TLorentzVector* LVchic2 = (TLorentzVector*)chi_p4->At(iChi2);
+//							TLorentzVector* LVdimuon2 = (TLorentzVector*)dimuon_p4->At(dimuonPos2);
+//
+//							double pT_chi2 = chi_pt->at(iChi2);
+//							double rap_chi2 = LVchic2->Rapidity();
+//							double m_chi2 = LVchic2->M();
+//							double refit_vProb2 = 0;
+//							/////////
+//							//refit
+//							if (chi_kinematicRefitFlag->at(iChi2) == 1 || chi_kinematicRefitFlag->at(iChi2) == 3) { //good refits
+//								nRefitNumber2++; //needed for RW4 only, fix to non-ideal storing of info
+//								nRefitNumber2 = iChi2; //overwrite previous line
+//
+//								//cout << chi_refit_vprob->at(nRefitNumber) << endl;
+//								//cout << chi_refit_ctauPV->at(nRefitNumber) << endl;
+//								//cout << "RefitStored: " << chi_refitStored->at(nRefitNumber).mass() << endl;
+//								m_chi2 = chi_refitStored->at(nRefitNumber2).mass();//use refit mass
+//								//refit_vProb = chi_refit_vprob->at(nRefitNumber);
+//								refit_vProb2 = chi_refit_vprob->at(iChi2);
+//							}
+//							else continue;//skip those that don't have it
+//							if (refit_vProb2 < 0.01) continue;
+//							////////
+//
+//
+//							double dimuonM2 = LVdimuon2->M();
+//							double Mdiff2 = m_chi2;// -dimuonM2 + 3.097;// Assume J/psi mass
+//							if (passDimSel2 == true && dimuonM2 > 2.9 && dimuonM2<3.3 && Mdiff2 > mass_window_l && Mdiff < mass_window_h)
+//
+//							{
+//									double deltaEta = abs(conv_eta->at(iChi) - conv_eta->at(iChi2));
+//									double deltapT = abs(conv_pt->at(iChi) - conv_pt->at(iChi2));
+//
+//
+//									nConvCounterPeak++;
+//									TVector3* TVconv1 = (TVector3*)conv_vtx->At(iChi);
+//									TVector3* TVconv2 = (TVector3*)conv_vtx->At(iChi2);
+//									double convVtx_deltaX = abs(TVconv1->X() - TVconv2->X());
+//									double convVtx_deltaY = abs(TVconv1->Y() - TVconv2->Y());
+//									double convVtx_deltaZ = abs(TVconv1->Z() - TVconv2->Z());
+//
+//									if (deltaEta < 0.02 && deltapT < 0.2 && convVtx_deltaX < 2.0 && convVtx_deltaY < 2.0 && convVtx_deltaZ < 2.0) {
+//										//TLorentzVector* LVconv1 = (TLorentzVector*)conv_p4->At(iChi);
+//										//TLorentzVector* LVconv2 = (TLorentzVector*)conv_p4->At(iChi2);
+//										//TLorentzVector LVconvTot = *LVconv1;
+//										//LVconvTot += *LVconv2;
+//										//hconv_m->Fill(LVconvTot.M());
+//										nConvSplitCounterPeak++;
+//										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi << " " << pT_chi << " " << Mdiff << " m1 " << muon_eta->at(muon1Pos) << " " << muon_pt->at(muon1Pos)<< " m2 " << muon_eta->at(muon2Pos)<< " " << muon_pt->at(muon2Pos) << " conv " << convPos << " " << conv_eta->at(convPos) << " " << conv_pt->at(convPos) << " " << conv_vertexPositionRho->at(convPos) << " "  << TVconv1->X() << " " << TVconv1->Y() << " " << TVconv1->Z() << endl;
+//										//file_log << nchicCounterPassMass << " " << runNumber << " " << eventNumber << " " << chiCandPerEvent << " " << rap_chi2 << " " << pT_chi2 << " " << Mdiff2 << " m1 " << muon_eta->at(muon1Pos2) << " " << muon_pt->at(muon1Pos2) << " m2 " << muon_eta->at(muon2Pos2) << " " << muon_pt->at(muon2Pos2) << " conv " << convPos2 << " " << conv_eta->at(convPos2) << " " << conv_pt->at(convPos2) << " " << conv_vertexPositionRho->at(convPos2) << " " << TVconv2->X() << " " << TVconv2->Y() << " " << TVconv2->Z() << endl << endl;
+//
+//									}
+//
+//								
+//							}
+//
+//						}
+//
+//
+//						*/
+//
+//
+//
+//
+//
+//
+//					}
+//
+//				}
+//				if (dimuon_charge->at(dimuonPos) != 0) { hSignal_SS->Fill(Mdiff); }
+//
+//				
 
 			} // end of chic loop
+
+
+
+
+			////////////////////////////////////
+			////////      JPSI         /////////
+			///////////////////////////////////////
 
 			for (int iJpsi = 0; iJpsi < dimuon_p4->GetEntriesFast(); iJpsi++) // Jpsi loop
 			{
 
-				passDimSel = DimuonSelectionPass(iJpsi);
+				passDimSel = DimuonPassAllCuts(iJpsi);
 
-				// muon cuts
-				int muon1Pos = dimuon_muon1_position->at(iJpsi);
-				int muon2Pos = dimuon_muon2_position->at(iJpsi);
-				if (MuonAcceptance(muon_eta->at(muon1Pos), muon_pt->at(muon1Pos)) == false) continue;
-				if (MuonAcceptance(muon_eta->at(muon2Pos), muon_pt->at(muon2Pos)) == false) continue;
-				if (MuonSelectionPass(muon1Pos) == false) continue;
-				if (MuonSelectionPass(muon2Pos) == false) continue;
+				if (passDimSel == false)continue;
 
-				// Get Lorentz V
-				LVdimuon = (TLorentzVector*)dimuon_p4->At(iJpsi);
-
-				// Obtain yields
 
 				// fill dimuon stuff
-
+				LVdimuon = (TLorentzVector*)dimuon_p4->At(iJpsi);
 				double dimuonM = LVdimuon->M();
+				double rap_Jpsi = LVdimuon->Rapidity();
+				if (runNumber < 285833) rap_Jpsi = -rap_Jpsi; //flip Pbp direction
 
-				if (passDimSel == true) {
+				//roofit:
+				if (dimuonM > mass_windowJpsi_l && dimuonM < mass_windowJpsi_h) {
+					rvmassJpsi->setVal(dimuonM);
+					rvptJpsi->setVal(dimuon_pt->at(iJpsi));
+					rvrapJpsi->setVal(rap_Jpsi);
+					rvntrackJpsi->setVal(pvtx_nTracks->at(dimuon_pvtx_indexFromOniaMuMu->at(iJpsi))); //for now using total
 
-					//roofit:
-					if (dimuonM > mass_windowJpsi_l && dimuonM < mass_windowJpsi_h) {
-						rvmassJpsi->setVal(dimuonM);
-						rvptJpsi->setVal(dimuon_pt->at(iJpsi));
-						rvrapJpsi->setVal(LVdimuon->Rapidity());
-						rvntrackJpsi->setVal(ntracks_inEvent); //for now using total
-
-						double accEff_Jpsi = hWeightJpsi->GetBinContent(hWeightJpsi->FindBin(abs(LVdimuon->Rapidity()), dimuon_pt->at(iJpsi)));
-						//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
-						if (accEff_Jpsi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
-							rvweightJpsi->setVal(1 / accEff_Jpsi);
-						}
-						else rvweightJpsi->setVal(1);
-
-						//rvweightJpsi->setVal(1); // no weights for now
-
-						if (isMC) {
-							rvweightJpsi->setVal(1); //no weights if MC
-						}
-
-
-						rdsNominalJpsi->add(*colsJpsi, rvweightJpsi->getVal());
-
-
+					double accEff_Jpsi = 1;// hWeightJpsi->GetBinContent(hWeightJpsi->FindBin(abs(LVdimuon->Rapidity()), dimuon_pt->at(iJpsi)));
+					//cout << "Test rap: " << rap_chi << "  pt  " << pT_chi << " and value accEff " << accEff_chi << endl;
+					if (accEff_Jpsi > 0.00001) {// binning should ensure enough statistics, but if we have empty bin, just set weight to be 1
+						rvweightJpsi->setVal(1 / accEff_Jpsi);
 					}
+					else rvweightJpsi->setVal(1);
+
+					rvweightJpsi->setVal(1); // no weights for now
+
+					if (isMC) {
+						rvweightJpsi->setVal(1); //no weights if MC
+					}
+
+
+					rdsNominalJpsi->add(*colsJpsi, rvweightJpsi->getVal());
+
+
+
 
 				}
 
@@ -1167,7 +1562,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 		RooMsgService::instance().setGlobalKillBelow(RooFit::ERROR);
 		//ROOT::Math::MinimizerOptions::SetDefaultPrintLevel(0);
-		
+
 		cout << "nEntries: " << rdsNominal->numEntries() << endl;
 		rdsNominal = (RooDataSet*)rdsNominal->reduce(mass_windowFit.c_str());
 
@@ -1176,13 +1571,16 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		rdsNominal->plotOn(massframe);
 
 		string myPdfName = "nominalPdf";
+		//string myPdfName = "SingleCB_BPHOffset";
+		//string myPdfName = "DoubleSidedCB_D0BG";
 		CreateModelPdf(myWs, myPdfName);
 
+		cout << "Gothere" << endl;
 
 		RooFitResult* fitResult = myWs.pdf(myPdfName.c_str())->fitTo(*myWs.data("rdsNominal"), Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
 		//fitResult->Print("v");
 		myWs.import(*fitResult, TString::Format("fitResult_%s", myPdfName.c_str()));
-
+		cout << "Gothere2" << endl;
 
 		myWs.pdf(myPdfName.c_str())->plotOn(massframe);
 		myWs.pdf(myPdfName.c_str())->paramOn(massframe, Layout(0.55));
@@ -1207,53 +1605,23 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		cTest->SaveAs("FitterOutput/CanvasCTest_RW3.png");
 		//*/
 
-		
-		// pT fitting
-		/*
-		for (int i = 0; i < nbins_pT; i++) {
-			RooPlot *massframeBin = rvmass->frame(mass_windowFit_l, mass_windowFit_h, nMassBins);
-			massframeBin->SetTitle("mass");
-			cout << bins_pT[i] << endl;
-			TString TstrCut = TString::Format("rvpt > %f", bins_pT[i]) + " && " + TString::Format("rvpt < %f", bins_pT[i + 1]) + " && rvrap>-1 && rvrap <1";
-			cout << TstrCut << endl;
-			string strCut = TstrCut.Data();
-			RooDataSet* rdsDataBin = (RooDataSet*)myWs.data("rdsNominal")->reduce(strCut.c_str());
-			rdsDataBin->plotOn(massframeBin);
 
 
-			RooFitResult* fitResultBin = myWs.pdf(myPdfName.c_str())->fitTo(*rdsDataBin, SumW2Error(true));// , Extended(true), SumW2Error(true), Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true));
-			//fitResultBin->Print("v");
-			//myWs.import(*fitResultBin, TString::Format("fitResult_%s", myPdfNameBin.c_str()));
-			cout << "signal " << myWs.var("nsig")->getValV() << endl;
-			gAsChic_pT->SetPoint(i, ((bins_pT[i] + bins_pT[i + 1]) / 2.0), myWs.var("nsig")->getValV()); //placing the point in the middle of the bin
-			gAsChic_pT->SetPointEYhigh(i, myWs.var("nsig")->getErrorHi());
-			gAsChic_pT->SetPointEYlow(i, -(myWs.var("nsig")->getErrorLo()));
-
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin);
-			myWs.pdf(myPdfName.c_str())->paramOn(massframeBin, Layout(0.55));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("background"), LineStyle(kDashed));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic1"), LineStyle(kDashed), LineColor(kRed));
-			myWs.pdf(myPdfName.c_str())->plotOn(massframeBin, Components("chic2"), LineStyle(kDashed), LineColor(kGreen));
-
-
-			massframeBin->Draw();
-			cTest->SaveAs(Form("CanvasCTest_RW3_pT_%.1f_%.1f.png", bins_pT[i], bins_pT[i + 1]));
-
-		}*/
 
 		FitRooDataSet(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-2.4 && rvrap <2.4", "all", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_pT_mid, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_pT_fwd, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap<-1 || rvrap >1)", "fwdrap", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_y, bins_y, nbins_y, rvmass, myWs, false, "rvrap", myPdfName.c_str(), " && rvpt>6 && rvpt <25", "all", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_y, bins_y, nbins_y, rvmass, myWs, false, "rvrap", myPdfName.c_str(), " && rvpt>6.5 && rvpt <30", "all", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "midrap", flagConstrainedFit, fileConstraints);
 
+		FitRooDataSet(gAsChic_pT_fwdOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.6 && rvrap <2.4)", "fwdOnly", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_pT_bkwOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-1.6 && rvrap >-2.4)", "bkwOnly", flagConstrainedFit, fileConstraints);
 
-		
 		/////////////////////
 		//// J/psi fit  /////
 		/////////////////////
 
-		
+
 		rdsNominalJpsi = (RooDataSet*)rdsNominalJpsi->reduce(mass_windowFitJpsi.c_str());
 		RooPlot *massframeJpsi = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
 		massframeJpsi->SetTitle("massJpsi");
@@ -1270,8 +1638,8 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi);
 		myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsi, Layout(0.55));
 		myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("backgroundJpsi"), LineStyle(kDashed));
-		myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
-		myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
+		myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("signalJpsi"), LineStyle(kDashed), LineColor(kRed));
+		//myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsi, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
 		cout << endl << endl << "HEREJpsi" << endl << endl;
 
 
@@ -1286,128 +1654,105 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 
 
 
-		//FitRooDataSet(gAsJpsi_pT, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1 && rvrapJpsi <1", "midrap", false);
-		//FitRooDataSet(gAsJpsi_y, bins_y, nbins_y, rvmassJpsi, myWs, true, "rvrapJpsi", myPdfNameJpsi.c_str(), " && rvptJpsi>6 && rvptJpsi < 25", "all", false);
-		//FitRooDataSet(gAsJpsi_nTrk, bins_nTrk, nbins_nTrk, rvmassJpsi, myWs, true, "rvntrackJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1 && rvrapJpsi <1", "midrap", false);
 		
-		/*
-		for (int i = 0; i < nbins_y; i++) {
-			RooPlot *massframeJpsiBin = rvmassJpsi->frame(mass_windowFitJpsi_l, mass_windowFitJpsi_h, nMassBinsJpsi);
-			massframeJpsiBin->SetTitle("massJpsi");
-			file_log << bins_y[i] << endl;
-			TString TstrCut = TString::Format("rvrapJpsi > %f", bins_y[i]) + " && " + TString::Format("rvrapJpsi < %f", bins_y[i + 1]) + " && rvptJpsi>6 && rvptJpsi <30";
-			file_log << TstrCut << endl;
-			string strCut = TstrCut.Data();
-			RooDataSet* rdsDataJpsiBin = (RooDataSet*)myWs.data("rdsNominalJpsi")->reduce(strCut.c_str());
-			rdsDataJpsiBin->plotOn(massframeJpsiBin);
+		FitRooDataSet(gAsJpsi_pT_mid, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1.0 && rvrapJpsi <1.0", "midrap", false);
+		FitRooDataSet(gAsJpsi_pT_fwd, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi<-1.0 || rvrapJpsi >1.0)", "fwdrap", false);
+		FitRooDataSet(gAsJpsi_pT, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-2.4 && rvrapJpsi <2.4", "all", false);
+		FitRooDataSet(gAsJpsi_y, bins_y, nbins_y, rvmassJpsi, myWs, true, "rvrapJpsi", myPdfNameJpsi.c_str(), " && rvptJpsi>6.5 && rvptJpsi < 30", "all", false);
+		FitRooDataSet(gAsJpsi_nTrk, bins_nTrk, nbins_nTrk, rvmassJpsi, myWs, true, "rvntrackJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1 && rvrapJpsi <1", "midrap", false);
 
-			//myWs.var("rvpt")->setMin(6);
-			//myWs.var("rvpt")->setMax(8);
+		FitRooDataSet(gAsJpsi_pT_fwdOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.6 && rvrapJpsi <2.4)", "fwdOnly", false);
+		FitRooDataSet(gAsJpsi_pT_bkwOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-1.6 && rvrapJpsi >-2.4)", "bkwOnly", false);
 
-			////fitting
-			//string myPdfNameJpsiBin = (TString::Format("nominalPdfJpsi_%i",i)).Data();
-			//string myPdfNameJpsiBin = "nominalPdf";
-			//cout << endl << endl << endl << myPdfNameJpsi << endl << endl;
-			//CreateModelPdf(myWs, myPdfNameJpsi);
+	}
+	
+		////////////// DONE, GET RATIOS
 
-			RefreshModel(myWs, myPdfNameJpsi);
+		//pt
+	///*
+		GetCorrectedRatio(gAsRatio_pT, gAsChic_pT, gAsJpsi_pT, fileCorrection, "h_chiEfficiency1D_Q_pT_all_rat");
+		GetCorrectedRatio(gAsRatio_pT_mid, gAsChic_pT_mid, gAsJpsi_pT_mid, fileCorrection, "h_chiEfficiency1D_Q_pT_mid_rat");
+		GetCorrectedRatio(gAsRatio_pT_fwd, gAsChic_pT_fwd, gAsJpsi_pT_fwd, fileCorrection, "h_chiEfficiency1D_Q_pT_fwd_rat");
 
-			RooFitResult* fitResultJpsiBin = myWs.pdf(myPdfNameJpsi.c_str())->fitTo(*rdsDataJpsiBin, Extended(true), SumW2Error(true));// , Range(mass_windowFit_l, mass_windowFit_h), NumCPU(1), Save(true), PrintLevel(-1));
-			////fitResultJpsiBin->Print("v");
-			////myWs.import(*fitResultJpsiBin, TString::Format("fitResultJpsi_%s", myPdfNameJpsiBin.c_str()));
-			//gAsJpsi_y->SetPoint(i, ((bins_y[i] + bins_y[i + 1]) / 2.0), myWs.var("nsigJpsi")->getValV()); //placing the point in the middle of the bin
-			//gAsJpsi_y->SetPointEYhigh(i, myWs.var("nsigJpsi")->getErrorHi());
-			//gAsJpsi_y->SetPointEYlow(i, -(myWs.var("nsigJpsi")->getErrorLo()));
-
-			//file_log << "signal Jpsi " << myWs.var("nsigJpsi")->getValV() << " + " << myWs.var("nsigJpsi")->getErrorHi() << " - " << myWs.var("nsigJpsi")->getErrorLo() << endl;
-
-			myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin);
-			myWs.pdf(myPdfNameJpsi.c_str())->paramOn(massframeJpsiBin, Layout(0.55));
-			myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("backgroundJpsi"), LineStyle(kDashed));
-			myWs.pdf(myPdfNameJpsi.c_str())->plotOn(massframeJpsiBin, Components("Jpsi"), LineStyle(kDashed), LineColor(kRed));
-			//myWs.pdf(myPdfNameJpsiBin.c_str())->plotOn(massframeJpsiBin, Components("psi2"), LineStyle(kDashed), LineColor(kGreen));
+		GetCorrectedRatio(gAsRatio_pT_fwdOnly, gAsChic_pT_fwdOnly, gAsJpsi_pT_fwdOnly, fileCorrection, "h_chiEfficiency1D_Q_pT_fwdOnly_rat");
+		GetCorrectedRatio(gAsRatio_pT_bkwOnly, gAsChic_pT_bkwOnly, gAsJpsi_pT_bkwOnly, fileCorrection, "h_chiEfficiency1D_Q_pT_bkwOnly_rat");
 
 
-			massframeJpsiBin->Draw();
-			cTestJpsi->SaveAs(Form("CanvasCTest_RW3_Jpsi_y_%.1f_%.1f.png", bins_y[i], bins_y[i + 1]));
-
-		}
-		//*/
-		
-
-		GetRatio(gAsRatio_pT, gAsChic_pT, gAsJpsi_pT);
-
-
-
-		// for now quick correction
-
-		//TFile* fCor = new TFile(fileCorrection, "READ");
-
-		//TH1D* hCor = (TH1D*)fCor->Get("h_chiEfficiency1D_Q_ratRel");
-		//for (int i = 0; i < hCor->GetNbinsX(); i++)
-		//{
-		//	double corr = hCor->GetBinContent(i + 1); //TH1 numbering offset by 1
-		//	cout << corr << endl; 
-		//	gAsRatio_pT->GetY()[i] *= (1/corr);
-		//	gAsRatio_pT->SetPointEYhigh(i, gAsRatio_pT->GetErrorYhigh(i)/corr);
-		//	gAsRatio_pT->SetPointEYlow(i, gAsRatio_pT->GetErrorYlow(i)/corr);
-		//}
-
-
-
-		TCanvas* can_pT = new TCanvas("can_pT", "Ratio_pT", 800, 600);
+		TCanvas* can_pT = new TCanvas("can_pT", "Ratio_pT", 600, 400);
 		gAsRatio_pT->SetMarkerStyle(21);
-		gAsRatio_pT->SetMarkerSize(2.0);
+		gAsRatio_pT->SetMarkerSize(1.7);
 		gAsRatio_pT->SetMarkerColor(kBlue);
-		gAsRatio_pT->SetLineWidth(3);
+		gAsRatio_pT->SetLineColor(kBlue);
+		gAsRatio_pT->SetLineWidth(2);
 		gAsRatio_pT->Draw("AP");
-		gAsRatio_pT->GetYaxis()->SetTitle("(Chic_1+Chic_2) / Jpsi");
-		gAsRatio_pT->GetYaxis()->SetTitleOffset(1.3);
+		gAsRatio_pT->GetYaxis()->SetRangeUser(0, 0.5);
+		gAsRatio_pT_mid->SetMarkerStyle(20);
+		gAsRatio_pT_mid->SetMarkerSize(2.0);
+		gAsRatio_pT_mid->SetMarkerColor(kRed);
+		gAsRatio_pT_mid->SetLineColor(kRed);
+		gAsRatio_pT_mid->SetLineWidth(2);
+		gAsRatio_pT_mid->Draw("P");
+		gAsRatio_pT_fwd->SetMarkerStyle(29);
+		gAsRatio_pT_fwd->SetMarkerSize(2.0);
+		gAsRatio_pT_fwd->SetMarkerColor(kGreen);
+		gAsRatio_pT_fwd->SetLineColor(kGreen);
+		gAsRatio_pT_fwd->SetLineWidth(2);
+		gAsRatio_pT_fwd->Draw("P");
+		gAsRatio_pT->GetYaxis()->SetTitle("(#chic_{1}+#chic_{2}) / J/#psi");
+		gAsRatio_pT->GetYaxis()->SetTitleOffset(1.1);
 		gAsRatio_pT->GetXaxis()->SetTitle("pT");
+
+		TLegend* leg_pT = new TLegend(0.7, 0.2, 0.88, 0.4, "");
+		leg_pT->AddEntry(gAsRatio_pT, "Integrated", "p");
+		leg_pT->AddEntry(gAsRatio_pT_mid, "Midrapidity |y|<1", "p");
+		leg_pT->AddEntry(gAsRatio_pT_fwd, "Forward |y|>1", "p");
+		leg_pT->Draw();
+
 		can_pT->SaveAs("FitterOutput/RatioChicJpsi_pT.png");
+
+
+		///*
+
 
 		////////  y
 
-		GetRatio(gAsRatio_y, gAsChic_y, gAsJpsi_y);
-
-		//TH1D* hCor_y = (TH1D*)fCor->Get("h_chiEfficiency1D_Q_ratRel");
-		//for (int i = 0; i < hCor_y->GetNbinsX(); i++)
-		//{
-		//	double corr = hCor_y->GetBinContent(i + 1); //TH1 numbering offset by 1
-		//	cout << corr << endl;
-		//	gAsRatio_y->GetY()[i] *= (1 / corr);
-		//	gAsRatio_y->SetPointEYhigh(i, gAsRatio_y->GetErrorYhigh(i) / corr);
-		//	gAsRatio_y->SetPointEYlow(i, gAsRatio_y->GetErrorYlow(i) / corr);
-		//}
+		GetCorrectedRatio(gAsRatio_y, gAsChic_y, gAsJpsi_y, fileCorrection, "h_chiEfficiency1D_Q_y_rat");
 
 
 
-		TCanvas* can_y = new TCanvas("can_y", "Ratio_y", 800, 600);
+		TCanvas* can_y = new TCanvas("can_y", "Ratio_y", 600, 400);
 		gAsRatio_y->SetMarkerStyle(21);
-		gAsRatio_y->SetMarkerSize(2.0);
+		gAsRatio_y->SetMarkerSize(1.7);
 		gAsRatio_y->SetMarkerColor(kRed);
-		gAsRatio_y->SetLineWidth(3);
+		gAsRatio_y->SetLineColor(kRed);
+		gAsRatio_y->SetLineWidth(2);
 		gAsRatio_y->Draw("AP");
-		gAsRatio_y->GetYaxis()->SetTitle("(Chic_1+Chic_2) / Jpsi");
-		gAsRatio_y->GetYaxis()->SetTitleOffset(1.3);
+		gAsRatio_y->GetYaxis()->SetRangeUser(0, 0.5);
+		gAsRatio_y->GetYaxis()->SetTitle("(#chic_{1}+#chic_{2}) / J/#psi");
+		gAsRatio_y->GetYaxis()->SetTitleOffset(1.1);
 		gAsRatio_y->GetXaxis()->SetTitle("rapidity");
 		can_y->SaveAs("FitterOutput/RatioChicJpsi_y.png");
 
 
 
-		GetRatio(gAsRatio_nTrk, gAsChic_nTrk, gAsJpsi_nTrk);
+		GetCorrectedRatio(gAsRatio_nTrk, gAsChic_nTrk, gAsJpsi_nTrk, fileCorrection, "h_chiEfficiency1D_Q_nTrk_rat");
+		gAsRatio_nTrk->RemovePoint(4); // not enough statistics there
 
-		TCanvas* can_nTrk = new TCanvas("can_nTrk", "Ratio_nTrk", 800, 600);
+		TCanvas* can_nTrk = new TCanvas("can_nTrk", "Ratio_nTrk", 600, 400);
 		gAsRatio_nTrk->SetMarkerStyle(21);
-		gAsRatio_nTrk->SetMarkerSize(2.0);
+		gAsRatio_nTrk->SetMarkerSize(1.7);
 		gAsRatio_nTrk->SetMarkerColor(kRed);
-		gAsRatio_nTrk->SetLineWidth(3);
+		gAsRatio_nTrk->SetLineColor(kRed);
+		gAsRatio_nTrk->SetLineWidth(2);
 		gAsRatio_nTrk->Draw("AP");
-		gAsRatio_nTrk->GetYaxis()->SetTitle("(Chic_1+Chic_2) / Jpsi");
-		gAsRatio_nTrk->GetYaxis()->SetTitleOffset(1.3);
+		gAsRatio_nTrk->GetYaxis()->SetRangeUser(0, 0.5);
+		gAsRatio_nTrk->GetYaxis()->SetTitle("(#chic_{1}+#chic_{2}) / J/#psi");
+		gAsRatio_nTrk->GetYaxis()->SetTitleOffset(1.1);
 		gAsRatio_nTrk->GetXaxis()->SetTitle("nTrack");
+		gAsRatio_nTrk->GetXaxis()->SetRangeUser(0,250);
 		can_nTrk->SaveAs("FitterOutput/RatioChicJpsi_nTrk.png");
 
+		//*/
 
 
 		/*
@@ -1422,7 +1767,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		h1->Draw("colz");
 		*/
 
-	}
+	
 
 	TCanvas* can2 = new TCanvas("can2", "plot", 1200, 800);
 
@@ -1517,8 +1862,21 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		gAsChic_pT->Write();
 		gAsChic_pT_mid->Write();
 		gAsChic_pT_fwd->Write();
+		gAsChic_pT_fwdOnly->Write();
+		gAsChic_pT_bkwOnly->Write();
+
 		gAsJpsi_pT->Write();
+		gAsJpsi_pT_mid->Write();
+		gAsJpsi_pT_fwd->Write();
+		gAsJpsi_pT_fwdOnly->Write();
+		gAsJpsi_pT_bkwOnly->Write();
+
 		gAsRatio_pT->Write();
+		gAsRatio_pT_mid->Write();
+		gAsRatio_pT_fwd->Write();
+		gAsRatio_pT_fwdOnly->Write();
+		gAsRatio_pT_bkwOnly->Write();
+
 		//can_pT->Write();
 		gAsChic_y->Write();
 		gAsJpsi_y->Write();
@@ -1527,6 +1885,7 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 		gAsChic_nTrk->Write();
 		gAsJpsi_nTrk->Write();
 		gAsRatio_nTrk->Write();
+		//can_nTrk->Write();
 	}
 
 	fout->Close();
@@ -1555,5 +1914,60 @@ void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const ch
 	file_log.close();
 
 }
+
+
+
+RooDoubleCB::RooDoubleCB(const char *name, const char *title,
+	RooAbsReal& _x,
+	RooAbsReal& _mu,
+	RooAbsReal& _sig,
+	RooAbsReal& _a1,
+	RooAbsReal& _n1,
+	RooAbsReal& _a2,
+	RooAbsReal& _n2) :
+	RooAbsPdf(name, title),
+	x("x", "x", this, _x),
+	mu("mu", "mu", this, _mu),
+	sig("sig", "sig", this, _sig),
+	a1("a1", "a1", this, _a1),
+	n1("n1", "n1", this, _n1),
+	a2("a2", "a2", this, _a2),
+	n2("n2", "n2", this, _n2)
+{
+}
+
+
+RooDoubleCB::RooDoubleCB(const RooDoubleCB& other, const char* name) :
+	RooAbsPdf(other, name),
+	x("x", this, other.x),
+	mu("mu", this, other.mu),
+	sig("sig", this, other.sig),
+	a1("a1", this, other.a1),
+	n1("n1", this, other.n1),
+	a2("a2", this, other.a2),
+	n2("n2", this, other.n2)
+{
+}
+
+
+
+Double_t RooDoubleCB::evaluate() const
+{
+	double u = (x - mu) / sig;
+	double A1 = TMath::Power(n1 / TMath::Abs(a1), n1)*TMath::Exp(-a1 * a1 / 2);
+	double A2 = TMath::Power(n2 / TMath::Abs(a2), n2)*TMath::Exp(-a2 * a2 / 2);
+	double B1 = n1 / TMath::Abs(a1) - TMath::Abs(a1);
+	double B2 = n2 / TMath::Abs(a2) - TMath::Abs(a2);
+
+	double result(1);
+	if (u < -a1) result *= A1 * TMath::Power(B1 - u, -n1);
+	else if (u < a2)  result *= TMath::Exp(-u * u / 2);
+	else            result *= A2 * TMath::Power(B2 + u, -n2);
+	return result;
+}
+
+
+
+
 
 

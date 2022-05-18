@@ -151,7 +151,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("muon_eta", &muon_eta);
 	event_tree->Branch("muon_pt", &muon_pt);
 	event_tree->Branch("muon_p4", "TClonesArray", &muon_p4, 32000, 0);
-	if (flag_doMC) {
+	if (flag_doMC && flag_saveExtraThings) {
 		event_tree->Branch("muon_isMatchedMC", &muon_isMatchedMC);
 		event_tree->Branch("muonGen_eta", &muonGen_eta);
 		event_tree->Branch("muonGen_pt", &muonGen_pt);
@@ -244,7 +244,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 
 
 
-	if (flag_doMC) {
+	if (flag_doMC && flag_saveExtraThings) {
 		event_tree->Branch("conv_isMatchedMC", &conv_isMatchedMC);
 		event_tree->Branch("convGen_eta", &convGen_eta);
 		event_tree->Branch("convGen_pt", &convGen_pt);
@@ -826,7 +826,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			new ((*muon_p4)[i]) TLorentzVector(muon_p4_aux);
 			// MC generated information
 			//cout << "At muonMC" << endl;
-			if (flag_doMC) {
+			if (flag_doMC && flag_saveExtraThings) {
 				bool muon_isMatchedMC_flag = patMuon.genLepton(); //false for null pointer, true if match exists, from pat::Lepton.h //O: Stopped working in MC v5, since not really needed, left out
 				//cout << muon_isMatchedMC_flag << endl;
 				muon_isMatchedMC.push_back(muon_isMatchedMC_flag);
@@ -964,7 +964,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		//else conv_minDistanceOfApproach = 0;
 
 		//MC for conversions // for testing, normally useless information
-		if (flag_doMC)
+		if (flag_doMC && flag_saveExtraThings)
 		{
 			if (genParticles_handle.isValid()) {
 				reco::GenParticle genConv_best = reco::GenParticle();
@@ -1313,7 +1313,6 @@ void ChiRootupler::Clear()
 	conv_compatibleInnerHitsOK.clear();
 	conv_hitPat1.clear();
 	conv_hitPat2.clear();
-	conv_isCustomHighPurity.clear();
 	conv_pvtx_index.clear();
 	conv_zOfPriVtx.clear();
 	conv_zOfPriVtxFromTracks.clear();

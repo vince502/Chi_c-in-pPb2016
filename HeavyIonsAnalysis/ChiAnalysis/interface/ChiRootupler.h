@@ -205,7 +205,7 @@ private:
 	TClonesArray* muon_p4; //TLorentzVector
 	std::vector <pat::Muon> patMuonStored;
 
-	//muon MC
+	//muon MC  - mostly testing, not that useful
 	std::vector <bool> muon_isMatchedMC;
 	std::vector <double> muonGen_eta;
 	std::vector <double> muonGen_pt;
@@ -263,7 +263,6 @@ private:
 	std::vector <int> conv_compatibleInnerHitsOK; //-1: less than 2 tracks, 0: not compatible, 1: yes
 	std::vector <reco::HitPattern> conv_hitPat1;
 	std::vector <reco::HitPattern> conv_hitPat2;
-	std::vector <bool> conv_isCustomHighPurity;//tbd - is just a sum of some other cuts, not creating at the time
 	std::vector <double> conv_vertexChi2Prob;
 	std::vector <int>  conv_pvtx_index;
 	std::vector <double> conv_zOfPriVtx; // z of primary vertex that is used in the conversions (could be obtained also from pvtx_z)
@@ -289,7 +288,7 @@ private:
 	std::vector <double> conv_pt;
 
 
-	//conv MC
+	//conv MC  - mostly testing, not that useful
 	std::vector <bool> conv_isMatchedMC;
 	std::vector <double> convGen_eta;
 	std::vector <double> convGen_pt;
@@ -300,7 +299,7 @@ private:
 	std::vector <int> convGen_motherCode;
 	
 
-	// MC general
+	// MC general - main MC tree
 
 	std::vector <bool> gen_isGoodChicDecay; // saves true if chic decay was -> J/psi gamma -> mumu(+gammas) gamma; false otherwise
 	std::vector <int> gen_pdgId;
@@ -363,26 +362,6 @@ private:
 	std::vector <double> chi_refit_pvtxFromPVwithMuons_x;
 	std::vector <double> chi_refit_pvtxFromPVwithMuons_y;
 	std::vector <double> chi_refit_pvtxFromPVwithMuons_z;
-
-
-
-	// static data member definitions
-	//
-	const double pi0_mass = 0.1349766;
-	const Double_t psi1SMass = 3.09691;
-	const Double_t psi2SMass = 3.68610;
-
-	/*
-	// 2011 par
-	static const double Y_sig_par_A = 0.058;
-	static const double Y_sig_par_B = 0.047;
-	static const double Y_sig_par_C = 0.22;
-	*/
-
-	// 2012 par
-	const double Y_sig_par_A = 62.62;
-	const double Y_sig_par_B = 56.3;
-	const double Y_sig_par_C = -20.77;
 
 
 };

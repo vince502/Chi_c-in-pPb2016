@@ -12,13 +12,14 @@
 #include <sstream>
 
 //#include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
-
+//
 //#include "DataFormats/VertexReco/interface/Vertex.h"
 //#include "DataFormats/Common/interface/TriggerResults.h"
 //#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 //#include "FWCore/Common/interface/TriggerNames.h"
 //#include "DataFormats/HeavyIonEvent/interface/Centrality.h"
 
+bool flag_saveExtraThings = false; //whether to load some stuff that was done for testing, but is not useful per se. Can be set to true only if the trees had the corresponding flag
 
 // MATCHING VARIABLES
 
@@ -33,19 +34,18 @@ const double jpsi_maxDPtRel_analysis = 0.1;
 const double conv_maxDeltaR_analysis = 0.1;
 const double conv_maxDPtRel_analysis = 1;
 
+//jpsi mass cutoff for chic peak
+const double mass_cutoffJpsi_l = 2.9; //cutoff for Jpsi mass that is accepted to be chic candidate
+const double mass_cutoffJpsi_h = 3.25;
 
 
 
 
+////////////////////////////////////////////
+///////////   VARIABLES IN THE TREES    ////
+///////////////////////////////////////////
 
-
-
-// not really used:
-//pat::Muon
-//pat::CompositeCandidate
-//reco::HitPattern
-
-//general
+//////  GENERAL
 long long int runNumber;
 long long int eventNumber;
 int nPrimVertices;
@@ -59,7 +59,7 @@ double hfTowerSum_inEvent;
 int Trig_Event_HLTDoubleMuOpen;
 
 
-// vertex
+// VERTEX
 std::vector <double>* pvtx_z = 0;
 std::vector <double>* pvtx_zError = 0;
 std::vector <double>* pvtx_x = 0;
@@ -67,7 +67,7 @@ std::vector <double>* pvtx_y = 0;
 std::vector <double>* pvtx_nTracks = 0;
 std::vector <bool>* pvtx_isFake = 0;
 
-//muon info
+// MUON info
 std::vector <bool>* muonIsHLTDoubleMuOpen = 0;
 std::vector <bool>* muonIsHLTDoubleMuOpenFilter = 0;
 std::vector <bool>* muonIsGlobal = 0;
@@ -89,7 +89,7 @@ std::vector <double>* muon_pt = 0;
 TClonesArray* muon_p4 = new TClonesArray("TLorentzVector", 100); //TLorentzVector
 //std::vector <pat::Muon>* patMuonStored = 0;
 
-//muon MC
+//muon MC   - this are for testing only (if flag_saveExtraThings) - normally useless information that isn't loaded
 std::vector <bool>* muon_isMatchedMC = 0;
 std::vector <double>* muonGen_eta = 0;
 std::vector <double>* muonGen_pt = 0;
@@ -99,7 +99,7 @@ std::vector <double>* muonGen_ptDelta = 0;
 std::vector <double>* muonGen_ptDeltaRel = 0;
 
 
-//dimuon info
+//DIMUON info
 
 TClonesArray*  dimuon_p4 = new TClonesArray("TLorentzVector", 100); //TLorentzVector
 std::vector <double>* dimuon_eta = 0;
@@ -118,9 +118,10 @@ std::vector <double>* dimuon_ctpvError = 0;
 
 
 
-//conversion info
+//CONVERSION info
 
 std::vector <int>* convRaw_duplicityStatus = 0; // 0: is not duplicate to any, 1: shares a track, but isn't split 2: shares a track, and is split, but is kept, 3: doesn't have 2 tracks, 4: shares the track, is split, and is removed
+std::vector <int>* convRaw_duplicityStatus_AV = 0;
 std::vector <double>* convRaw_splitDR = 0;
 std::vector <double>* convRaw_splitDpT = 0;
 std::vector <int>* conv_positionRaw = 0;
@@ -145,7 +146,6 @@ std::vector <bool>* conv_tkVtxCompatible_secondBestVertexB = 0;
 std::vector <int>* conv_compatibleInnerHitsOK = 0; //-1: less than 2 tracks, 0: not compatible, 1: yes
 //std::vector <reco::HitPattern>* conv_hitPat1 = 0;
 //std::vector <reco::HitPattern>* conv_hitPat2 = 0;
-//std::vector <bool>* conv_isCustomHighPurity = 0;//tbd - is just a sum of some other cuts, not creating at the time
 std::vector <double>* conv_vertexChi2Prob = 0;
 std::vector <int>*  conv_pvtx_index = 0;
 std::vector <double>* conv_zOfPriVtx = 0; // z of primary vertex that is used in the conversions (could be obtained also from pvtx_z)
@@ -171,7 +171,7 @@ std::vector <double>* conv_eta = 0;
 std::vector <double>* conv_pt = 0;
 
 
-//conv MC
+//conv MC - this are for testing only (if flag_saveExtraThings)  - normally useless information that isn't loaded
 std::vector <bool>* conv_isMatchedMC = 0;
 std::vector <double>* convGen_eta = 0;
 std::vector <double>* convGen_pt = 0;
@@ -224,7 +224,7 @@ std::vector <double>* gen_conv_rDelta = 0; //in principle duplicates information
 std::vector <double>* gen_conv_ptDeltaRel = 0;//in principle duplicates information
 
 
-// chi
+// CHI
 
 TClonesArray*  chi_p4 = new TClonesArray("TLorentzVector", 100); //TLorentzVector
 std::vector <double>* chi_eta = 0;
@@ -236,7 +236,7 @@ std::vector <double>* chi_dxyPhotToDimuonVtx = 0; //dxy distance of photon to di
 //std::vector <pat::CompositeCandidate>* chiStored = 0;
 std::vector <int>* chi_kinematicRefitFlag = 0; // -1 kinematic refit not done, 1 done: +2 needed extra refit for photon +4 something wrong with photon at the end +8 something wrong with the final fit 
 std::vector <int>* chi_refit_origChicPosition = 0; //stores position of the chic candidate for the refit (there will be gaps if refit fails) 
-std::vector <pat::CompositeCandidate>* chi_refitStored = 0;
+//std::vector <pat::CompositeCandidate>* chi_refitStored = 0;
 std::vector <double>* chi_refit_vprob = 0;
 std::vector <double>* chi_refit_ctauPV = 0;
 std::vector <double>* chi_refit_ctauErrPV = 0;
@@ -248,13 +248,11 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 
 
 
-
-
 /////////////////////////
 /////// functions ///////
 //////////////////////////
 
-int LoadChiBranches(TTree* tree, bool isMC);
+int LoadChiBranches(TTree* tree, bool isMC, bool minimalOnly=false);
 
 
 bool MuonAcceptance(double eta, double pt);
