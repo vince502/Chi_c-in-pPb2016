@@ -9,12 +9,11 @@ ChiCounter = cms.EDFilter('CandViewCountFilter',
 ChiRootuple = cms.EDAnalyzer('ChiRootupler',
     muon_cand =  cms.InputTag("ChiSelectedMuons"), 
     dimuon_cand = cms.InputTag("HiOnia2MuMuPAT"),
-    #photon_cand = cms.InputTag("PhotonCandidates","conversions"),
     conversions_ch = cms.InputTag("allConversions"),
-    #chi_cand = cms.InputTag("ChiProd","ChiCandidates"),
     primaryVertices = cms.InputTag("offlinePrimaryVertices"),
     TriggerResults  = cms.InputTag("TriggerResults", "", "HLT"),
     centralityInfo = cms.InputTag("pACentrality"),
+    srcTracks = cms.InputTag("generalTracks"), # this is added to determine ntrack variable with the cuts, the one we are to use for centrality dependencies
     genParticlesTag = cms.InputTag("genParticles"),
     isMC = cms.bool(False)
     )

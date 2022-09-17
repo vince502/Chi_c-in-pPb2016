@@ -48,6 +48,7 @@ const double mass_cutoffJpsi_h = 3.25;
 //////  GENERAL
 long long int runNumber;
 long long int eventNumber;
+bool ispPb;
 int nPrimVertices;
 int muonPerEvent;
 int convPerTriggeredEvent;
@@ -64,6 +65,7 @@ std::vector <double>* pvtx_z = 0;
 std::vector <double>* pvtx_zError = 0;
 std::vector <double>* pvtx_x = 0;
 std::vector <double>* pvtx_y = 0;
+std::vector <double>* pvtx_nTracksUncut = 0;
 std::vector <double>* pvtx_nTracks = 0;
 std::vector <bool>* pvtx_isFake = 0;
 
@@ -255,11 +257,11 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 int LoadChiBranches(TTree* tree, bool isMC, bool minimalOnly=false);
 
 
-bool MuonAcceptance(double eta, double pt);
-
+bool MuonAcceptance(double eta, double pt); 
 bool MuonSelectionPass(int muonPos);
 
-bool MuonSelectionPassMC(int muonPos);
+int MuonMCMatched(int muonMCPos);
+bool MuonSelectionPassMC(int muonMCPos);
 
 
 // conversion
@@ -268,10 +270,14 @@ bool PhotAcceptance(double eta, double pt);
 bool PhotSelectionPassTight(int photPos);
 bool PhotSelectionPassMedium(int photPos);
 bool PhotSelectionPassLoose(int photPos);
+bool PhotSelectionPassVeryLoose(int photPos);
 
-bool PhotSelectionPass(int photPos); //nominal
-bool PhotSelectionPassMC(int photPos);
-bool PhotSelectionPassMCLoose(int photPos);
+bool PhotSelectionPass(int photPos); //nominal version
+
+int PhotMCMatched(int photMCPos);
+bool PhotSelectionPassMC(int photMCPos);
+bool PhotSelectionPassVeryLooseMC(int photMCPos);
+bool PhotSelectionPassMediumMC(int photMCPos);
 
 /////////////////////
 //  D I M U O N /////
@@ -281,7 +287,7 @@ bool PhotSelectionPassMCLoose(int photPos);
 bool DimuonAcceptanceLoose(double rap, double pt);
 bool DimuonAcceptanceTight(double rap, double pt);
 
-bool DimuonAcceptance(double rap, double pt);
+bool DimuonAcceptance(double rap, double pt); //nominal version 
 
 
 // dimuon selection
@@ -302,12 +308,15 @@ int DimuonPassAllCutsMC(int dimuonMCPos = 0);  // -1 if failed, else returns the
 /////////////////////
 
 bool ChiPassAllCuts(int chiPos);
+bool ChiPassAllCutsVeryLooseConversion(int chiPos); //version with very loose conversion cut
+bool ChiPassAllCutsMediumConversion(int chiPos); //version with medium conversion cut
 
 int ChiMCMatched(int chiMCPos = 0);// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
 //-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could be chic)
 
 int ChiPassAllCutsMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
-
+int ChiPassAllCutsVeryLooseConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
+int ChiPassAllCutsMediumConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 
 bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0); // mostly obsolete
 

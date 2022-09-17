@@ -1,24 +1,6 @@
 #ifndef ChiFitterInit_h
 #define ChiFitterInit_h
 
- // Declaration of branches that are saved for chi
-
-
-//#include "TLorentzVector.h"
-//#include "TVector3.h"
-//#include "TTree.h"
-//#include <TClonesArray.h>
-//#include <vector>
-//#include <sstream>
-
-//#include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
-
-//#include "DataFormats/VertexReco/interface/Vertex.h"
-//#include "DataFormats/Common/interface/TriggerResults.h"
-//#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
-//#include "FWCore/Common/interface/TriggerNames.h"
-//#include "DataFormats/HeavyIonEvent/interface/Centrality.h"
-
 
 
 #include "ChiTreeInit.h" //declaration of variables in the trees
@@ -71,7 +53,7 @@ const double mass_windowJpsi_l = 2.5;
 const double mass_windowJpsi_h = 3.5;
 const double mass_windowFitJpsi_l = 2.5;
 const double mass_windowFitJpsi_h = 3.5;
-const string mass_windowFitJpsi = "rvmassJpsi>2.5 && rvmassJpsi<4.0";
+const string mass_windowFitJpsi = "rvmassJpsi>2.5 && rvmassJpsi<3.5";
 
 double bins_pT[] = { 6.5, 9, 12, 18, 30 };
 int  nbins_pT = sizeof(bins_pT) / sizeof(double) - 1;
@@ -80,11 +62,15 @@ double bins_y[] = { -2.4, -1.6, -1.0, 0.0 , 1.0, 1.6, 2.4 };
 //double bins_y[] = { -2.4, -1.6, -1.0, 1.0, 1.6, 2.4 };
 int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
 
-double bins_nTrk[] = { 0, 50, 100, 150, 270, 400 };
+double bins_nTrk[] = { 0, 50, 100, 150, 250, 400 };
 int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
 
 
+std::vector<std::string> fittingSets = { "pt_all", "y", "nTrack", "pt_mid", "pt_fwd", "pt_fwdOnly", "pt_bkwOnly", "pt_fwdOnlyWide", "pt_bkwOnlyWide", "pt_midCMS", "pt_fwdCMS", "pt_bkwCMS", "nTrack_all" };
+//const int nFittingSets = fittingSets.size(); //doesn't work for arrays
+const int nFittingSets = 13;
 
+const int nFitFunctionParams = 20; //Real number can be lower, is handled (but not higher)
 
 
 

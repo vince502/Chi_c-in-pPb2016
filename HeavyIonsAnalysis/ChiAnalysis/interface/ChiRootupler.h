@@ -124,6 +124,7 @@ private:
 	edm::EDGetTokenT<reco::VertexCollection> primaryVertices_label;
 	edm::EDGetTokenT<edm::TriggerResults> triggerResults_label;
 	edm::EDGetTokenT<reco::Centrality> centrality_label;
+	edm::EDGetTokenT<reco::TrackCollection> srcTracks_label;
 	edm::EDGetTokenT<reco::GenParticleCollection> genParticles_label;
 
 	bool flag_doMC;
@@ -180,6 +181,7 @@ private:
 	std::vector <double> pvtx_zError;
 	std::vector <double> pvtx_x;
 	std::vector <double> pvtx_y;
+	std::vector <double> pvtx_nTracksUncut;
 	std::vector <double> pvtx_nTracks;
 	std::vector <bool> pvtx_isFake;
 

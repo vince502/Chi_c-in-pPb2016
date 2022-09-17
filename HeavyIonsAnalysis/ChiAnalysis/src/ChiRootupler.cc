@@ -83,6 +83,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	primaryVertices_label(consumes<reco::VertexCollection>(iConfig.getParameter < edm::InputTag >("primaryVertices"))),
 	triggerResults_label(consumes<edm::TriggerResults>(iConfig.getParameter < edm::InputTag >("TriggerResults"))),
 	centrality_label(consumes<reco::Centrality>(iConfig.getParameter < edm::InputTag >("centralityInfo"))),
+	srcTracks_label(consumes<reco::TrackCollection>(iConfig.getParameter < edm::InputTag >("srcTracks"))),
 	genParticles_label(consumes<reco::GenParticleCollection>(iConfig.getParameter < edm::InputTag >("genParticlesTag"))),
 	flag_doMC(iConfig.getParameter < bool >("isMC"))
 {
@@ -127,6 +128,7 @@ ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	event_tree->Branch("pvtx_zError", &pvtx_zError);
 	event_tree->Branch("pvtx_x", &pvtx_x);
 	event_tree->Branch("pvtx_y", &pvtx_y);
+	event_tree->Branch("pvtx_nTracksUncut", &pvtx_nTracksUncut);
 	event_tree->Branch("pvtx_nTracks", &pvtx_nTracks);
 	event_tree->Branch("pvtx_isFake", &pvtx_isFake);
 
@@ -342,18 +344,11 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	edm::Handle < std::vector < pat::CompositeCandidate > >dimuon_handle;
 	iEvent.getByToken(dimuon_label, dimuon_handle);
 
-	//edm::Handle < std::vector < pat::CompositeCandidate > >photon_handle;
-	//iEvent.getByToken(photon_label, photon_handle);
-
 	edm::Handle < std::vector <reco::Conversion>> conversionRaw_handle;
 	iEvent.getByToken(conversion_label, conversionRaw_handle);
-	//reco::ConversionCollection* conversionClean_handle = new reco::ConversionCollection; //used to hold conversions after duplicates were removed
-	//edm::Handle < std::vector <reco::Conversion>>  conversion_handle; //used to hold conversions after duplicates were removed
-	//iEvent.getByToken(conversion_label, conversion_handle);
 
 	reco::ConversionCollection* conversion_handle = new reco::ConversionCollection; //used to hold conversions after duplicates were removed
-	////edm::Handle < std::vector <reco::Conversion>>  conversion_handle; //used to hold conversions after duplicates were removed
-	////iEvent.getByToken(conversion_label, conversion_handle);
+
 
 	edm::Handle  < reco::VertexCollection> primaryVertices_handle;
 	iEvent.getByToken(primaryVertices_label, primaryVertices_handle);
@@ -364,8 +359,12 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	edm::Handle <reco::Centrality> centrality_handle;
 	iEvent.getByToken(centrality_label, centrality_handle);
 
+	edm::Handle<reco::TrackCollection> tracks_handle; // this is used in PV
+	iEvent.getByToken(srcTracks_label, tracks_handle);
+
 	edm::Handle <reco::GenParticleCollection> genParticles_handle;
 	iEvent.getByToken(genParticles_label, genParticles_handle);
+
 
 
 
@@ -457,10 +456,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	//Removed here, since they duplicates are useless, and mess up matching for MC
 
-	//Conv_removeDuplicates(conversionRaw_handle, conversionClean_handle);
 	Conv_removeDuplicates(conversionRaw_handle, conversion_handle);
 
-	//edm::Handle < std::vector <reco::Conversion>> conversionTest_handle = static_cast <edm::Handle < std::vector <reco::Conversion>>>(conversionClean_handle);
 
 	//////////////////////
 	//    C H I       ////
@@ -691,24 +688,72 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	
 
 
+
+
+	//////////////////
 	//PV
+	//////////
+
 	if (primaryVertices_handle.isValid()) {
-		//if (primaryVertices_handle->size() == 1) return; //test, to be deleted
 		for (uint i = 0; i < primaryVertices_handle->size(); i++) {
 			const reco::Vertex& pvtx = primaryVertices_handle->at(i);
 			pvtx_z.push_back(pvtx.z());
 			pvtx_zError.push_back(pvtx.zError());
 			pvtx_x.push_back(pvtx.x());
 			pvtx_y.push_back(pvtx.y());
-			pvtx_nTracks.push_back(pvtx.nTracks());
+			pvtx_nTracksUncut.push_back(pvtx.nTracks());
 			pvtx_isFake.push_back(pvtx.isFake());
+
+			// folowing part to get ntracks is copied from https://github.com/CmsHI/cmssw/blob/forest_CMSSW_8_0_28/RecoHI/HiCentralityAlgos/plugins/CentralityProducer.cc#L332-L405 and was okayed by GO (Austin, Hyunchul)
+
+			int nTracksCut = 0;
+
+			double vx = pvtx.x();
+			double vy = pvtx.y();
+			double vz = pvtx.z();
+			double vxError = pvtx.xError();
+			double vyError = pvtx.yError();
+			double vzError = pvtx.zError();
+
+			if (tracks_handle.isValid()) {
+
+				for (unsigned int i = 0; i < tracks_handle->size(); ++i) {
+					const reco::Track& track = (*tracks_handle)[i];
+					reco::TrackBase::TrackQuality tq = reco::TrackBase::qualityByName("highPurity");
+					if (track.quality(tq) == false) continue;
+
+					math::XYZPoint v1(vx, vy, vz);
+					double dz = track.dz(v1);
+					double dzsigma2 = track.dzError()*track.dzError() + vzError * vzError;
+					double dxy = track.dxy(v1);
+					double dxysigma2 = track.dxyError()*track.dxyError() + vxError * vyError;
+
+					const double pterrcut = 0.1;
+					const double dzrelcut = 3.0;
+					const double dxyrelcut = 3.0;
+
+					if (track.pt() > 0.4 && std::abs(track.eta()) < 2.4 &&
+						track.ptError() / track.pt() < pterrcut &&
+						dz*dz < dzrelcut*dzrelcut * dzsigma2 &&
+						dxy*dxy < dxyrelcut*dxyrelcut * dxysigma2) {
+						nTracksCut++;
+					}
+				}
+
+				pvtx_nTracks.push_back(nTracksCut);
+
+			}
+			else {
+				cout << "Problem with tracks handle, will just use uncut value for tracks" << endl;
+				pvtx_nTracks.push_back(pvtx.nTracks());
+			}
 
 		}
 
 	}
 	else cout << "Problem with PV handle" << endl;
 
-	int pvtx_index = 0; // 0: top primary vertex. Set in dimuon loop to vertex that is "closest" in z to dimuon vertex  (with optional cut-off, see ChiRootupler::SelectVertex) //changed to match vertex from HiOnia2MuMuPAT (mostly same version of the closest in dz)
+
 
 	////////////////////////
 	////  D I M U O N   ///
@@ -731,6 +776,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			{
 				dimuonStored.push_back(dimuon);
 			}
+
+			int pvtx_index = 0; // 0: top primary vertex. In past, was set in dimuon loop to vertex that is "closest" in z to dimuon vertex  (with optional cut-off, see ChiRootupler::SelectVertex) //changed to match vertex from HiOnia2MuMuPAT (mostly same version of the closest in dz)
 
 			const reco::Vertex* dimuon_recovtx = dimuon.userData<reco::Vertex>("commonVertex");
 			TVector3 dimuon_vtx_aux;
@@ -755,6 +802,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		}
 	}
 	else cout << "Problem with dimuon handle" << endl;
+
 
 
 	/////////////////////
@@ -1233,6 +1281,7 @@ void ChiRootupler::Clear()
 	pvtx_zError.clear();
 	pvtx_x.clear();
 	pvtx_y.clear();
+	pvtx_nTracksUncut.clear();
 	pvtx_nTracks.clear();
 	pvtx_isFake.clear();
 
