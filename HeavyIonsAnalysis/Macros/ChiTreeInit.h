@@ -256,6 +256,7 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 
 int LoadChiBranches(TTree* tree, bool isMC, bool minimalOnly=false);
 
+/// muon
 
 bool MuonAcceptance(double eta, double pt); 
 bool MuonSelectionPass(int muonPos);
@@ -278,6 +279,7 @@ int PhotMCMatched(int photMCPos);
 bool PhotSelectionPassMC(int photMCPos);
 bool PhotSelectionPassVeryLooseMC(int photMCPos);
 bool PhotSelectionPassMediumMC(int photMCPos);
+bool PhotSelectionPassTightMC(int photMCPos);
 
 /////////////////////
 //  D I M U O N /////
@@ -310,6 +312,7 @@ int DimuonPassAllCutsMC(int dimuonMCPos = 0);  // -1 if failed, else returns the
 bool ChiPassAllCuts(int chiPos);
 bool ChiPassAllCutsVeryLooseConversion(int chiPos); //version with very loose conversion cut
 bool ChiPassAllCutsMediumConversion(int chiPos); //version with medium conversion cut
+bool ChiPassAllCutsTightConversion(int chiPos); //version with tight conversion cut
 
 int ChiMCMatched(int chiMCPos = 0);// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
 //-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could be chic)
@@ -317,8 +320,23 @@ int ChiMCMatched(int chiMCPos = 0);// check if the gen chic was matched to reco.
 int ChiPassAllCutsMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 int ChiPassAllCutsVeryLooseConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 int ChiPassAllCutsMediumConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
+int ChiPassAllCutsTightConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 
 bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos = 0); // mostly obsolete
+
+
+
+////////////////////////
+///// VARIOUS  ////////
+///////////////////////
+
+double WeightForMC_pTpart(double pt); //weights official MC to match data better, to be used for nominal results (and pretty much everywhere). Input - pT of J/psi from chic decay in GeV; output - weight (RD/MC) with which to multiply MC so it matches data 
+
+double WeightPhotonAcceptanceSystematic(double photon_pt, int idx = 0); // weights official MC with variations obtained from alternative MC settings. To be used as systematics. idx: 0->nominal; 1->pthat=3; 2->pthat=6; 3->cmass=1.43; 4->renormalization+factorization variation 
+// currently idx 1 and 2 are largest variations, others need not to be considered
+
+
+
 
 
 #endif 

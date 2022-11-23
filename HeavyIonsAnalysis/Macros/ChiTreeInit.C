@@ -425,6 +425,14 @@ bool PhotSelectionPassMediumMC(int photMCPos)  //uses variables loaded in main f
 	return PhotSelectionPassMedium(matchPosition);
 }
 
+bool PhotSelectionPassTightMC(int photMCPos)  //uses variables loaded in main function
+{
+	int matchPosition = gen_conv_matchPosition->at(photMCPos);
+	if (matchPosition < -0.5) return false; //not matched
+	if (gen_conv_rDelta->at(photMCPos) > conv_maxDeltaR_analysis || gen_conv_ptDeltaRel->at(photMCPos) > conv_maxDPtRel_analysis) return false;//not matched
+	return PhotSelectionPassTight(matchPosition);
+}
+
 /////////////////////
 //  D I M U O N /////
 /////////////////////
@@ -618,6 +626,19 @@ bool ChiPassAllCutsMediumConversion(int chiPos)
 	return true;
 }
 
+bool ChiPassAllCutsTightConversion(int chiPos)
+{
+	int dimuonPos = chi_daughterJpsi_position->at(chiPos);
+	if (DimuonPassAllCuts(dimuonPos) == false) return false;
+	double dimuonM = ((TLorentzVector*)dimuon_p4->At(dimuonPos))->M();
+	if (dimuonM< mass_cutoffJpsi_l || dimuonM > mass_cutoffJpsi_h) return false;
+
+	// photon
+	int convPos = chi_daughterConv_position->at(chiPos);
+	if (PhotAcceptance(conv_eta->at(convPos), conv_pt->at(convPos)) == false) return false;
+	if (PhotSelectionPassTight(convPos) == false) return false;
+	return true;
+}
 
 int ChiMCMatched(int chiMCPos)// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
 //-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could maybe rarely be caused by chic selection)
@@ -674,7 +695,13 @@ int ChiPassAllCutsMediumConversionMC(int chiMCPos)
 	else return chiPos;
 }
 
-
+int ChiPassAllCutsTightConversionMC(int chiMCPos)
+{
+	int chiPos = ChiMCMatched(chiMCPos); // we have 1 chic, check as which one it was potentially reconstructed
+	if (chiPos < -0.5) { return -1; }// -1 not matched
+	else if (ChiPassAllCutsTightConversion(chiPos) == false) { return -1; }
+	else return chiPos;
+}
 
 
 bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos)// check if the gen chic was matched to reco, as well as J/psi and photon. Usually one chic per event (thus index 0)
@@ -700,11 +727,28 @@ bool ChiIsMatchedAllDaughters(int chiPos, int chiMCPos)// check if the gen chic 
 
 
 
+double WeightForMC_pTpart(double pt) //weights official MC to match data better, to be used for nominal results (and pretty much everywhere). Input - pT of J/psi from chic decay in GeV; output - weight (RD/MC) with which to multiply MC so it matches data 
+{
+	if (pt < 6.5 || pt>30) {
+		cout << "WARNING: pT is smaller or larger than our acceptance cut-off, no weight calculated for those cases. 1 (no additional weight) returned" << endl;
+		return 1;
+	}
+	else {
+		return (0.104*pt - 0.07); //parametrization from the study comparing the RD MC spectra
+	}
+}
 
+double WeightPhotonAcceptanceSystematic(double photon_pt, int idx) // weights official MC with variations obtained from alternative MC settings. To be used as systematics. idx: 1->pthat=3; 2->pthat=6; 3->cmass=1.43; 4->renormalization+factorization variation 
+// currently idx 1 and 2 are largest variations, others need not to be considered
+{
+	if (idx == 0 || photon_pt > 5.0) return 1; //no additional weight for 0 (nominal) and above 5 GeV (the statistics there is close to none anyway, better no weight than randomly extrapolated function (moreover, all functions are close to 1 at 5GeV))
+	// for following, I copied the result of the fit with all the digits, however the actual precision is lower, and documented in the AN (last digits mean nothing)
+	if (idx == 1) { return (0.025861 * photon_pt*photon_pt - 0.144868 * photon_pt + 1.1045); } //pthat 3
+	if (idx == 2) { return (-0.0391252 * photon_pt*photon_pt + 0.239757 * photon_pt + 0.809756); } //pthat 6
+	if (idx == 3) { return (-0.0105452 * photon_pt*photon_pt + 0.0164734 * photon_pt + 1.0015); } //cmass =1.43 (nominal seems to be 1.5)
+	if (idx == 4) { return (-0.0308825 * photon_pt*photon_pt + 0.186884 * photon_pt + 0.852952); } //renorm and factorization scale change
+	cout << "Warning, in function WeightPhotonAcceptanceSystematic idx doesn't correspond to any selection, returning no weight." << endl;
+	return 1;
 
-
-
-
-
-
+}
 
