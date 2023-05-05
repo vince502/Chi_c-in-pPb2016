@@ -61,8 +61,8 @@ using namespace RooFit;
 
 ofstream file_log;
 
-//string myPdfName = "nominalPdfSimDoubleCBNoBkg";
-string myPdfName = "nominalPdfSimHypatiaNoBkg";
+string myPdfName = "nominalPdfSimDoubleCBNoBkg";
+//string myPdfName = "nominalPdfSimHypatiaNoBkg";
 
 int nParamOneFit = 4;//Since this is simultaneous fit, it is better to get ndf by hand (it is used in calculation of chi2/ndf per each part of simultaneous fit (chic1 and chic2)
 
@@ -210,8 +210,12 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName)
 	}
 	if (pdfName.compare("nominalPdfSimDoubleCBNoBkg") == 0)
 	{
-		Ws.factory("RooDoubleCB::nominalPdf_chi1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.03, 0.007, 0.034], alpha[1.85, 0.1, 10], n[2.7, 1.1, 500], alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 500])");
+		//Nominal
+		//Ws.factory("RooDoubleCB::nominalPdf_chi1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.03, 0.007, 0.034], alpha[1.85, 0.1, 10], n[2.7, 1.1, 500], alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 500])");
 
+		// systematic tunings
+		Ws.factory("RooDoubleCB::nominalPdf_chi1(rvmass, mean1[3.5107, 3.46, 3.53], sigma1[0.03, 0.007, 0.034], alpha[1.85, 0.1, 10], n[2.7, 1.3, 50], alphaH[1.85, 0.1, 10], nH[2.7, 1.1, 50])");
+		
 		Ws.factory("prod::sigma2(sigma1, sigmaRatio[1.11])"); //ratio: (Mchic2-Jpsi)/(Mchic1-Jpsi), PDG val 3556.17, 3510.67, 3096.9
 		Ws.factory("RooDoubleCB::nominalPdf_chi2(rvmass, mean2[3.556, 3.53, 3.58], sigma2, alpha, n, alphaH, nH)");
 
@@ -343,10 +347,12 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fi
 		Ws.var("mean1")->removeError();
 		Ws.var("sigma1")->removeError();
 		Ws.var("lambda")->removeError();
-		Ws.var("zeta")->removeError();
+		//Ws.var("zeta")->removeError();
 		Ws.var("beta")->removeError();
 		Ws.var("aSig1")->removeError();
 		Ws.var("nSig1")->removeError();
+		Ws.var("aSig2")->removeError();
+		Ws.var("nSig2")->removeError();
 		Ws.var("sigmaRatio")->removeError();
 		Ws.var("a1_chi1")->removeError();
 		Ws.var("a1_chi2")->removeError();
@@ -358,10 +364,12 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fi
 		Ws.var("mean1")->setVal(3.5107);
 		Ws.var("sigma1")->setVal(0.02);
 		Ws.var("lambda")->setVal(-1);
-		Ws.var("zeta")->setVal(0.1);
+		//Ws.var("zeta")->setVal(0.1);
 		Ws.var("beta")->setVal(-0.001);
 		Ws.var("aSig1")->setVal(2);
 		Ws.var("nSig1")->setVal(2);
+		Ws.var("aSig2")->setVal(2);
+		Ws.var("nSig2")->setVal(2);
 		Ws.var("sigmaRatio")->setVal(1.05);
 		Ws.var("a1_chi1")->setVal(0);
 		Ws.var("a1_chi2")->setVal(0);
@@ -379,6 +387,8 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fi
 		Ws.var("beta")->removeError();
 		Ws.var("aSig1")->removeError();
 		Ws.var("nSig1")->removeError();
+		Ws.var("aSig2")->removeError();
+		Ws.var("nSig2")->removeError();
 		Ws.var("mean2")->removeError();
 		
 		Ws.var("mean1")->setVal(3.5107);
@@ -388,6 +398,8 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName) // attempt to prevent the fi
 		Ws.var("beta")->setVal(-0.001);
 		Ws.var("aSig1")->setVal(2);
 		Ws.var("nSig1")->setVal(2);
+		Ws.var("aSig2")->setVal(2);
+		Ws.var("nSig2")->setVal(2);
 		Ws.var("mean2")->setVal(3.556);
 		}
 	else if (pdfName.compare("nominalPdfSimSingleCB") == 0)
@@ -588,7 +600,7 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 		textchi1->SetTextColor(kRed);
 		textchi1->SetTextSize(0.05);
 		textchi1->SetBorderSize(0);
-		string txtchi1 = "Chic 1 #chi^{2}/ndf: " + to_string(chi2_fit1);
+		string txtchi1 = "Chic 1 #chi^{2}/ndf: " + to_string(chi2_fit1).substr(0, std::to_string(chi2_fit1).find(".") + 3);// output to string, to 2 dec places (truncated and not rounded, but that should not matter)
 		textchi1->AddText(txtchi1.c_str());
 		textchi1->Draw();
 
@@ -597,7 +609,8 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 		textchi2->SetTextColor(kGreen+2);
 		textchi2->SetTextSize(0.05);
 		textchi2->SetBorderSize(0);
-		string txtchi2 = "Chic 2 #chi^{2}/ndf: " + to_string(chi2_fit2);
+		//string txtchi2 = "Chic 2 #chi^{2}/ndf: " + to_string(chi2_fit2);
+		string txtchi2 = "Chic 2 #chi^{2}/ndf: " + to_string(chi2_fit2).substr(0, std::to_string(chi2_fit2).find(".") + 3);// output to string, to 2 dec places (truncated and not rounded, but that should not matter)
 		textchi2->AddText(txtchi2.c_str());
 		textchi2->Draw();
 
@@ -664,8 +677,9 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 		pad2->Update();
 
 
-		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + fittingSetName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
-
+		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
+		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.pdf", bins[i], bins[i + 1])).c_str());
+		cFit->SaveAs(((string)"FitterOutput/FitResultConstraint_Chic_" + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.root", bins[i], bins[i + 1])).c_str());
 	}
 
 
@@ -683,8 +697,9 @@ int FitRooDataSetSim(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooR
 ////////////////////////////////////
 
 
-//void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root", const char* fileOut = "Chi_c_output_Officialv3_FullDCBW.root", const char* fileRds = "rds_Officialv3_ConstraintNarrowRangeW.root", const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeDCBW.root", const char* fileMCWeight = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/MCWeight_v2.root")
-void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root", const char* fileOut = "Chi_c_output_Officialv3_FullHypatiaW.root", const char* fileRds = "rds_Officialv3_ConstraintNarrowRangeW.root", const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeHypatiaW.root", const char* fileMCWeight = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/MCWeight_v2.root")
+void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root", const char* fileOut = "Chi_c_output_OfficialvDissertation_FullDCBW_Dissertation.root", const char* fileRds = "rds_OfficialvDissertation_ConstraintNarrowRangeW_NewBins.root", const char* fileConstraints = "Chi_c_constraints_OfficialvDissertation_NarrowRangeDCBW_NewBins.root", const char* fileMCWeight = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/MCWeight_v2.root")
+//void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root", const char* fileOut = "Chi_c_output_Officialv3_FullHypatiaW_Dissertation.root", const char* fileRds = "rds_OfficialvDissertation_ConstraintNarrowRangeW_NewBins.root", const char* fileConstraints = "Chi_c_constraints_OfficialvDissertation_NarrowRangeHypatiaW_NewBins.root", const char* fileMCWeight = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/MCWeight_v2.root")
+//void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root", const char* fileOut = "Chi_c_output_Officialv3_FullDCBW_VeryLooseConversion.root", const char* fileRds = "rds_Officialv3_ConstraintNarrowRangeW_VeryLooseConversion.root", const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeDCBW_VeryLooseConversion.root", const char* fileMCWeight = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/MCWeight_v2.root")
 {
 
 	//gStyle->SetOptStat(1111);
@@ -716,34 +731,35 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 	file_log.open("TestLog.txt", ios::app);
 	file_log << endl << endl << "N E W   R U N " << endl << endl;
 
+	
 	TH1D* hSignal_pT = new TH1D("hSignal_pT", "", nbins_pT, bins_pT);
 	TH1D* hSignalJpsi_pT = new TH1D("hSignalJpsi_pT", "", nbins_pT, bins_pT);
 	TH1D* hSignalRatio_pT = new TH1D("hSignalRatio_pT", "", nbins_pT, bins_pT);
 
-	TGraphAsymmErrors* gAsChic_pT = new TGraphAsymmErrors(nbins_pT);
+	TGraphAsymmErrors* gAsChic_pT = new TGraphAsymmErrors(nbins_pT); // Does nothing in constrains code. Kept for historic reasons (could be removed everywhere)
 	gAsChic_pT->SetNameTitle("gAsChic_pT","Chic pT dependence");
-	TGraphAsymmErrors* gAsJpsi_pT = new TGraphAsymmErrors(nbins_pT);
-	gAsJpsi_pT->SetNameTitle("gAsJpsi_pT", "Jpsi pT dependence");
-	TGraphAsymmErrors* gAsRatio_pT = new TGraphAsymmErrors(nbins_pT);
-	gAsRatio_pT->SetNameTitle("gAsRatio_pT", "Ratio pT dependence");
+	//TGraphAsymmErrors* gAsJpsi_pT = new TGraphAsymmErrors(nbins_pT);
+	//gAsJpsi_pT->SetNameTitle("gAsJpsi_pT", "Jpsi pT dependence");
+	//TGraphAsymmErrors* gAsRatio_pT = new TGraphAsymmErrors(nbins_pT);
+	//gAsRatio_pT->SetNameTitle("gAsRatio_pT", "Ratio pT dependence");
 
 	TGraphAsymmErrors* gAsChic_y = new TGraphAsymmErrors(nbins_y);
 	gAsChic_y->SetNameTitle("gAsChic_y", "Chic y dependence");
-	TGraphAsymmErrors* gAsJpsi_y = new TGraphAsymmErrors(nbins_y);
-	gAsJpsi_y->SetNameTitle("gAsJpsi_y", "Jpsi y dependence");
-	TGraphAsymmErrors* gAsRatio_y = new TGraphAsymmErrors(nbins_y);
-	gAsRatio_y->SetNameTitle("gAsRatio_y", "Ratio y dependence");
+	//TGraphAsymmErrors* gAsJpsi_y = new TGraphAsymmErrors(nbins_y);
+	//gAsJpsi_y->SetNameTitle("gAsJpsi_y", "Jpsi y dependence");
+	//TGraphAsymmErrors* gAsRatio_y = new TGraphAsymmErrors(nbins_y);
+	//gAsRatio_y->SetNameTitle("gAsRatio_y", "Ratio y dependence");
 
 	TGraphAsymmErrors* gAsChic_nTrk = new TGraphAsymmErrors(nbins_nTrk);
 	gAsChic_nTrk->SetNameTitle("gAsChic_nTrk", "Chic y dependence");
-	TGraphAsymmErrors* gAsJpsi_nTrk = new TGraphAsymmErrors(nbins_nTrk);
-	gAsJpsi_nTrk->SetNameTitle("gAsJpsi_nTrk", "Jpsi y dependence");
-	TGraphAsymmErrors* gAsRatio_nTrk = new TGraphAsymmErrors(nbins_nTrk);
-	gAsRatio_nTrk->SetNameTitle("gAsRatio_nTrk", "Ratio y dependence");
+	//TGraphAsymmErrors* gAsJpsi_nTrk = new TGraphAsymmErrors(nbins_nTrk);
+	//gAsJpsi_nTrk->SetNameTitle("gAsJpsi_nTrk", "Jpsi y dependence");
+	//TGraphAsymmErrors* gAsRatio_nTrk = new TGraphAsymmErrors(nbins_nTrk);
+	//gAsRatio_nTrk->SetNameTitle("gAsRatio_nTrk", "Ratio y dependence");
 
 	
 	///
-
+/*
 	gAsChic_alpha_pT = new TGraphAsymmErrors(nbins_pT);
 	gAsChic_alpha_pT->SetNameTitle("gAsChic_alpha_pT", "Chic pT alpha dependence");
 	gAsChic_alpha_y = new TGraphAsymmErrors(nbins_y);
@@ -774,7 +790,7 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 	gAsChic_mean1_y->SetNameTitle("gAsChic_mean1_y", "Chic y mean1 dependence");
 	gAsChic_mean1_nTrk = new TGraphAsymmErrors(nbins_nTrk);
 	gAsChic_mean1_nTrk->SetNameTitle("gAsChic_mean1_nTrk", "Chic mean1 ntrk dependence");
-
+	*/
 
 
 	gAsOutputChi2_chic1 = new TGraph(nFittingSets * 15); //assuming no more than 15 bins in each set, on average
@@ -883,7 +899,8 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 
 			//for (int iChi = 0; iChi < chi_p4->GetEntriesFast(); iChi++)
 			//{
-			int iChi = ChiPassAllCutsMC(0); //assume just one generated chic
+			//int iChi = ChiPassAllCutsVeryLooseConversionMC(0); //assume just one generated chic  //////    CHANGE for systematics
+			int iChi = ChiPassAllCutsMC(0); //assume just one generated chic 
 			if (iChi > -1)
 			{
 				++nchicCounter;
@@ -908,7 +925,7 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 				double rap_Jpsi = LVdimuon->Rapidity();
 
 				int nTrack_inPV = pvtx_nTracks->at(dimuon_pvtx_indexFromOniaMuMu->at(dimuonPos)); //for now using PV
-				double MCweight = h_weightPVtrk->GetBinContent(h_weightPVtrk->FindBin(nTrack_inPV));
+				double MCweight = h_weightPVtrk->GetBinContent(h_weightPVtrk->FindBin(nTrack_inPV))*WeightForMC_pTpart(pT_Jpsi);
 
 				if (ispPb == true) { //direction dependent stuff
 					MCweight = 1.29*MCweight;
@@ -1046,19 +1063,7 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 		myWs.import(*simPdfChi); //import doesn't work well for some reason, issue with plotting the individual components
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+		// Test Run
 
 		int i = 2;
 		TString TstrCut = TString::Format("rvrap > %f", bins_y[i]) + " && " + TString::Format("rvrap < %f", bins_y[i + 1]) + " && rvpt>6.5 && rvpt <30";
@@ -1132,28 +1137,53 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 		cTest->SaveAs("CanvasCTest_RW3.png");
 		//*/
 
+		//// Real fitting
+
 
 		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-2.4 && rvrap <2.4", "pt_all");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "pt_mid");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap<-1 || rvrap >1)", "pt_fwd");
+
 
 		FitRooDataSetSim(gAsChic_y, bins_y, nbins_y, rvmass, myWs, rCatChi, "rvrap", simPdfChi, " && rvpt>6.5 && rvpt <30", "y");
 				
-		FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "nTrack");
+
 		FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-2.4 && rvrap <2.4", "nTrack_all");
 
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.6 && rvrap <2.4)", "pt_fwdOnly");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-1.6 && rvrap >-2.4)", "pt_bkwOnly");
+		// following changed late to update the rap edges automatically
+		TString TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge2) + " && " + TString::Format("rvrap < %f", rapCM_Edge3);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		string strRapCut = TstrRapCut.Data();
+		////FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >-0.566 && rvrap <1.434)", "pt_midCMS");
+		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, strRapCut, "pt_midCMS");
 
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.0 && rvrap <2.4)", "pt_fwdOnlyWide");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-1.0 && rvrap >-2.4)", "pt_bkwOnlyWide");
-		
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >-0.566 && rvrap <1.434)", "pt_midCMS");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.434 && rvrap <2.4)", "pt_fwdCMS");
-		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-0.566 && rvrap >-1.566)", "pt_bkwCMS");
+		TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge3) + " && " + TString::Format("rvrap < %f", rapCM_Edge4);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.434 && rvrap <2.4)", "pt_fwdCMS");
+		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, strRapCut, "pt_fwdCMS");
+
+		TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge1) + " && " + TString::Format("rvrap < %f", rapCM_Edge2);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-0.566 && rvrap >-1.566)", "pt_bkwCMS");
+		FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, strRapCut, "pt_bkwCMS");
 
 
 
+
+
+
+
+
+
+		// Following no longer fitted as of vDissertation
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.6 && rvrap <2.4)", "pt_fwdOnly");
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-1.6 && rvrap >-2.4)", "pt_bkwOnly");
+
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap >1.0 && rvrap <2.4)", "pt_fwdOnlyWide");
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap <-1.0 && rvrap >-2.4)", "pt_bkwOnlyWide");
+		//FitRooDataSetSim(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, rCatChi, "rvntrack", simPdfChi, " && rvrap>-1 && rvrap <1", "nTrack");
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && rvrap>-1 && rvrap <1", "pt_mid");
+		//FitRooDataSetSim(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, rCatChi, "rvpt", simPdfChi, " && (rvrap<-1 || rvrap >1)", "pt_fwd");
 	}
 
 
@@ -1193,7 +1223,7 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 			}
 		}
 	}
-
+	/*
 	gAsChic_alpha_pT->Write();
 	gAsChic_alpha_y->Write();
 	gAsChic_alpha_nTrk->Write();
@@ -1209,7 +1239,7 @@ void ConstraintProducer(bool flagGenerateRds = false, bool flagRunFits = true,  
 	gAsChic_mean1_pT->Write();
 	gAsChic_mean1_y->Write();
 	gAsChic_mean1_nTrk->Write();
-
+	*/
 	gAsOutputChi2_chic1->Write();
 	gAsOutputChi2_chic2->Write();
 

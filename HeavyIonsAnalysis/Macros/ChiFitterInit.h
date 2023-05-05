@@ -62,13 +62,36 @@ double bins_y[] = { -2.4, -1.6, -1.0, 0.0 , 1.0, 1.6, 2.4 };
 //double bins_y[] = { -2.4, -1.6, -1.0, 1.0, 1.6, 2.4 };
 int  nbins_y = sizeof(bins_y) / sizeof(double) - 1;
 
-double bins_nTrk[] = { 0, 50, 100, 150, 250, 400 };
+double bins_nTrk[] = { 0, 50, 100, 150, 250};
 int  nbins_nTrk = sizeof(bins_nTrk) / sizeof(double) - 1;
 
+////// OLD BINS
+//std::vector<std::string> fittingSets = { "pt_all", "y", "nTrack", "pt_mid", "pt_fwd", "pt_fwdOnly", "pt_bkwOnly", "pt_fwdOnlyWide", "pt_bkwOnlyWide", "pt_midCMS", "pt_fwdCMS", "pt_bkwCMS", "nTrack_all" };
+////const int nFittingSets = fittingSets.size(); //doesn't work for arrays
+//const int nFittingSets = 13;
+//
+////stuff to ease making the plots
+//std::vector<std::string> fittingSetsXLabel = { "p_{T} [GeV/c]", "y (J/#psi)", "nTrack", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "p_{T} [GeV/c]", "nTrack" };
+//std::vector<double> fittingSetsXLow = { 5, -2.4, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0 };
+//std::vector<double> fittingSetsXHigh = { 30, 2.4, 250, 30, 30, 30, 30, 30, 30, 30, 30, 30, 250 };
 
-std::vector<std::string> fittingSets = { "pt_all", "y", "nTrack", "pt_mid", "pt_fwd", "pt_fwdOnly", "pt_bkwOnly", "pt_fwdOnlyWide", "pt_bkwOnlyWide", "pt_midCMS", "pt_fwdCMS", "pt_bkwCMS", "nTrack_all" };
+// rapidity edges for the CM fits, their values in lab-frame rap
+double rapCM_Edge1 = -1.535;
+double rapCM_Edge2 = -0.535;
+double rapCM_Edge3 = 1.465;
+double rapCM_Edge4 = 2.4;
+
+
+//// DEFINE THE KINEMATIC SPLITTING
+std::vector<std::string> fittingSets = { "pt_all", "y",  "pt_midCMS", "pt_fwdCMS", "pt_bkwCMS", "nTrack_all" };
 //const int nFittingSets = fittingSets.size(); //doesn't work for arrays
-const int nFittingSets = 13;
+const int nFittingSets = 6;
+
+//stuff to ease making the plots
+std::vector<std::string> fittingSetsXLabel = { "p_{T}(J/#psi) [GeV/c]", "y(J/#psi)", "p_{T}(J/#psi) [GeV/c]", "p_{T}(J/#psi) [GeV/c]", "p_{T}(J/#psi) [GeV/c]", "N_{tracks}" };
+std::vector<double> fittingSetsXLow = { 5, -2.4, 5, 5, 5, 0 };
+std::vector<double> fittingSetsXHigh = { 30, 2.4, 30, 30, 30, 250 };
+
 
 const int nFitFunctionParams = 20; //Real number can be lower, is handled (but not higher)
 

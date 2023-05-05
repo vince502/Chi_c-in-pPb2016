@@ -250,9 +250,11 @@ std::vector <double>* chi_refit_pvtxFromPVwithMuons_z = 0;
 
 
 
-/////////////////////////
-/////// functions ///////
-//////////////////////////
+/////////////////////////////////
+//
+//       FUNCTIONS         ///////
+//
+/////////////////////////////////
 
 int LoadChiBranches(TTree* tree, bool isMC, bool minimalOnly=false);
 
@@ -273,7 +275,7 @@ bool PhotSelectionPassMedium(int photPos);
 bool PhotSelectionPassLoose(int photPos);
 bool PhotSelectionPassVeryLoose(int photPos);
 
-bool PhotSelectionPass(int photPos); //nominal version
+bool PhotSelectionPass(int photPos); //NOMINAL version, calls PhotSelectionPassLoose, others are for systematics
 
 int PhotMCMatched(int photMCPos);
 bool PhotSelectionPassMC(int photMCPos);
@@ -289,27 +291,27 @@ bool PhotSelectionPassTightMC(int photMCPos);
 bool DimuonAcceptanceLoose(double rap, double pt);
 bool DimuonAcceptanceTight(double rap, double pt);
 
-bool DimuonAcceptance(double rap, double pt); //nominal version 
+bool DimuonAcceptance(double rap, double pt); //NOMINAL version 
 
 
 // dimuon selection
-bool DimuonSelectionPass(int dimuonPos);
-bool DimuonSelectionPassTight(int dimuonPos);
+bool DimuonSelectionPass(int dimuonPos); //NOMINAL version
+bool DimuonSelectionPassTight(int dimuonPos); // historic
 bool DimuonSelectionPassMC(int dimuonMCPos);
-bool DimuonSelectionPassNoCharge(int dimuonPos);
+bool DimuonSelectionPassNoCharge(int dimuonPos); // for some studies only
 int DimuonMCMatched(int dimuonMCPos = 0);
 
 // overall dimuon pass
 
-bool DimuonPassAllCuts(int dimuonPos);
-int DimuonPassAllCutsMC(int dimuonMCPos = 0);  // -1 if failed, else returns the position of good reco
+bool DimuonPassAllCuts(int dimuonPos);  // ALL CUTS - if you want to select only good J/psi including all the cuts on the decay products (selection+acceptance), call this
+int DimuonPassAllCutsMC(int dimuonMCPos = 0);  // version for MC: -1 if failed, else returns the position of good reco 
 
 
 /////////////////////
 ////  C H I C   /////
 /////////////////////
 
-bool ChiPassAllCuts(int chiPos);
+bool ChiPassAllCuts(int chiPos); // ALL CUTS - if you want to select only good chic including all the cuts on the decay products (selection+acceptance + mass of J/psi), call this
 bool ChiPassAllCutsVeryLooseConversion(int chiPos); //version with very loose conversion cut
 bool ChiPassAllCutsMediumConversion(int chiPos); //version with medium conversion cut
 bool ChiPassAllCutsTightConversion(int chiPos); //version with tight conversion cut
@@ -317,7 +319,7 @@ bool ChiPassAllCutsTightConversion(int chiPos); //version with tight conversion 
 int ChiMCMatched(int chiMCPos = 0);// check if the gen chic was matched to reco. Usually one chic per event (thus index 0). New version - matching to the muons and conversions only
 //-1 no matches, -2 conversions and muons matched, but the chic doesn't exist (probably removed by dimuon preselection - confirmed for most, but could be chic)
 
-int ChiPassAllCutsMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
+int ChiPassAllCutsMC(int chiMCPos = 0);  // ALL CUTS version for MC: -1 if failed, else returns the position of good reco
 int ChiPassAllCutsVeryLooseConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 int ChiPassAllCutsMediumConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco
 int ChiPassAllCutsTightConversionMC(int chiMCPos = 0); // -1 if failed, else returns the position of good reco

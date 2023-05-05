@@ -24,10 +24,10 @@
 #include "TMath.h"
 #include "TLorentzVector.h"
 
-#include "../../Macros/ChiTreeInit.C"
-#include "../../Macros/ChiFitterInit.h"
-#include "../../Macros/tdrstyle.C"
-#include "../../Macros/CMS_lumi.C"
+#include "../../../Macros/ChiTreeInit.C"
+#include "../../../Macros/ChiFitterInit.h"
+#include "../../../Macros/tdrstyle.C"
+#include "../../../Macros/CMS_lumi.C"
 
 
 using namespace std;
@@ -189,7 +189,7 @@ double ObtainPhotonGenSpectrum(const char* fileIn, TH1D* hOutput, TH1D* h_weight
 int SystematicWeightProducer()
 {
 	const char* fileDataResults = "Chi_c_output_Nominal_v2-bothDir_DCB.root";
-	const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDir.root";
+	//const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDir.root";
 
 	const char* fileInMC = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC-Official_v3-bothDir.root";
 	const char* fileInMCSyst1 = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Systematics/Chi_c_pPb8TeV_MC-Systematics_3.root";
@@ -373,33 +373,33 @@ int SystematicWeightProducer()
 	hSpectrumMC_pt->SetLineWidth(2);
 	hSpectrumMC_pt->Draw("same");
 
-	hSpectrumMC_ptSyst1->SetMarkerSize(0.9*_markerSize);
-	hSpectrumMC_ptSyst1->SetMarkerColor(kGreen);
-	hSpectrumMC_ptSyst1->SetMarkerStyle(24);
-	hSpectrumMC_ptSyst1->SetLineColor(kGreen);
-	hSpectrumMC_ptSyst1->SetLineWidth(2);
-	hSpectrumMC_ptSyst1->Draw("same");
+	//hSpectrumMC_ptSyst1->SetMarkerSize(0.9*_markerSize);
+	//hSpectrumMC_ptSyst1->SetMarkerColor(kGreen);
+	//hSpectrumMC_ptSyst1->SetMarkerStyle(24);
+	//hSpectrumMC_ptSyst1->SetLineColor(kGreen);
+	//hSpectrumMC_ptSyst1->SetLineWidth(2);
+	//hSpectrumMC_ptSyst1->Draw("same");
 
-	hSpectrumMC_ptSyst2->SetMarkerSize(0.9*_markerSize);
-	hSpectrumMC_ptSyst2->SetMarkerColor(kGreen+3);
-	hSpectrumMC_ptSyst2->SetMarkerStyle(24);
-	hSpectrumMC_ptSyst2->SetLineColor(kGreen+3);
-	hSpectrumMC_ptSyst2->SetLineWidth(2);
-	hSpectrumMC_ptSyst2->Draw("same");
+	//hSpectrumMC_ptSyst2->SetMarkerSize(0.9*_markerSize);
+	//hSpectrumMC_ptSyst2->SetMarkerColor(kGreen+3);
+	//hSpectrumMC_ptSyst2->SetMarkerStyle(24);
+	//hSpectrumMC_ptSyst2->SetLineColor(kGreen+3);
+	//hSpectrumMC_ptSyst2->SetLineWidth(2);
+	//hSpectrumMC_ptSyst2->Draw("same");
 
-	hSpectrumMC_ptSyst3->SetMarkerSize(0.9*_markerSize);
-	hSpectrumMC_ptSyst3->SetMarkerColor(kOrange);
-	hSpectrumMC_ptSyst3->SetMarkerStyle(24);
-	hSpectrumMC_ptSyst3->SetLineColor(kOrange);
-	hSpectrumMC_ptSyst3->SetLineWidth(2);
-	hSpectrumMC_ptSyst3->Draw("same");
+	//hSpectrumMC_ptSyst3->SetMarkerSize(0.9*_markerSize);
+	//hSpectrumMC_ptSyst3->SetMarkerColor(kOrange);
+	//hSpectrumMC_ptSyst3->SetMarkerStyle(24);
+	//hSpectrumMC_ptSyst3->SetLineColor(kOrange);
+	//hSpectrumMC_ptSyst3->SetLineWidth(2);
+	//hSpectrumMC_ptSyst3->Draw("same");
 
-	hSpectrumMC_ptSyst4->SetMarkerSize(0.9*_markerSize);
-	hSpectrumMC_ptSyst4->SetMarkerColor(kCyan);
-	hSpectrumMC_ptSyst4->SetMarkerStyle(24);
-	hSpectrumMC_ptSyst4->SetLineColor(kCyan);
-	hSpectrumMC_ptSyst4->SetLineWidth(2);
-	hSpectrumMC_ptSyst4->Draw("same");
+	//hSpectrumMC_ptSyst4->SetMarkerSize(0.9*_markerSize);
+	//hSpectrumMC_ptSyst4->SetMarkerColor(kCyan);
+	//hSpectrumMC_ptSyst4->SetMarkerStyle(24);
+	//hSpectrumMC_ptSyst4->SetLineColor(kCyan);
+	//hSpectrumMC_ptSyst4->SetLineWidth(2);
+	//hSpectrumMC_ptSyst4->Draw("same");
 
 	//CMS_lumi(cankres1, 0, 10); //left top // or bottom, depending on version
 
@@ -410,11 +410,11 @@ int SystematicWeightProducer()
 	leg->SetTextSize(0.085);
 
 	leg->AddEntry(gAS_Result, "Raw yield, data", "p");
-	leg->AddEntry(hSpectrumMC_pt, "MC nominal", "p");
-	leg->AddEntry(hSpectrumMC_ptSyst1, "MC Syst1 - 3", "p");
-	leg->AddEntry(hSpectrumMC_ptSyst2, "MC Syst2 - 6 ", "p");
-	leg->AddEntry(hSpectrumMC_ptSyst3, "MC Syst3 - cMass", "p");
-	leg->AddEntry(hSpectrumMC_ptSyst4, "MC Syst4 - reNorm", "p");
+	leg->AddEntry(hSpectrumMC_pt, "MC nominal, A.U.", "p");
+	//leg->AddEntry(hSpectrumMC_ptSyst1, "MC Syst1 - 3", "p");
+	//leg->AddEntry(hSpectrumMC_ptSyst2, "MC Syst2 - 6 ", "p");
+	//leg->AddEntry(hSpectrumMC_ptSyst3, "MC Syst3 - cMass", "p");
+	//leg->AddEntry(hSpectrumMC_ptSyst4, "MC Syst4 - reNorm", "p");
 
 	leg->Draw("same");
 
@@ -428,6 +428,7 @@ int SystematicWeightProducer()
 	hframe2->GetYaxis()->SetRangeUser(0.0,3.0); //range of ratios
 	hframe2->GetXaxis()->SetTitle("p_{T} (J/#psi) [GeV/c]");
 	hframe2->GetXaxis()->SetTitleSize(0.10);
+	hframe2->GetXaxis()->SetTitleOffset(1.1);
 	hframe2->GetXaxis()->SetLabelSize(0.10);
 	hframe2->GetYaxis()->SetTitle("Ratio RD/MC ");
 	hframe2->GetYaxis()->SetTitleSize(0.09);
@@ -445,59 +446,59 @@ int SystematicWeightProducer()
 	hRatioMC_pt->SetLineWidth(2);
 	hRatioMC_pt->Draw("sameP");
 
-	hRatioMC_ptSyst1->SetMarkerSize(0.9*_markerSize);
-	hRatioMC_ptSyst1->SetMarkerColor(kGreen);
-	hRatioMC_ptSyst1->SetMarkerStyle(24);
-	hRatioMC_ptSyst1->SetLineColor(kGreen);
-	hRatioMC_ptSyst1->SetLineWidth(2);
-	hRatioMC_ptSyst1->Draw("sameP");
+	//hRatioMC_ptSyst1->SetMarkerSize(0.9*_markerSize);
+	//hRatioMC_ptSyst1->SetMarkerColor(kGreen);
+	//hRatioMC_ptSyst1->SetMarkerStyle(24);
+	//hRatioMC_ptSyst1->SetLineColor(kGreen);
+	//hRatioMC_ptSyst1->SetLineWidth(2);
+	//hRatioMC_ptSyst1->Draw("sameP");
 
-	hRatioMC_ptSyst2->SetMarkerSize(0.9*_markerSize);
-	hRatioMC_ptSyst2->SetMarkerColor(kGreen + 3);
-	hRatioMC_ptSyst2->SetMarkerStyle(24);
-	hRatioMC_ptSyst2->SetLineColor(kGreen + 3);
-	hRatioMC_ptSyst2->SetLineWidth(2);
-	hRatioMC_ptSyst2->Draw("sameP");
+	//hRatioMC_ptSyst2->SetMarkerSize(0.9*_markerSize);
+	//hRatioMC_ptSyst2->SetMarkerColor(kGreen + 3);
+	//hRatioMC_ptSyst2->SetMarkerStyle(24);
+	//hRatioMC_ptSyst2->SetLineColor(kGreen + 3);
+	//hRatioMC_ptSyst2->SetLineWidth(2);
+	//hRatioMC_ptSyst2->Draw("sameP");
 
-	hRatioMC_ptSyst3->SetMarkerSize(0.9*_markerSize);
-	hRatioMC_ptSyst3->SetMarkerColor(kOrange);
-	hRatioMC_ptSyst3->SetMarkerStyle(24);
-	hRatioMC_ptSyst3->SetLineColor(kOrange);
-	hRatioMC_ptSyst3->SetLineWidth(2);
-	hRatioMC_ptSyst3->Draw("sameP");
+	//hRatioMC_ptSyst3->SetMarkerSize(0.9*_markerSize);
+	//hRatioMC_ptSyst3->SetMarkerColor(kOrange);
+	//hRatioMC_ptSyst3->SetMarkerStyle(24);
+	//hRatioMC_ptSyst3->SetLineColor(kOrange);
+	//hRatioMC_ptSyst3->SetLineWidth(2);
+	//hRatioMC_ptSyst3->Draw("sameP");
 
-	hRatioMC_ptSyst4->SetMarkerSize(0.9*_markerSize);
-	hRatioMC_ptSyst4->SetMarkerColor(kCyan);
-	hRatioMC_ptSyst4->SetMarkerStyle(24);
-	hRatioMC_ptSyst4->SetLineColor(kCyan);
-	hRatioMC_ptSyst4->SetLineWidth(2);
-	hRatioMC_ptSyst4->Draw("sameP");
+	//hRatioMC_ptSyst4->SetMarkerSize(0.9*_markerSize);
+	//hRatioMC_ptSyst4->SetMarkerColor(kCyan);
+	//hRatioMC_ptSyst4->SetMarkerStyle(24);
+	//hRatioMC_ptSyst4->SetLineColor(kCyan);
+	//hRatioMC_ptSyst4->SetLineWidth(2);
+	//hRatioMC_ptSyst4->Draw("sameP");
 
 	//gStyle->SetOptFit(1011); // doesn't work for some reason
 
-	///////EXP
+	/////////EXP
 
-	TF1* fit_pT_weight = new TF1("fit_pT_weight", "[0]*(1-exp([1]*x))", 6.5, 30);
-	fit_pT_weight->SetLineWidth(2);
-	fit_pT_weight->SetParNames("Norm", "Exp_scale");
-	//basic parameter settings
-	fit_pT_weight->SetParameters(1, -0.05);
-	TFitResultPtr FitRes = hRatioMC_pt->Fit(fit_pT_weight, "", "", 6.5, 30);
-	double normValue = fit_pT_weight->GetParameter(0);
-	double normError = fit_pT_weight->GetParError(0);
-	double scaleValue = fit_pT_weight->GetParameter(1);
-	double scaleError = fit_pT_weight->GetParError(1);
-	TPaveText* pText1 = new TPaveText(.25, .74, .45, .96, "brNDC");
-	pText1->SetFillColor(kWhite);
-	pText1->SetTextSize(0.06);
-	pText1->SetTextColor(kRed);
-	pText1->SetBorderSize(0);
-	pText1->SetTextAlign(32); //right alignment
-	pText1->AddText(Form("Normalization: %.2f +- %.2f", normValue, normError));
-	pText1->AddText(Form("Scale %.3f +- %.3f", scaleValue, scaleError));
-	pText1->Draw();
+	//TF1* fit_pT_weight = new TF1("fit_pT_weight", "[0]*(1-exp([1]*x))", 6.5, 30);
+	//fit_pT_weight->SetLineWidth(2);
+	//fit_pT_weight->SetParNames("Norm", "Exp_scale");
+	////basic parameter settings
+	//fit_pT_weight->SetParameters(1, -0.05);
+	//TFitResultPtr FitRes = hRatioMC_pt->Fit(fit_pT_weight, "", "", 6.5, 30);
+	//double normValue = fit_pT_weight->GetParameter(0);
+	//double normError = fit_pT_weight->GetParError(0);
+	//double scaleValue = fit_pT_weight->GetParameter(1);
+	//double scaleError = fit_pT_weight->GetParError(1);
+	//TPaveText* pText1 = new TPaveText(.28, .74, .48, .96, "brNDC");
+	//pText1->SetFillColor(kWhite);
+	//pText1->SetTextSize(0.06);
+	//pText1->SetTextColor(kRed);
+	//pText1->SetBorderSize(0);
+	//pText1->SetTextAlign(32); //right alignment
+	//pText1->AddText(Form("Normalization: %.2f +- %.2f", normValue, normError));
+	//pText1->AddText(Form("Scale %.3f +- %.3f", scaleValue, scaleError));
+	//pText1->Draw();
 
-	/////// Line might be better
+	///////// Line might be better
 	TF1* fit_pT_weight2 = new TF1("fit_pT_weight2", "[0]+[1]*x", 6.5, 30);
 	fit_pT_weight2->SetLineWidth(2);
 	fit_pT_weight2->SetLineColor(kBlue);
@@ -519,11 +520,12 @@ int SystematicWeightProducer()
 	pText2->AddText(Form("Slope %.3f +- %.3f", A1Value, A1Error));
 	pText2->Draw();
 
-	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison" + ".root");
-	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison" + ".pdf");
-	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison" + ".png");
+	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison_NomOnlyNoExp" + ".root");
+	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison_NomOnlyNoExp" + ".pdf");
+	cankres1->SaveAs((TString)"pTdistribution_fiducial_comparison_NomOnlyNoExp" + ".png");
 
 
+	return 0; //don't do weights now
 	///////////////////////////////////////
 	//////////
 	/// THE ACTUAL WEIGHTS

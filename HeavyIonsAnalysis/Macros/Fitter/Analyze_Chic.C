@@ -355,7 +355,7 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 		//else if (pdfName.find("nominalPdfJpsi") != string::npos)
 	{
 		//Ws.factory("CBShape::signalJpsi(rvmassJpsi, mean1Jpsi[3.097, 3.05, 3.15], sigma1Jpsi[0.03, 0.003, 0.08], alphaJpsi[1.85, 0.1, 50], nJpsi[1.7, 0.2, 50])");
-		Ws.factory("CBShape::Jpsi1(rvmassJpsi, mean1Jpsi[3.097, 3.05, 3.15], sigma1Jpsi[0.03, 0.003, 0.08], alphaJpsi[1.85, 0.1, 50], nJpsi[1.7, 0.2, 50])");
+		Ws.factory("CBShape::Jpsi1(rvmassJpsi, mean1Jpsi[3.097, 3.05, 3.15], sigma1Jpsi[0.03, 0.003, 0.08], alphaJpsi[1.85, 0.1, 50], nJpsi[1.5, 0.2, 50])");
 		Ws.factory("prod::sigma2Jpsi(sigma1Jpsi, sigmaRatioJpsi[2.0, 1.2, 3.0])"); // allowing sigmas to merge (i.e. 1.0) leads to fit instabilities, and is useless (same as one peak - so the shape can be fitted here too). In any case, is 1.5-1.6 in the fits
 		Ws.factory("CBShape::Jpsi2(rvmassJpsi, mean1Jpsi, sigma2Jpsi, alphaJpsi, nJpsi)");
 		//Ws.factory("CBShape::psi2(rvmassJpsi, mean2Jpsi[3.686, 3.50, 3.75], sigma3Jpsi[0.03, 0.003, 0.08], alphaJpsi, nJpsi)");
@@ -365,9 +365,10 @@ bool CreateModelPdf(RooWorkspace& Ws, string pdfName, bool bConstrainedFit = fal
 		//Ws.factory("Uniform::one(rvmass)");
 		//Ws.factory("SUM::expConst(const[0.8,0.01,1]*one, expbkg)");
 		//Ws.factory("EXPR::background('expConst*ErfPdf', expConst, ErfPdf)");
-		Ws.factory("Exponential::backgroundJpsi(rvmassJpsi,e_1Jpsi[-0.2,-0.7,0])");
+		Ws.factory("Exponential::backgroundJpsi(rvmassJpsi,e_1Jpsi[-0.2,-0.7,-0.0])");
  
-		Ws.factory("SUM::nominalPdfJpsi(nsigJpsi[5000,0,2000000]*signalJpsi, nbkgJpsi[2000,0,1000000]*backgroundJpsi)");
+		Ws.factory("SUM::nominalPdfJpsi(nsigJpsi[5000,0,2500000]*signalJpsi, nbkgJpsi[2000,0,1500000]*backgroundJpsi)"); //works well enough
+		//Ws.factory("SUM::nominalPdfJpsi(nsigJpsi[5000,0,270000]*signalJpsi, nbkgJpsi[2000,0,180000]*backgroundJpsi)");
 		return true;
 	}
 
@@ -399,8 +400,8 @@ bool RefreshModel(RooWorkspace& Ws, string pdfName, bool isJpsi) // attempt to p
 		Ws.var("alphaJpsi")->setVal(1.85);
 		Ws.var("nJpsi")->setVal(1.7);
 		Ws.var("e_1Jpsi")->setVal(-0.4);
-		Ws.var("nsigJpsi")->setVal(40000); //50000
-		Ws.var("nbkgJpsi")->setVal(3000); //2000
+		Ws.var("nsigJpsi")->setVal(70000); //40000-50000
+		Ws.var("nbkgJpsi")->setVal(6000); //3000-2000
 
 	}
 	else
@@ -815,7 +816,7 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		textchi->SetTextColor(kBlue);
 		textchi->SetTextSize(0.05);
 		textchi->SetBorderSize(0);
-		string txtchi = "#chi^{2}/ndf: " + to_string(chi2_fit);
+		string txtchi = "#chi^{2}/ndf: " + to_string(chi2_fit).substr(0, std::to_string(chi2_fit).find(".") + 3);// output to string, to 2 dec places (truncated and not rounded, but that should not matter)
 		textchi->AddText(txtchi.c_str());
 		textchi->Draw();
 
@@ -855,8 +856,10 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 		pad1->Update();
 		pad2->Update();
 
-		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi?"Jpsi_":"Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
-		if (isJpsi == true) cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.root", bins[i], bins[i + 1])).c_str());
+		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.png", bins[i], bins[i + 1])).c_str());
+		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.pdf", bins[i], bins[i + 1])).c_str());
+		cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin", i) + Form("_%.1f_%.1f.root", bins[i], bins[i + 1])).c_str());
+		//if (isJpsi == true) cFit->SaveAs(((string)"FitterOutput/FitResult_" + (isJpsi ? "Jpsi_" : "Chic_") + fittingSetName + "_" + binVarName + Form("_%ibin_", i) + Form("_%.1f_%.1f.root", bins[i], bins[i + 1])).c_str());
 	}
 
 	delete cFit;
@@ -873,12 +876,15 @@ int FitRooDataSet(TGraphAsymmErrors* gAsResult, double* bins, int nbins, RooReal
 
 ////////////////////////////////////
 
-void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal_v2-bothDir.root", const char* fileOut = "Chi_c_output_Nominal_v2-bothDir_DCB_test.root", const char* fileRds = "rds_Nominal_v2_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeDCBW.root", const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDir.root")
-//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/afs/cern.ch/user/o/okukral/Chic_pPb/CMSSW_8_0_30/src/HeavyIonsAnalysis/ChiAnalysis/test/Chi_c_pPb8TeV-Comp285993.root", const char* fileOut = "Chi_c_output_RW6_ComparisonAlberto285993.root", const char* fileRds = "rds_save_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
+
+//void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal_v2-bothDir.root", const char* fileOut = "Chi_c_output_Nominal_vDissertation-bothDir_DCB.root", const char* fileRds = "rds_Nominal_vDissertation.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_OfficialvDissertation_NarrowRangeDCBW_NewBins.root", const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDir.root")
+void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal_v2-bothDir.root", const char* fileOut = "Chi_c_output_Nominal_vDissertation-bothDir_DCB_NewBins.root", const char* fileRds = "rds_Nominal_vDissertation.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_OfficialvDissertation_NarrowRangeDCBW_NewBins.root", const char* fileCorrection = "Chi_c_WeightsMC_Official_vDissertation-bothDir.root")
+
+//void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal_v2-bothDir.root", const char* fileOut = "Chi_c_output_Nominal_v2-bothDir_DCB.root", const char* fileRds = "rds_Nominal_v2.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeDCBW.root", const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDir.root")
+
+//void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV-Nominal_v2-bothDir.root", const char* fileOut = "Chi_c_output_Nominal_v2-bothDir_DCB_VeryLooseConversionUpdatedConstraints.root", const char* fileRds = "rds_Nominal_v2_VeryLooseConversion.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints_Officialv3_NarrowRangeDCBW_VeryLooseConversion.root", const char* fileCorrection = "Chi_c_WeightsMC_Official_v3-bothDirConversionVeryLoose.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = false,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/PADoubleMuon/crab_Chi_c_pPb8TeV_AOD_Pbp_RW6Comp5/211202_000528/0000/Chi_c_pPb8TeV-PbpCompTest.root", const char* fileOut = "Chi_c_output_RW4_testCutTightRefitAlberto2.root", const char* fileRds = "rds_RW4_Full_noWeights_CutTightRefitAlberto.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
 //void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/afs/cern.ch/work/o/okukral/ChicData/Chi_c_pPb8TeV-MC8_BothDir.root", const char* fileOut = "Chi_c_output_MC8_test.root", const char* fileRds = "rds_MC8_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraints.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
-//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true,  const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-pPb.root", const char* fileOut = "Chi_c_output_MC9_test.root", const char* fileRds = "rds_MC9_test.root", bool isMC = true, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraintsMC8.root", const char* fileCorrection = "Chi_c_WeightsMC8_pPb_comparisonBothDir.root")
-//void Analyze_Chic(bool flagGenerateRds = true, bool flagRunFits = true, const char* fileIn = "/eos/cms/store/group/phys_heavyions/okukral/Chi_c/Chi_c_pPb8TeV_MC9-pPb.root", const char* fileOut = "Chi_c_output_UsingMC9_test.root", const char* fileRds = "rds_UsingMC9_test.root", bool isMC = false, bool flagConstrainedFit = true, const char* fileConstraints = "Chi_c_constraintsMC8.root", const char* fileCorrection = "Chi_c_WeightsMC9_bothDir.root")
 {
 	//gStyle->SetOptStat(1111);
 	//gStyle->SetOptStat(0);
@@ -1258,14 +1264,14 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 				double Mdiff = m_chi - dimuonM + 3.097;// Assume J/psi mass 
 
 
-				if (rap_Jpsi > -0.566 && rap_Jpsi < 1.434)
-				{
-					if (pT_Jpsi > 18 && pT_Jpsi < 30)
-					{
-						testCounter++;
-						cout << "counter is " << testCounter << " run number and event: " <<  runNumber << "   "  << eventNumber << " is pPb and rapidity: " << ispPb << " " << rap_Jpsi <<  endl;
-					}
-				}
+				//if (rap_Jpsi > -0.566 && rap_Jpsi < 1.434)
+				//{
+				//	if (pT_Jpsi > 18 && pT_Jpsi < 30)
+				//	{
+				//		testCounter++;
+				//		cout << "counter is " << testCounter << " run number and event: " <<  runNumber << "   "  << eventNumber << " is pPb and rapidity: " << ispPb << " " << rap_Jpsi <<  endl;
+				//	}
+				//}
 
 
 
@@ -1533,14 +1539,12 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 			////////      JPSI         /////////
 			///////////////////////////////////////
 
-			//for (int iJpsi = 0; iJpsi < dimuon_p4->GetEntriesFast(); iJpsi++) // Jpsi loop
-			for (int iJpsi = 0; iJpsi < 0; iJpsi++) // Jpsi loop //debug
+			for (int iJpsi = 0; iJpsi < dimuon_p4->GetEntriesFast(); iJpsi++) // Jpsi loop
+			//for (int iJpsi = 0; iJpsi < 0; iJpsi++) // Jpsi loop //debug
 			{
-
 				passDimSel = DimuonPassAllCuts(iJpsi);
 
 				if (passDimSel == false)continue;
-
 
 				// fill dimuon stuff
 				LVdimuon = (TLorentzVector*)dimuon_p4->At(iJpsi);
@@ -1675,23 +1679,42 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 		//*/
 
 
-
+		//*
 
 		FitRooDataSet(gAsChic_pT, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-2.4 && rvrap <2.4", "pt_all", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_mid, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "pt_mid", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_fwd, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap<-1 || rvrap >1)", "pt_fwd", flagConstrainedFit, fileConstraints);
+
 		FitRooDataSet(gAsChic_y, bins_y, nbins_y, rvmass, myWs, false, "rvrap", myPdfName.c_str(), " && rvpt>6.5 && rvpt <30", "y", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "nTrack", flagConstrainedFit, fileConstraints);
 		FitRooDataSet(gAsChic_nTrk_all, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-2.4 && rvrap <2.4", "nTrack_all", flagConstrainedFit, fileConstraints);
 
-		FitRooDataSet(gAsChic_pT_fwdOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.6 && rvrap <2.4)", "pt_fwdOnly", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_bkwOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-1.6 && rvrap >-2.4)", "pt_bkwOnly", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_fwdOnlyWide, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.0 && rvrap <2.4)", "pt_fwdOnlyWide", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_bkwOnlyWide, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-1.0 && rvrap >-2.4)", "pt_bkwOnlyWide", flagConstrainedFit, fileConstraints);
+		TString TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge2) + " && " + TString::Format("rvrap < %f", rapCM_Edge3);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		string strRapCut = TstrRapCut.Data();
 
-		FitRooDataSet(gAsChic_pT_midCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >-0.566 && rvrap <1.434)", "pt_midCMS", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_fwdCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.434 && rvrap <2.4)", "pt_fwdCMS", flagConstrainedFit, fileConstraints);
-		FitRooDataSet(gAsChic_pT_bkwCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-0.566 && rvrap >-1.566)", "pt_bkwCMS", flagConstrainedFit, fileConstraints);
+		FitRooDataSet(gAsChic_pT_midCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), strRapCut, "pt_midCMS", flagConstrainedFit, fileConstraints);
+
+		TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge3) + " && " + TString::Format("rvrap < %f", rapCM_Edge4);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		FitRooDataSet(gAsChic_pT_fwdCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), strRapCut, "pt_fwdCMS", flagConstrainedFit, fileConstraints);
+
+		TstrRapCut = TString::Format("&& rvrap > %f", rapCM_Edge1) + " && " + TString::Format("rvrap < %f", rapCM_Edge2);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		FitRooDataSet(gAsChic_pT_bkwCMS, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), strRapCut, "pt_bkwCMS", flagConstrainedFit, fileConstraints);
+
+		//*/
+		// below bins no longer fitted:
+		//FitRooDataSet(gAsChic_pT_mid, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "pt_mid", flagConstrainedFit, fileConstraints);
+		//FitRooDataSet(gAsChic_pT_fwd, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap<-1 || rvrap >1)", "pt_fwd", flagConstrainedFit, fileConstraints);
+		//FitRooDataSet(gAsChic_nTrk, bins_nTrk, nbins_nTrk, rvmass, myWs, false, "rvntrack", myPdfName.c_str(), " && rvrap>-1 && rvrap <1", "nTrack", flagConstrainedFit, fileConstraints);
+
+
+		//FitRooDataSet(gAsChic_pT_fwdOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.6 && rvrap <2.4)", "pt_fwdOnly", flagConstrainedFit, fileConstraints);
+		//FitRooDataSet(gAsChic_pT_bkwOnly, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-1.6 && rvrap >-2.4)", "pt_bkwOnly", flagConstrainedFit, fileConstraints);
+		//FitRooDataSet(gAsChic_pT_fwdOnlyWide, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap >1.0 && rvrap <2.4)", "pt_fwdOnlyWide", flagConstrainedFit, fileConstraints);
+		//FitRooDataSet(gAsChic_pT_bkwOnlyWide, bins_pT, nbins_pT, rvmass, myWs, false, "rvpt", myPdfName.c_str(), " && (rvrap <-1.0 && rvrap >-2.4)", "pt_bkwOnlyWide", flagConstrainedFit, fileConstraints);
+
+
 
 		/////////////////////
 		//// J/psi fit  /////
@@ -1731,21 +1754,36 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 
 
 		
-		FitRooDataSet(gAsJpsi_pT_mid, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1.0 && rvrapJpsi <1.0", "pt_mid", false);
-		FitRooDataSet(gAsJpsi_pT_fwd, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi<-1.0 || rvrapJpsi >1.0)", "pt_fwd", false);
+
 		FitRooDataSet(gAsJpsi_pT, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-2.4 && rvrapJpsi <2.4", "pt_all", false);
 		FitRooDataSet(gAsJpsi_y, bins_y, nbins_y, rvmassJpsi, myWs, true, "rvrapJpsi", myPdfNameJpsi.c_str(), " && rvptJpsi>6.5 && rvptJpsi < 30", "y", false);
-		FitRooDataSet(gAsJpsi_nTrk, bins_nTrk, nbins_nTrk, rvmassJpsi, myWs, true, "rvntrackJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1 && rvrapJpsi <1", "nTrack", false);
 		FitRooDataSet(gAsJpsi_nTrk_all, bins_nTrk, nbins_nTrk, rvmassJpsi, myWs, true, "rvntrackJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-2.4 && rvrapJpsi <2.4", "nTrack_all", false);
 
-		FitRooDataSet(gAsJpsi_pT_fwdOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.6 && rvrapJpsi <2.4)", "pt_fwdOnly", false);
-		FitRooDataSet(gAsJpsi_pT_bkwOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-1.6 && rvrapJpsi >-2.4)", "pt_bkwOnly", false);
-		FitRooDataSet(gAsJpsi_pT_fwdOnlyWide, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.0 && rvrapJpsi <2.4)", "pt_fwdOnlyWide", false);
-		FitRooDataSet(gAsJpsi_pT_bkwOnlyWide, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-1.0 && rvrapJpsi >-2.4)", "pt_bkwOnlyWide", false);
+		TstrRapCut = TString::Format("&& rvrapJpsi > %f", rapCM_Edge2) + " && " + TString::Format("rvrapJpsi < %f", rapCM_Edge3);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		FitRooDataSet(gAsJpsi_pT_midCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), strRapCut, "pt_midCMS", false);
 
-		FitRooDataSet(gAsJpsi_pT_midCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >-0.566 && rvrapJpsi <1.434)", "pt_midCMS", false);
-		FitRooDataSet(gAsJpsi_pT_fwdCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.434 && rvrapJpsi <2.4)", "pt_fwdCMS", false);
-		FitRooDataSet(gAsJpsi_pT_bkwCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-0.566 && rvrapJpsi >-1.566)", "pt_bkwCMS", false);
+		TstrRapCut = TString::Format("&& rvrapJpsi > %f", rapCM_Edge3) + " && " + TString::Format("rvrapJpsi < %f", rapCM_Edge4);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		FitRooDataSet(gAsJpsi_pT_fwdCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), strRapCut, "pt_fwdCMS", false);
+
+		TstrRapCut = TString::Format("&& rvrapJpsi > %f", rapCM_Edge1) + " && " + TString::Format("rvrapJpsi < %f", rapCM_Edge2);
+		cout << "Will apply following cut: " << TstrRapCut << endl;
+		strRapCut = TstrRapCut.Data();
+		FitRooDataSet(gAsJpsi_pT_bkwCMS, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), strRapCut, "pt_bkwCMS", false);
+
+		// below bins no longer fitted:
+		//FitRooDataSet(gAsJpsi_pT_mid, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1.0 && rvrapJpsi <1.0", "pt_mid", false);
+		//FitRooDataSet(gAsJpsi_pT_fwd, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi<-1.0 || rvrapJpsi >1.0)", "pt_fwd", false);
+		//FitRooDataSet(gAsJpsi_nTrk, bins_nTrk, nbins_nTrk, rvmassJpsi, myWs, true, "rvntrackJpsi", myPdfNameJpsi.c_str(), " && rvrapJpsi>-1 && rvrapJpsi <1", "nTrack", false);
+		//FitRooDataSet(gAsJpsi_pT_fwdOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.6 && rvrapJpsi <2.4)", "pt_fwdOnly", false);
+		//FitRooDataSet(gAsJpsi_pT_bkwOnly, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-1.6 && rvrapJpsi >-2.4)", "pt_bkwOnly", false);
+		//FitRooDataSet(gAsJpsi_pT_fwdOnlyWide, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi >1.0 && rvrapJpsi <2.4)", "pt_fwdOnlyWide", false);
+		//FitRooDataSet(gAsJpsi_pT_bkwOnlyWide, bins_pT, nbins_pT, rvmassJpsi, myWs, true, "rvptJpsi", myPdfNameJpsi.c_str(), " && (rvrapJpsi <-1.0 && rvrapJpsi >-2.4)", "pt_bkwOnlyWide", false);
+
+
 
 	}
 	
@@ -1753,18 +1791,18 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 
 		//pt
 	///*
-		GetCorrectedRatio(gAsRatio_pT, gAsChic_pT, gAsJpsi_pT, fileCorrection, "h_chiEfficiency1D_Q_pT_all_rat");
-		GetCorrectedRatio(gAsRatio_pT_mid, gAsChic_pT_mid, gAsJpsi_pT_mid, fileCorrection, "h_chiEfficiency1D_Q_pT_mid_rat");
-		GetCorrectedRatio(gAsRatio_pT_fwd, gAsChic_pT_fwd, gAsJpsi_pT_fwd, fileCorrection, "h_chiEfficiency1D_Q_pT_fwd_rat");
+		GetCorrectedRatio(gAsRatio_pT, gAsChic_pT, gAsJpsi_pT, fileCorrection, "h_chiTotalCorrection1D_pT_all_rat");
+		//GetCorrectedRatio(gAsRatio_pT_mid, gAsChic_pT_mid, gAsJpsi_pT_mid, fileCorrection, "h_chiTotalCorrection1D_pT_mid_rat");
+		//GetCorrectedRatio(gAsRatio_pT_fwd, gAsChic_pT_fwd, gAsJpsi_pT_fwd, fileCorrection, "h_chiTotalCorrection1D_pT_fwd_rat");
 
-		GetCorrectedRatio(gAsRatio_pT_fwdOnly, gAsChic_pT_fwdOnly, gAsJpsi_pT_fwdOnly, fileCorrection, "h_chiEfficiency1D_Q_pT_fwdOnly_rat");
-		GetCorrectedRatio(gAsRatio_pT_bkwOnly, gAsChic_pT_bkwOnly, gAsJpsi_pT_bkwOnly, fileCorrection, "h_chiEfficiency1D_Q_pT_bkwOnly_rat");
-		GetCorrectedRatio(gAsRatio_pT_fwdOnlyWide, gAsChic_pT_fwdOnlyWide, gAsJpsi_pT_fwdOnlyWide, fileCorrection, "h_chiEfficiency1D_Q_pT_fwdOnlyWide_rat");
-		GetCorrectedRatio(gAsRatio_pT_bkwOnlyWide, gAsChic_pT_bkwOnlyWide, gAsJpsi_pT_bkwOnlyWide, fileCorrection, "h_chiEfficiency1D_Q_pT_bkwOnlyWide_rat");
+		//GetCorrectedRatio(gAsRatio_pT_fwdOnly, gAsChic_pT_fwdOnly, gAsJpsi_pT_fwdOnly, fileCorrection, "h_chiTotalCorrection1D_pT_fwdOnly_rat");
+		//GetCorrectedRatio(gAsRatio_pT_bkwOnly, gAsChic_pT_bkwOnly, gAsJpsi_pT_bkwOnly, fileCorrection, "h_chiTotalCorrection1D_pT_bkwOnly_rat");
+		//GetCorrectedRatio(gAsRatio_pT_fwdOnlyWide, gAsChic_pT_fwdOnlyWide, gAsJpsi_pT_fwdOnlyWide, fileCorrection, "h_chiTotalCorrection1D_pT_fwdOnlyWide_rat");
+		//GetCorrectedRatio(gAsRatio_pT_bkwOnlyWide, gAsChic_pT_bkwOnlyWide, gAsJpsi_pT_bkwOnlyWide, fileCorrection, "h_chiTotalCorrection1D_pT_bkwOnlyWide_rat");
 
-		GetCorrectedRatio(gAsRatio_pT_midCMS, gAsChic_pT_midCMS, gAsJpsi_pT_midCMS, fileCorrection, "h_chiEfficiency1D_Q_pT_midCMS_rat");
-		GetCorrectedRatio(gAsRatio_pT_fwdCMS, gAsChic_pT_fwdCMS, gAsJpsi_pT_fwdCMS, fileCorrection, "h_chiEfficiency1D_Q_pT_fwdCMS_rat");
-		GetCorrectedRatio(gAsRatio_pT_bkwCMS, gAsChic_pT_bkwCMS, gAsJpsi_pT_bkwCMS, fileCorrection, "h_chiEfficiency1D_Q_pT_bkwCMS_rat");
+		GetCorrectedRatio(gAsRatio_pT_midCMS, gAsChic_pT_midCMS, gAsJpsi_pT_midCMS, fileCorrection, "h_chiTotalCorrection1D_pT_midCMS_rat");
+		GetCorrectedRatio(gAsRatio_pT_fwdCMS, gAsChic_pT_fwdCMS, gAsJpsi_pT_fwdCMS, fileCorrection, "h_chiTotalCorrection1D_pT_fwdCMS_rat");
+		GetCorrectedRatio(gAsRatio_pT_bkwCMS, gAsChic_pT_bkwCMS, gAsJpsi_pT_bkwCMS, fileCorrection, "h_chiTotalCorrection1D_pT_bkwCMS_rat");
 
 		TCanvas* can_pT = new TCanvas("can_pT", "Ratio_pT", 600, 400);
 		gAsRatio_pT->SetMarkerStyle(21);
@@ -1804,7 +1842,7 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 
 		////////  y
 
-		GetCorrectedRatio(gAsRatio_y, gAsChic_y, gAsJpsi_y, fileCorrection, "h_chiEfficiency1D_Q_y_rat");
+		GetCorrectedRatio(gAsRatio_y, gAsChic_y, gAsJpsi_y, fileCorrection, "h_chiTotalCorrection1D_y_rat");
 
 
 
@@ -1823,25 +1861,25 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 
 
 
-		GetCorrectedRatio(gAsRatio_nTrk, gAsChic_nTrk, gAsJpsi_nTrk, fileCorrection, "h_chiEfficiency1D_Q_nTrk_rat");
-		gAsRatio_nTrk->RemovePoint(4); // not enough statistics there
+		//GetCorrectedRatio(gAsRatio_nTrk, gAsChic_nTrk, gAsJpsi_nTrk, fileCorrection, "h_chiTotalCorrection1D_nTrk_rat");
+		//gAsRatio_nTrk->RemovePoint(4); // not enough statistics there
 
-		GetCorrectedRatio(gAsRatio_nTrk_all, gAsChic_nTrk_all, gAsJpsi_nTrk_all, fileCorrection, "h_chiEfficiency1D_Q_nTrk_all_rat");
+		GetCorrectedRatio(gAsRatio_nTrk_all, gAsChic_nTrk_all, gAsJpsi_nTrk_all, fileCorrection, "h_chiTotalCorrection1D_nTrk_all_rat");
 		gAsRatio_nTrk_all->RemovePoint(4); // not enough statistics there
 
-		TCanvas* can_nTrk = new TCanvas("can_nTrk", "Ratio_nTrk", 600, 400);
-		gAsRatio_nTrk->SetMarkerStyle(21);
-		gAsRatio_nTrk->SetMarkerSize(1.7);
-		gAsRatio_nTrk->SetMarkerColor(kRed);
-		gAsRatio_nTrk->SetLineColor(kRed);
-		gAsRatio_nTrk->SetLineWidth(2);
-		gAsRatio_nTrk->Draw("AP");
-		gAsRatio_nTrk->GetYaxis()->SetRangeUser(0, 0.5);
-		gAsRatio_nTrk->GetYaxis()->SetTitle("(#chic_{1}+#chic_{2}) / J/#psi");
-		gAsRatio_nTrk->GetYaxis()->SetTitleOffset(1.1);
-		gAsRatio_nTrk->GetXaxis()->SetTitle("nTrack");
-		gAsRatio_nTrk->GetXaxis()->SetRangeUser(0,250);
-		can_nTrk->SaveAs("FitterOutput/RatioChicJpsi_nTrk.png");
+		//TCanvas* can_nTrk = new TCanvas("can_nTrk", "Ratio_nTrk", 600, 400);
+		//gAsRatio_nTrk->SetMarkerStyle(21);
+		//gAsRatio_nTrk->SetMarkerSize(1.7);
+		//gAsRatio_nTrk->SetMarkerColor(kRed);
+		//gAsRatio_nTrk->SetLineColor(kRed);
+		//gAsRatio_nTrk->SetLineWidth(2);
+		//gAsRatio_nTrk->Draw("AP");
+		//gAsRatio_nTrk->GetYaxis()->SetRangeUser(0, 0.5);
+		//gAsRatio_nTrk->GetYaxis()->SetTitle("(#chic_{1}+#chic_{2}) / J/#psi");
+		//gAsRatio_nTrk->GetYaxis()->SetTitleOffset(1.1);
+		//gAsRatio_nTrk->GetXaxis()->SetTitle("nTrack");
+		//gAsRatio_nTrk->GetXaxis()->SetRangeUser(0,250);
+		//can_nTrk->SaveAs("FitterOutput/RatioChicJpsi_nTrk.png");
 
 		//*/
 
@@ -1951,35 +1989,35 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 	if (flagRunFits == true)
 	{
 		gAsChic_pT->Write();
-		gAsChic_pT_mid->Write();
-		gAsChic_pT_fwd->Write();
-		gAsChic_pT_fwdOnly->Write();
-		gAsChic_pT_bkwOnly->Write();
-		gAsChic_pT_fwdOnlyWide->Write();
-		gAsChic_pT_bkwOnlyWide->Write();
+		//gAsChic_pT_mid->Write();
+		//gAsChic_pT_fwd->Write();
+		//gAsChic_pT_fwdOnly->Write();
+		//gAsChic_pT_bkwOnly->Write();
+		//gAsChic_pT_fwdOnlyWide->Write();
+		//gAsChic_pT_bkwOnlyWide->Write();
 		gAsChic_pT_midCMS->Write();
 		gAsChic_pT_fwdCMS->Write();
 		gAsChic_pT_bkwCMS->Write();
 
 
 		gAsJpsi_pT->Write();
-		gAsJpsi_pT_mid->Write();
-		gAsJpsi_pT_fwd->Write();
-		gAsJpsi_pT_fwdOnly->Write();
-		gAsJpsi_pT_bkwOnly->Write();
-		gAsJpsi_pT_fwdOnlyWide->Write();
-		gAsJpsi_pT_bkwOnlyWide->Write();
+		//gAsJpsi_pT_mid->Write();
+		//gAsJpsi_pT_fwd->Write();
+		//gAsJpsi_pT_fwdOnly->Write();
+		//gAsJpsi_pT_bkwOnly->Write();
+		//gAsJpsi_pT_fwdOnlyWide->Write();
+		//gAsJpsi_pT_bkwOnlyWide->Write();
 		gAsJpsi_pT_midCMS->Write();
 		gAsJpsi_pT_fwdCMS->Write();
 		gAsJpsi_pT_bkwCMS->Write();
 
 		gAsRatio_pT->Write();
-		gAsRatio_pT_mid->Write();
-		gAsRatio_pT_fwd->Write();
-		gAsRatio_pT_fwdOnly->Write();
-		gAsRatio_pT_bkwOnly->Write();
-		gAsRatio_pT_fwdOnlyWide->Write();
-		gAsRatio_pT_bkwOnlyWide->Write();
+		//gAsRatio_pT_mid->Write();
+		//gAsRatio_pT_fwd->Write();
+		//gAsRatio_pT_fwdOnly->Write();
+		//gAsRatio_pT_bkwOnly->Write();
+		//gAsRatio_pT_fwdOnlyWide->Write();
+		//gAsRatio_pT_bkwOnlyWide->Write();
 		gAsRatio_pT_midCMS->Write();
 		gAsRatio_pT_fwdCMS->Write();
 		gAsRatio_pT_bkwCMS->Write();
@@ -1989,9 +2027,9 @@ void Analyze_Chic(bool flagGenerateRds = false, bool flagRunFits = true, const c
 		gAsJpsi_y->Write();
 		gAsRatio_y->Write();
 		//can_y->Write();
-		gAsChic_nTrk->Write();
-		gAsJpsi_nTrk->Write();
-		gAsRatio_nTrk->Write();
+		//gAsChic_nTrk->Write();
+		//gAsJpsi_nTrk->Write();
+		//gAsRatio_nTrk->Write();
 
 		gAsChic_nTrk_all->Write();
 		gAsJpsi_nTrk_all->Write();
