@@ -1,0 +1,53 @@
+executable            = condorExec.sh
+#arguments             = 0 0
+output                = Output_systChic/CondorOutput/condor.$(ClusterId).$(ProcId).out
+error                 = Output_systChic/CondorOutput/condor.$(ClusterId).$(ProcId).err
+log                   = Output_systChic/CondorOutput/condor.$(ClusterId).log
+request_cpus          = 8 
+request_memory		  = 8 GB
++JobFlavour           = "testmatch"
+#queue
+
+arguments             = $(Item) $(Step)
+#queue 7 in 0,1,2,3,4,5,6,7,8,9,10,11,12
+queue 7 in 0,1,2,3,4,5
+
+
+
+
+
+#arguments = 1 
+#queue
+#
+#arguments = 2
+#queue
+#
+#arguments = 3
+#queue
+#
+#arguments = 4
+#queue
+#
+#arguments = 5
+#queue
+#
+#arguments = 6
+#queue
+#
+#arguments = 7
+#queue
+#
+#arguments = 8
+#queue
+#
+#arguments = 9
+#queue
+#
+#arguments = 10
+#queue
+#
+#arguments = 11
+#queue
+#
+#arguments = 12
+#queue

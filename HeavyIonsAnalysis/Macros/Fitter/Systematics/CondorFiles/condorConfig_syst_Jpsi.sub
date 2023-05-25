@@ -1,0 +1,14 @@
+executable            = condorExecJpsi.sh
+#arguments             = 0 0
+output                = Output_systJpsi/CondorOutput/condor.$(ClusterId).$(ProcId).out
+error                 = Output_systJpsi/CondorOutput/condor.$(ClusterId).$(ProcId).err
+log                   = Output_systJpsi/CondorOutput/condor.$(ClusterId).log
+request_cpus          = 8 
+request_memory		  = 8 GB
++JobFlavour           = "testmatch"
+#queue
+
+arguments             = $(Item) $(Step)
+#queue 7 in 0,1,2,3,4,5,6,7,8,9,10,11,12  #old
+queue 7 in 0,1,2,3,4,5
+#queue 7 in 0,1,2,5 #do only bad ones
