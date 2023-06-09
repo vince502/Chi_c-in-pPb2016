@@ -337,9 +337,21 @@ double WeightForMC_pTpart(double pt); //weights official MC to match data better
 double WeightPhotonAcceptanceSystematic(double photon_pt, int idx = 0); // weights official MC with variations obtained from alternative MC settings. To be used as systematics. idx: 0->nominal; 1->pthat=3; 2->pthat=6; 3->cmass=1.43; 4->renormalization+factorization variation 
 // currently idx 1 and 2 are largest variations, others need not to be considered
 
+double PolarizationCosTheta(TLorentzVector* LVdimuon, TLorentzVector* LVmuon); // calculates cos theta for the J/psi, based on Jeongho
+
+double PolarizationWeight(TLorentzVector* LVdimuon, TLorentzVector* LVmuon, double lambdaTheta = 0); // assigns weight to chic, assuming the polarization axes are the same as for J/psi. Following Arxiv 1103.4882. Based on Jeongho 
 
 
 
+
+////////////////////////////
+//// Chic2/chic1 ratio /////
+////////////////////////////
+
+// this block is based on Shirsendu
+double CalculateChicRatioValue(double x); //helper function
+double CalculateChicRatioError(double x, double delta_x); //helper
+TGraphAsymmErrors* CalculateChicRatioFromC2Ratio(TGraphAsymmErrors* graph); // c2ratio TgraphAsymmErrors in, returns pointer to a newly defined recalculated ratio (chic2/chic1)
 
 #endif 
 

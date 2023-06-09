@@ -752,3 +752,87 @@ double WeightPhotonAcceptanceSystematic(double photon_pt, int idx) // weights of
 
 }
 
+
+
+double PolarizationCosTheta(TLorentzVector* LVdimuon, TLorentzVector* LVmuon) // calculates cos theta for the J/psi, based on Jeongho
+{
+	TLorentzVector* LVdimuonCopy = new TLorentzVector(*LVdimuon); // this is here as a quick fix, so we do not change the original LVs
+	TLorentzVector* LVmuonCopy = new TLorentzVector(*LVmuon); // this is here as a quick fix, so we do not change the original LVs
+	TVector3 TVdimuon = LVdimuonCopy->Vect();
+	TVector3 TVUdimuon = TVdimuon.Unit(); //Unit vector of J/psi Z axis
+	TVector3 boost = -LVdimuonCopy->BoostVector();
+	TLorentzVector LVmuon_prime = LVmuonCopy->Transform(boost); //Transverse to J/psi frame
+	TVector3 TVmuon = LVmuon_prime.Vect();
+	TVector3 TVUmuon = TVmuon.Unit(); //muon Unit Vector
+	double costheta = TVUdimuon.Dot(TVUmuon);
+	return costheta;
+}
+
+
+double PolarizationWeight(TLorentzVector* LVdimuon, TLorentzVector* LVmuon, double lambdaTheta) // assigns weight to chic, assuming the polarization axes are the same as for J/psi. Following Arxiv 1103.4882 
+{
+	double cosTheta = PolarizationCosTheta(LVdimuon, LVmuon);
+	double weight = 1 + lambdaTheta * cosTheta*cosTheta;
+	return weight;
+}
+
+
+
+////////////////////////////
+//// Chic2/chic1 ratio /////
+////////////////////////////
+
+double CalculateChicRatioValue(double x) {
+	return x / (1 - x);
+}
+double CalculateChicRatioError(double x, double delta_x) {
+	double function_value = x / (1-x);
+	double derivative = 1 / (1-x)*(1-x);
+	double propagated_error = std::abs(derivative) * delta_x;
+	return propagated_error;
+}
+TGraphAsymmErrors* CalculateChicRatioFromC2Ratio(TGraphAsymmErrors* graph) {
+	int nPoints = graph->GetN();
+
+	// Create arrays to store the calculated values
+	double* xValues = graph->GetX();
+	double* yValues = graph->GetY();
+	double* xErrorsLow = graph->GetEXlow();
+	double* xErrorsHigh = graph->GetEXhigh();
+	double* yErrorsLow = graph->GetEYlow();
+	double* yErrorsHigh = graph->GetEYhigh();
+
+	// Create arrays to store the calculated values for the new graph
+	double* newXValues = new double[nPoints];
+	double* newYValues = new double[nPoints];
+	double* newXErrorsLow = new double[nPoints];
+	double* newXErrorsHigh = new double[nPoints];
+	double* newYErrorsLow = new double[nPoints];
+	double* newYErrorsHigh = new double[nPoints];
+
+	for (int i = 0; i < nPoints; ++i) {
+
+		newXValues[i] = xValues[i];
+		newYValues[i] = CalculateChicRatioValue(yValues[i]);
+		newXErrorsLow[i] = CalculateChicRatioError(xValues[i], xErrorsLow[i]);
+		newXErrorsHigh[i] = CalculateChicRatioError(xValues[i], xErrorsHigh[i]);
+		newYErrorsLow[i] = CalculateChicRatioError(yValues[i], yErrorsLow[i]);
+		newYErrorsHigh[i] = CalculateChicRatioError(yValues[i], yErrorsHigh[i]);
+
+	}
+
+	TGraphAsymmErrors* outputGraph = new TGraphAsymmErrors(nPoints, newXValues, newYValues, newXErrorsLow, newXErrorsHigh, newYErrorsLow, newYErrorsHigh);
+
+	outputGraph->SetMarkerColor(kBlue);
+	outputGraph->SetLineColor(kBlue);
+	outputGraph->SetMarkerStyle(25);
+	outputGraph->SetMaximum(1.001);
+	outputGraph->SetMinimum(-0.001);
+	outputGraph->GetYaxis()->SetTitleSize(0.05);
+	outputGraph->GetXaxis()->SetTitleSize(0.05);
+	outputGraph->GetYaxis()->SetTitleOffset(1.00);
+	outputGraph->GetXaxis()->SetTitleOffset(1.00);
+	outputGraph->GetYaxis()->SetTitle("#chi_{c2}/#chi_{c1}");
+	return outputGraph;
+}
+
