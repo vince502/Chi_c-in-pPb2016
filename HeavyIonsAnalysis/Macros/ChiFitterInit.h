@@ -86,6 +86,8 @@ double rapCM_Edge4 = 2.4;
 std::vector<std::string> fittingSets = { "pt_all", "y",  "pt_midCMS", "pt_fwdCMS", "pt_bkwCMS", "nTrack_all" };
 //const int nFittingSets = fittingSets.size(); //doesn't work for arrays
 const int nFittingSets = 6;
+std::vector<std::string> fittingSetsCorrection = { "pT_all", "y",  "pT_midCMS", "pT_fwdCMS", "pT_bkwCMS", "nTrk_all" }; // for historic reasons the correction naming scheme is different
+
 
 //stuff to ease making the plots
 std::vector<std::string> fittingSetsXLabel = { "p_{T}(J/#psi) [GeV/c]", "y(J/#psi)", "p_{T}(J/#psi) [GeV/c]", "p_{T}(J/#psi) [GeV/c]", "p_{T}(J/#psi) [GeV/c]", "N_{tracks}" };

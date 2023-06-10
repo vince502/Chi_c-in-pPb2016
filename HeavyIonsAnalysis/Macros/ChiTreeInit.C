@@ -787,7 +787,7 @@ double CalculateChicRatioValue(double x) {
 }
 double CalculateChicRatioError(double x, double delta_x) {
 	double function_value = x / (1-x);
-	double derivative = 1 / (1-x)*(1-x);
+	double derivative = 1 / ((1-x)*(1-x));
 	double propagated_error = std::abs(derivative) * delta_x;
 	return propagated_error;
 }
