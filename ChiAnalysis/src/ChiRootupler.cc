@@ -17,7 +17,6 @@
 //#include <HeavyIonsAnalysis/ChiAnalysis/interface/mydict.cxx>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -507,9 +506,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 				{
 					//cout << "in kinematic refit  " << n_chic<<endl;
 					refitStatusFlag += 1;
-					edm::ESHandle<TransientTrackBuilder> theB;
   					const auto &theB = iSetup.getHandle(trackBuilderToken_);
-					iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
+					// iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
 
 					reco::TrackRef JpsiTk[2] = { (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon1")))->innerTrack(), (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon2")))->innerTrack() };
 
@@ -1537,7 +1535,7 @@ bool ChiRootupler::Conv_checkTkVtxCompatibility(const reco::Conversion& conv, co
 bool ChiRootupler::Conv_foundCompatibleInnerHits(const reco::HitPattern& hitPatA, const reco::HitPattern& hitPatB) { //directly copied from HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionProducer
 	size_t count = 0;
 	uint32_t oldSubStr = 0;
-	for (int i = 0; i<hitPatA.numberOfHits(reco::HitPattern::HitCategory::TRACK_HITS) && count<2; i++) {
+	for (int i = 0; i<hitPatA.numberOfAllHits(reco::HitPattern::HitCategory::TRACK_HITS) && count<2; i++) {
 		uint32_t hitA = hitPatA.getHitPattern(reco::HitPattern::HitCategory::TRACK_HITS, i);
 		if (!hitPatA.validHitFilter(hitA) || !hitPatA.trackerHitFilter(hitA)) continue;
 
