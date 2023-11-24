@@ -76,6 +76,7 @@
 //constructor
 ChiRootupler::ChiRootupler(const edm::ParameterSet & iConfig) :
 	//muon_label(consumes<edm::View <pat::Muon> >(iConfig.getParameter < edm::InputTag >("muon_cand"))),
+	trackBuilderToken_(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
 	muon_label(consumes< pat::MuonCollection >(iConfig.getParameter < edm::InputTag >("muon_cand"))),
 	dimuon_label(consumes<pat::CompositeCandidateCollection>(iConfig.getParameter < edm::InputTag >("dimuon_cand"))),
 	//photon_label(consumes<pat::CompositeCandidateCollection>(iConfig.getParameter < edm::InputTag >("photon_cand"))),
@@ -507,6 +508,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 					//cout << "in kinematic refit  " << n_chic<<endl;
 					refitStatusFlag += 1;
 					edm::ESHandle<TransientTrackBuilder> theB;
+  					const auto &theB = iSetup.getHandle(trackBuilderToken_);
 					iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
 
 					reco::TrackRef JpsiTk[2] = { (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon1")))->innerTrack(), (dynamic_cast<const pat::Muon*>(chi_cand.daughter("dimuon")->daughter("muon2")))->innerTrack() };

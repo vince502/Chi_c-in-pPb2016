@@ -115,6 +115,7 @@ private:
 	std::string file_name;
 
 	//edm::EDGetTokenT< edm::View <pat::Muon> > muon_label; //is a muon collection
+  	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> trackBuilderToken_;
 	edm::EDGetTokenT<pat::MuonCollection>  muon_label;
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_label;
 	//edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_label;
