@@ -15,7 +15,7 @@
 #include "DataFormats/Math/interface/LorentzVector.h"
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -52,7 +52,7 @@
 // class declaration
 //
 
-class ChiRootupler :public edm::EDAnalyzer {
+class ChiRootupler : public edm::one::EDAnalyzer<> {
 public:
 	explicit ChiRootupler(const edm::ParameterSet &);
 	~ChiRootupler();
@@ -62,7 +62,6 @@ public:
 private:
 	
 	virtual void analyze(const edm::Event & iEvent, const edm::EventSetup & iSetup);						// ------------ method called for each event  ------------
-		
 	virtual void beginJob();																				// ------------ method called once each job just before starting event loop  ------------
 	virtual void endJob();																					// ------------ method called once each job just after ending the event loop  ------------
 	virtual void beginRun(const edm::Run &iRun, const edm::EventSetup &iSetup);								// ------------ method called when starting to processes a run  ------------
