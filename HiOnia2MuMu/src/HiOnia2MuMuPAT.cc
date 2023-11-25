@@ -74,7 +74,7 @@ HiOnia2MuMuPAT::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	muMasses.push_back(0.1056583715);
 	muMasses.push_back(0.1056583715);
 
-	std::auto_ptr<pat::CompositeCandidateCollection> oniaOutput(new pat::CompositeCandidateCollection);
+	std::unique_ptr<pat::CompositeCandidateCollection> oniaOutput(new pat::CompositeCandidateCollection);
 
 	Vertex thePrimaryV;
 	Vertex theBeamSpotV;
