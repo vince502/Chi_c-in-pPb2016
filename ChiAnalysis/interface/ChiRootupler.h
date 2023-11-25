@@ -7,7 +7,6 @@
 
 //O: includes should be cleaned up and moved to cc
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -34,6 +33,11 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "MagneticField/Engine/interface/MagneticField.h"
+#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 
 #include "TLorentzVector.h"
 #include "TVector3.h"
@@ -115,6 +119,8 @@ private:
 	std::string file_name;
 
 	//edm::EDGetTokenT< edm::View <pat::Muon> > muon_label; //is a muon collection
+  edm::ESGetToken<MagneticField, IdealMagneticFieldRecord> magFieldToken_;
+  	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> trackBuilderToken_;
 	edm::EDGetTokenT<pat::MuonCollection>  muon_label;
 	edm::EDGetTokenT<pat::CompositeCandidateCollection> dimuon_label;
 	//edm::EDGetTokenT<pat::CompositeCandidateCollection> photon_label;
