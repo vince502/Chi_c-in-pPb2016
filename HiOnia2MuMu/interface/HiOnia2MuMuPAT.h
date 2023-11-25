@@ -65,7 +65,6 @@ class HiOnia2MuMuPAT : public edm::stream::EDProducer<> {
     edm::EDGetTokenT<reco::VertexCollection>        thePVsToken_;
     edm::EDGetTokenT<reco::TrackCollection>         recoTracksToken_;
     edm::EDGetTokenT<reco::GenParticleCollection>   theGenParticlesToken_;
-    edm::EDGetTokenT<reco::GenParticleCollection> theGenParticlesToken_;
     edm::ESGetToken<MagneticField, IdealMagneticFieldRecord> magFieldToken_;
     edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> trackBuilderToken_;
 
