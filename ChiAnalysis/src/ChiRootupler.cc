@@ -399,7 +399,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		return;
 	}
 	// if not trigger, skip the event (should not happen due to preselection in the main cfg) // Leave for MC
-	if (Trig_Event_HLTDoubleMuOpen == 0 && flag_doMC==false) return;
+	//if (Trig_Event_HLTDoubleMuOpen == 0 && flag_doMC==false) return;
 
 
 
@@ -456,7 +456,8 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	//Removed here, since they duplicates are useless, and mess up matching for MC
 
-	Conv_removeDuplicates(conversionRaw_handle, conversion_handle);
+cout << "Conv remov" << endl;
+//	Conv_removeDuplicates(conversionRaw_handle, conversion_handle);
 
 
 	//////////////////////
@@ -474,11 +475,13 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 		//for (reco::ConversionCollection::const_iterator photCand = conversion_handle->begin(); photCand != conversion_handle->end(); ++photCand) {
 
 		for (uint iPhot = 0; iPhot < conversion_handle->size(); iPhot++) {
+cout << "At chic 0" << endl;
 			const reco::Conversion& photCand = conversion_handle->at(iPhot);
 
 			if (ConvSelection(photCand) == false) { continue; } //pre-select photons here (only pT>0.2 and |eta|<2.5)
 
 			chi_cand = makeChiCandidate(*dimuonCand, photCand);
+			std::cout << chi_cand.mass() << std::endl;
 
 			//chi cuts
 			if (chi_cand.mass() < 2.0 || chi_cand.mass() > 6.0) continue;
@@ -497,10 +500,11 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			chiStored.push_back(chi_cand);
 
 			chiCandColl->push_back(chi_cand);
-
+cout << "At chic 1" << endl;
 			// KinematicRefit - the following is based on github.com/alberto-sanchez/chi-analysis-miniaod/blob/master/src/OniaPhotonKinematicFit.cc from Alberto  
 			int refitStatusFlag = 0;
 			bool refitGoodFitFlag = false;
+flag_doKinematicRefit= false;
 			if (flag_doKinematicRefit) {
 				if ((dimuonCand->daughter("muon1")->isTrackerMuon() || dimuonCand->daughter("muon1")->isGlobalMuon()) && (dimuonCand->daughter("muon2")->isTrackerMuon() || dimuonCand->daughter("muon2")->isGlobalMuon())) //if not, it doesn't have inner track, no way to refit anything
 				{
@@ -716,7 +720,6 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			double vzError = pvtx.zError();
 
 			if (tracks_handle.isValid()) {
-
 				for (unsigned int i = 0; i < tracks_handle->size(); ++i) {
 					const reco::Track& track = (*tracks_handle)[i];
 					reco::TrackBase::TrackQuality tq = reco::TrackBase::qualityByName("highPurity");
@@ -758,7 +761,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	////////////////////////
 	////  D I M U O N   ///
 	//////////////////////
-
+//std::cout << "Dimuon" << std::endl;
 	if (dimuon_handle.isValid())
 	{
 		//cout << "At Dimuon" << endl;
@@ -808,6 +811,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 	/////////////////////
 	//   M U O N S   ////
 	////////////////////
+//std::cout << "Single muon" << std::endl;
 	if (muon_handle.isValid()) {
 		//cout << "At muons" << endl;
 		for (uint i = 0; i < muon_handle->size(); i++) {
@@ -948,63 +952,69 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 			conv_tkVtxCompatible_secondBestVertexA_test.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
 			conv_tkVtxCompatible_secondBestVertexB_test.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
 		}
-		conv_tkVtxCompatibilityOK.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), conv_TkVtxCompSigmaCut, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
-		conv_tkVtxCompatible_bestVertex.push_back(conv_tkVtxCompatible_bestVertex_aux);
-		conv_tkVtxCompatible_secondBestVertexA.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
-		conv_tkVtxCompatible_secondBestVertexB.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
-		conv_sigmaTkVtx1.push_back(conv_sigmaTkVtx1_aux);
-		conv_sigmaTkVtx2.push_back(conv_sigmaTkVtx2_aux);
-
-		if (candPhoton.tracks().size() == 2) {
-			const edm::RefToBase<reco::Track> conv_tk1 = candPhoton.tracks().at(0);
-			const edm::RefToBase<reco::Track> conv_tk2 = candPhoton.tracks().at(1);
-
-			conv_tk1ValidHits.push_back(conv_tk1->numberOfValidHits());
-			conv_tk2ValidHits.push_back(conv_tk2->numberOfValidHits());
-
-			reco::HitPattern hitPatA = conv_tk1->hitPattern();
-			reco::HitPattern hitPatB = conv_tk2->hitPattern();
-			if (flag_saveExtraThings)
-			{
-				conv_hitPat1.push_back(hitPatA);
-				conv_hitPat2.push_back(hitPatB);
-			}
-			conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
+//std::cout << "Conversion checking PV compat1" << std::endl;
+//		conv_tkVtxCompatibilityOK.push_back(Conv_checkTkVtxCompatibility(candPhoton, *primaryVertices_handle.product(), conv_TkVtxCompSigmaCut, conv_tkVtxCompatible_bestVertex_aux, conv_tkVtxCompatible_secondBestVertexA_aux, conv_tkVtxCompatible_secondBestVertexB_aux, conv_sigmaTkVtx1_aux, conv_sigmaTkVtx2_aux));
+//std::cout << "Conversion checking PV compat2" << std::endl;
+//		conv_tkVtxCompatible_bestVertex.push_back(conv_tkVtxCompatible_bestVertex_aux);
+//std::cout << "Conversion checking PV compat3" << std::endl;
+//		conv_tkVtxCompatible_secondBestVertexA.push_back(conv_tkVtxCompatible_secondBestVertexA_aux);
+//		conv_tkVtxCompatible_secondBestVertexB.push_back(conv_tkVtxCompatible_secondBestVertexB_aux);
+//std::cout << "Conversion checking PV compat done" << std::endl;
+//		conv_sigmaTkVtx1.push_back(conv_sigmaTkVtx1_aux);
+//		conv_sigmaTkVtx2.push_back(conv_sigmaTkVtx2_aux);
 
 
-			// pick the closest vertex of those that were selected by dimuon (and ignore the vertices that had no dimuon in them)
-			int bestPvtx_index = 0;
-			float minDz = 9999;
-			for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
-			{
-				float deltaZ = fabs(candPhoton.zOfPrimaryVertexFromTracks(primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).position()) - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());
-				if (deltaZ < minDz) {
-					minDz = deltaZ;
-					bestPvtx_index = dimuon_pvtx_index.at(iVtx);
-				}
-			}
-			conv_pvtx_index.push_back(bestPvtx_index);
-
-			conv_zOfPriVtx.push_back((*primaryVertices_handle.product())[bestPvtx_index].z());
-			conv_zOfPriVtxFromTracks.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()));
-			conv_dzToClosestPriVtx.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()) - (*primaryVertices_handle.product())[bestPvtx_index].z());
-			// Now check impact parameter wrt primary vertex
-			conv_dxyPriVtx_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
-			conv_dxyPriVtx_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
-			conv_dxyPriVtxTimesCharge_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk1->charge());
-			conv_dxyPriVtxTimesCharge_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk2->charge());
-			conv_dxyError_Tr1.push_back(conv_tk1->dxyError());
-			conv_dxyError_Tr2.push_back(conv_tk2->dxyError());
-
-			conv_tk1NumOfDOF.push_back(conv_tk1->ndof());
-			conv_tk2NumOfDOF.push_back(conv_tk2->ndof());
-			conv_track1Chi2.push_back(candPhoton.tracks().at(0)->normalizedChi2());
-			conv_track2Chi2.push_back(candPhoton.tracks().at(1)->normalizedChi2());
-			conv_Tr1_pt.push_back(conv_tk1->pt());
-			conv_Tr2_pt.push_back(conv_tk2->pt());
-
-		}
-		else conv_compatibleInnerHitsOK.push_back(-1);
+//		if (candPhoton.tracks().size() == 2) {
+//			const edm::RefToBase<reco::Track> conv_tk1 = candPhoton.tracks().at(0);
+//			const edm::RefToBase<reco::Track> conv_tk2 = candPhoton.tracks().at(1);
+//
+//			conv_tk1ValidHits.push_back(conv_tk1->numberOfValidHits());
+//			conv_tk2ValidHits.push_back(conv_tk2->numberOfValidHits());
+//
+//			reco::HitPattern hitPatA = conv_tk1->hitPattern();
+//			reco::HitPattern hitPatB = conv_tk2->hitPattern();
+//			if (flag_saveExtraThings)
+//			{
+//				conv_hitPat1.push_back(hitPatA);
+//				conv_hitPat2.push_back(hitPatB);
+//			}
+//			conv_compatibleInnerHitsOK.push_back((Conv_foundCompatibleInnerHits(hitPatA, hitPatB) && Conv_foundCompatibleInnerHits(hitPatB, hitPatA)));
+//
+//
+//			// pick the closest vertex of those that were selected by dimuon (and ignore the vertices that had no dimuon in them)
+//			int bestPvtx_index = 0;
+//			float minDz = 9999;
+//			for (uint iVtx = 0; iVtx < dimuon_pvtx_index.size(); iVtx++)
+//			{
+//				float deltaZ = fabs(candPhoton.zOfPrimaryVertexFromTracks(primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).position()) - primaryVertices_handle->at(dimuon_pvtx_index.at(iVtx)).z());
+//				if (deltaZ < minDz) {
+//					minDz = deltaZ;
+//					bestPvtx_index = dimuon_pvtx_index.at(iVtx);
+//				}
+//			}
+//			conv_pvtx_index.push_back(bestPvtx_index);
+//
+//			conv_zOfPriVtx.push_back((*primaryVertices_handle.product())[bestPvtx_index].z());
+//			conv_zOfPriVtxFromTracks.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()));
+//			conv_dzToClosestPriVtx.push_back(candPhoton.zOfPrimaryVertexFromTracks((*primaryVertices_handle.product())[bestPvtx_index].position()) - (*primaryVertices_handle.product())[bestPvtx_index].z());
+//			// Now check impact parameter wrt primary vertex
+//			conv_dxyPriVtx_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
+//			conv_dxyPriVtx_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position()));
+//			conv_dxyPriVtxTimesCharge_Tr1.push_back(conv_tk1->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk1->charge());
+//			conv_dxyPriVtxTimesCharge_Tr2.push_back(conv_tk2->dxy((*primaryVertices_handle.product())[bestPvtx_index].position())*conv_tk2->charge());
+//			conv_dxyError_Tr1.push_back(conv_tk1->dxyError());
+//			conv_dxyError_Tr2.push_back(conv_tk2->dxyError());
+//
+//			conv_tk1NumOfDOF.push_back(conv_tk1->ndof());
+//			conv_tk2NumOfDOF.push_back(conv_tk2->ndof());
+//			conv_track1Chi2.push_back(candPhoton.tracks().at(0)->normalizedChi2());
+//			conv_track2Chi2.push_back(candPhoton.tracks().at(1)->normalizedChi2());
+//			conv_Tr1_pt.push_back(conv_tk1->pt());
+//			conv_Tr2_pt.push_back(conv_tk2->pt());
+//
+//		}
+//		else conv_compatibleInnerHitsOK.push_back(-1);
+//std::cout << "PhotonTracks Done" << std::endl;
 
 		conv_vertexChi2Prob.push_back(ChiSquaredProbability(candPhoton.conversionVertex().chi2(), candPhoton.conversionVertex().ndof()));
 		conv_minDistanceOfApproach.push_back(candPhoton.distOfMinimumApproach());
@@ -1560,7 +1570,7 @@ bool ChiRootupler::Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, con
 
 void ChiRootupler::Conv_removeDuplicates(edm::Handle<std::vector <reco::Conversion>> convCollIn, reco::ConversionCollection* convCollOut)
 {
-	//std::cout << "at duplicate removal" << std::endl;
+	std::cout << "at duplicate removal" << std::endl;
 	if (convCollIn.isValid())
 	{
 		for (uint i = 0; i < convCollIn->size(); i++) {
