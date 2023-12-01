@@ -456,8 +456,7 @@ void ChiRootupler::analyze(const edm::Event & iEvent, const edm::EventSetup & iS
 
 	//Removed here, since they duplicates are useless, and mess up matching for MC
 
-cout << "Conv remov" << endl;
-//	Conv_removeDuplicates(conversionRaw_handle, conversion_handle);
+	Conv_removeDuplicates(conversionRaw_handle, conversion_handle);
 
 
 	//////////////////////
@@ -475,16 +474,16 @@ cout << "Conv remov" << endl;
 		//for (reco::ConversionCollection::const_iterator photCand = conversion_handle->begin(); photCand != conversion_handle->end(); ++photCand) {
 
 		for (uint iPhot = 0; iPhot < conversion_handle->size(); iPhot++) {
-cout << "At chic 0" << endl;
+//cout << "At chic 0" << endl;
 			const reco::Conversion& photCand = conversion_handle->at(iPhot);
 
 			if (ConvSelection(photCand) == false) { continue; } //pre-select photons here (only pT>0.2 and |eta|<2.5)
 
 			chi_cand = makeChiCandidate(*dimuonCand, photCand);
-			std::cout << chi_cand.mass() << std::endl;
 
 			//chi cuts
-			if (chi_cand.mass() < 2.0 || chi_cand.mass() > 6.0) continue;
+			if ( !((chi_cand.mass() <6.0 && chi_cand.mass() >2.0)|| (chi_cand.mass() >8 &&  chi_cand.mass() < 13.0) )) continue;
+			//if (chi_cand.mass() < 2.0 || chi_cand.mass() > 6.0) continue;
 
 
 			TLorentzVector chi_p4_aux;
@@ -500,7 +499,6 @@ cout << "At chic 0" << endl;
 			chiStored.push_back(chi_cand);
 
 			chiCandColl->push_back(chi_cand);
-cout << "At chic 1" << endl;
 			// KinematicRefit - the following is based on github.com/alberto-sanchez/chi-analysis-miniaod/blob/master/src/OniaPhotonKinematicFit.cc from Alberto  
 			int refitStatusFlag = 0;
 			bool refitGoodFitFlag = false;
@@ -1570,10 +1568,10 @@ bool ChiRootupler::Conv_isMatched(const math::XYZTLorentzVectorF& reco_conv, con
 
 void ChiRootupler::Conv_removeDuplicates(edm::Handle<std::vector <reco::Conversion>> convCollIn, reco::ConversionCollection* convCollOut)
 {
-	std::cout << "at duplicate removal" << std::endl;
 	if (convCollIn.isValid())
 	{
 		for (uint i = 0; i < convCollIn->size(); i++) {
+
 			const reco::Conversion& candPhoton = convCollIn->at(i);
 
 
@@ -1606,6 +1604,7 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 	dpTOut = -0.02;  //read out value - difference of pt for the closest conversion (in dR) - for testing, can be ignored or removed
 
 	if (conv.tracks().size() == 2) {
+		if(conv.tracks().at(0).isNull() || conv.tracks().at(1).isNull()) return 4;
 		const edm::RefToBase<reco::Track> conv_tk1 = conv.tracks().at(0);
 		const edm::RefToBase<reco::Track> conv_tk2 = conv.tracks().at(1);
 	
@@ -1620,12 +1619,21 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 			}
 			if (convCompare.tracks().size() == 2) { //if not, this conversion will be thrown out later (with return 3) and thus removed even if it were duplicate
 				for (uint iTr = 0; iTr < 2; iTr++) {
+//std::cout << "Getting Ref of iTr " << iTr << std::endl;
+					if(convCompare.tracks().at(iTr).isNull()) continue;
+//std::cout << "pass NullCheck" << iTr << std::endl;
 					const edm::RefToBase<reco::Track> convComp_tk = convCompare.tracks().at(iTr);
+//std::cout << "Got, holder is  available? " << convComp_tk.isAvailable() << std::endl;
+						if(!convComp_tk.isAvailable() ) continue;
 					if (conv_tk1 == convComp_tk) { // if the first is the same
 						bOneCommonTrack = true;
 						// check the other track, if it is real or split
 						uint iTrOther = (iTr + 1) % 2;
+//std::cout << "pass NullCheck for other particle" << iTr << std::endl;
+						if(convCompare.tracks().at(iTrOther).isNull()) continue;
 						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+//std::cout << "Got, holder is  available? " << convComp_tkOther.isAvailable() << std::endl;
+						if(!convComp_tkOther.isAvailable() ) continue;
 						double convDR = reco::deltaR(*conv_tk2, *convComp_tkOther);
 						double convDpT = std::abs(conv_tk2->pt() - convComp_tkOther->pt());
 
@@ -1669,7 +1677,9 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 						bOneCommonTrack = true;
 						// check the other track, if it is real or split
 						uint iTrOther = (iTr + 1) % 2;
+						if(convCompare.tracks().at(iTrOther).isNull()) continue;
 						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+						if(!convComp_tkOther.isAvailable()) continue;
 						double convDR = reco::deltaR(*conv_tk1, *convComp_tkOther);
 						double convDpT = std::abs(conv_tk1->pt() - convComp_tkOther->pt());
 
@@ -1710,7 +1720,6 @@ int ChiRootupler::Conv_checkDuplicity(const reco::Conversion& conv, int convPos,
 					}
 
 				}
-
 			}
 
 			if (bSplitToRemove == true)
@@ -1738,6 +1747,7 @@ int ChiRootupler::Conv_checkDuplicityAlbertoVersion(const reco::Conversion& conv
 	dpTOut = -0.02;
 
 	if (conv.tracks().size() == 2) {
+		if(conv.tracks().at(0).isNull() || conv.tracks().at(1).isNull()) return 4;
 		const edm::RefToBase<reco::Track> conv_tk1 = conv.tracks().at(0);
 		const edm::RefToBase<reco::Track> conv_tk2 = conv.tracks().at(1);
 
@@ -1750,7 +1760,12 @@ int ChiRootupler::Conv_checkDuplicityAlbertoVersion(const reco::Conversion& conv
 
 			if (convCompare.tracks().size() == 2) { //if not, this conversion will be thrown out later (with return 3) and thus removed even if it were duplicate
 				for (uint iTr = 0; iTr < 2; iTr++) {
+//std::cout << "Getting Ref of iTr " << iTr << std::endl;
+					if(convCompare.tracks().at(iTr).isNull()) continue;
+//std::cout << "pass NullCheck" << iTr << std::endl;
 					const edm::RefToBase<reco::Track> convComp_tk = convCompare.tracks().at(iTr);
+//std::cout << "Got, holder is  available? " << convComp_tk.isAvailable() << std::endl;
+					if(!convComp_tk.isAvailable() ) continue;
 					if (conv_tk1 == convComp_tk) { // if the first is the same
 						bOneCommonTrack = true;
 						// check the other one, if it is real or split
@@ -1762,7 +1777,11 @@ int ChiRootupler::Conv_checkDuplicityAlbertoVersion(const reco::Conversion& conv
 							continue;
 						}
 						uint iTrOther = (iTr + 1) % 2;
+						if(convCompare.tracks().at(iTrOther).isNull()) continue;
+//std::cout << "pass NullCheck for other particle" << iTr << std::endl;
 						const edm::RefToBase<reco::Track> convComp_tkOther = convCompare.tracks().at(iTrOther);
+//std::cout << "Got, holder is  available? " << convComp_tkOther.isAvailable() << std::endl;
+						if(!convComp_tkOther.isAvailable() ) continue;
 						double convDR = reco::deltaR(*conv_tk2, *convComp_tkOther);
 						if (dROut < 0)//first one with better prob
 						{

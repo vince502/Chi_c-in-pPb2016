@@ -161,10 +161,10 @@ process.HiOnia2MuMuPAT.muons=cms.InputTag('ChiSelectedMuons')
 process.HiOnia2MuMuPAT.primaryVertexTag=cms.InputTag('offlinePrimaryVertices')
 #process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon") #O "isGlobalMuon"
 #process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") #O "isGlobalMuon"
-process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isTrackerMuon") 
+process.HiOnia2MuMuPAT.higherPuritySelection = cms.string("isGlobalMuon && isTrackerMuon") 
 process.HiOnia2MuMuPAT.lowerPuritySelection = cms.string("isTrackerMuon") 
 process.HiOnia2MuMuPAT.beamSpotTag=cms.InputTag('offlineBeamSpot')
-process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25 && pt>5.0")
+process.HiOnia2MuMuPAT.dimuonSelection=cms.string("2.0 < mass && mass < 14 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25 && pt>0.0")
 process.HiOnia2MuMuPAT.addMCTruth = cms.bool(False)
 process.HiOnia2MuMuPAT.addCommonVertex = cms.bool(True)
 process.HiOnia2MuMuPAT.addMuonlessPrimaryVertex = cms.bool(False)
@@ -187,12 +187,12 @@ process.PhotonCandidates = HeavyFlavorAnalysis.Onia2MuMu.OniaPhotonConversionPro
     wantTkVtxCompatibility = False,
     sigmaTkVtxComp = 50, #O: Changed 5
     wantCompatibleInnerHits = True,
-    pfcandidates = 'particleFlow',
+    pfcandidates = '',
     pi0OnlineSwitch = False,
     TkMinNumOfDOF = 0, #O: Changed 3
     wantHighpurity = False,
     #test
-    vertexChi2ProbCut = 0.0000,
+    vertexChi2ProbCut = 0.001,
     trackchi2Cut = 1000,
     minDistanceOfApproachMinCut = -100.25,
     minDistanceOfApproachMaxCut = 100.00,
@@ -218,14 +218,14 @@ process.analysisPath = cms.Path(
             process.patMuonSequence *
             process.ChiSelectedMuons * 
             process.HiOnia2MuMuPAT *
-          #  process.PhotonCandidates *
+    #        process.PhotonCandidates *
             process.ChiSequence
 )
 from HeavyIonsAnalysis.HiOnia2MuMu.onia2MuMuPAT_cff import changeToMiniAOD
 changeToMiniAOD(process)
 process.unpackedMuons.addPropToMuonSt = cms.bool(True)
 
-process.options.numberOfThreads = 4
+process.options.numberOfThreads = 1
 
 
 process.schedule  = cms.Schedule( process.analysisPath )
